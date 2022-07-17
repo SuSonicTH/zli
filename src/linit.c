@@ -53,6 +53,7 @@ static const luaL_Reg loadedlibs[] = {
 //fullmoon extra libraries
   {LUA_SQLIT3LIBNAME, luaopen_lsqlite3},
   {LUA_LPEGLIBNAME, luaopen_lpeg},
+  {LUA_LFSLIBNAME, luaopen_lfs},
   {NULL, NULL}
 };
 

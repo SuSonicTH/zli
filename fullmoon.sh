@@ -40,12 +40,16 @@ if [ ! -d "$LUASQLITE_VERSION" ]; then
     rm $LUASQLITE_VERSION.zip
 fi
 
-
 if [ ! -d "$LPEG_VERSION" ]; then
     echo "downloading lpeg $LPEG_VERSION"
     wget http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
     tar -xzf $LPEG_VERSION.tar.gz
     rm $LPEG_VERSION.tar.gz
+fi
+
+if [ ! -d "luafilesystem" ]; then
+    echo "downloading luafilesystem"
+    git clone https://github.com/keplerproject/luafilesystem.git
 fi
 
 if [ ! -d "$LUA_VERSION" ]; then
@@ -56,7 +60,10 @@ if [ ! -d "$LUA_VERSION" ]; then
     cp src/* $LUA_VERSION/src/
 fi
 
+## FullMonn compilation
+
 LPEG_SRC=$FM_HOME/$LPEG_VERSION
+LFS_SRC=$FM_HOME/luafilesystem/src
 
 cd $LUA_VERSION/src 
 echo compiling fullmoon
@@ -65,6 +72,7 @@ lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobje
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
 -I $LPEG_SRC $LPEG_SRC/lpcap.c $LPEG_SRC/lpcode.c $LPEG_SRC/lpprint.c $LPEG_SRC/lptree.c $LPEG_SRC/lpvm.c \
+-I $LFS_SRC $LFS_SRC/lfs.c \
 lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
 cd $FM_HOME

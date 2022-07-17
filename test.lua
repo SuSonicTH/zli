@@ -1,5 +1,6 @@
 require "sqlite3"
 require "lpeg"
+require "lfs"
 
 local db=sqlite3.open('MyDatabase.sqlite3')
 db:exec[=[
@@ -20,3 +21,7 @@ list = number * ("," * number)^0
 function add (acc, newvalue) return acc + newvalue end
 sum = lpeg.Cf(list, add)
 print(sum:match("10,30,43"))
+
+for file in lfs.dir ("luafilesystem") do
+    print (file)
+end
