@@ -26,7 +26,6 @@ if [ ! -d "musl" ]; then
 	rm -fr $MUSL_VERSION
     cd $FM_HOME
 fi 
-#--syslibdir=$FM_HOME/lib
 
 if [ ! -d "$SQLITE_VERSION" ]; then
     echo "downloading SQLite $SQLITE_VERSION"
@@ -80,14 +79,17 @@ if [ ! -d "$LUA_VERSION" ]; then
 fi
 
 ## FullMonn compilation
+echo compiling fullmoon
 
 LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
 ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
 
-cd $LUA_VERSION/src 
-echo compiling fullmoon
-$FM_HOME/musl/bin/musl-gcc -O2 -Wall -Wextra -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
+cp src/* $LUA_VERSION/src
+
+cd $LUA_VERSION/src
+
+$FM_HOME/musl/bin/musl-gcc -O2 -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
 lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
@@ -97,7 +99,7 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
 lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
-cd $FM_HOME
+cd ..
 
 #if [ ! -d "$UPX_VERSION" ]; then
 #    echo "downloading UPX $UPX_VERSION"
@@ -107,5 +109,5 @@ cd $FM_HOME
 #fi
 
 echo "compressing with UPX"
-./$UPX_VERSION/upx --best --lzma fullmoon
-#./upx-3.96-arm_linux/upx --best --lzma fullmoon
+#./$UPX_VERSION/upx --best --lzma fullmoon
+./upx-3.96-arm_linux/upx --best --lzma fullmoon
