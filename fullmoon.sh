@@ -6,12 +6,14 @@
 #-Wl,-E -ldl -lm -o luaAll
 
 FM_HOME=`pwd`
+
 MUSL_VERSION=musl-1.2.3
 LUA_VERSION=lua-5.4.4
 SQLITE_VERSION=sqlite-amalgamation-3390100
 LUASQLITE_VERSION=lsqlite3_fsl09y
 UPX_VERSION=upx-3.96-amd64_linux
 LPEG_VERSION=lpeg-1.0.2
+ZLIB_VERSION=zlib-1.2.12
 
 if [ ! -d "musl" ]; then
     echo "installing musl"
@@ -52,6 +54,23 @@ if [ ! -d "luafilesystem" ]; then
     git clone https://github.com/keplerproject/luafilesystem.git
 fi
 
+if [ ! -d "lua-zlib" ]; then
+    echo "downloading lua-zlib"
+    git clone https://github.com/brimworks/lua-zlib.git
+fi
+
+if [ ! -d "lua-zlib" ]; then
+    echo "downloading lua-zlib"
+    git clone https://github.com/brimworks/lua-zlib.git
+fi
+
+if [ ! -d "$ZLIB_VERSION" ]; then
+    echo "downloading zlib $ZLIB_VERSION"
+    wget https://zlib.net/$ZLIB_VERSION.tar.gz
+    tar -xzf $ZLIB_VERSION.tar.gz
+    rm $ZLIB_VERSION.tar.gz
+fi
+
 if [ ! -d "$LUA_VERSION" ]; then
     echo "downloading lua $LUA_VERSION"
     wget https://www.lua.org/ftp/$LUA_VERSION.tar.gz 
@@ -64,6 +83,7 @@ fi
 
 LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
+ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
 
 cd $LUA_VERSION/src 
 echo compiling fullmoon
@@ -73,6 +93,8 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
 -I $LPEG_SRC $LPEG_SRC/lpcap.c $LPEG_SRC/lpcode.c $LPEG_SRC/lpprint.c $LPEG_SRC/lptree.c $LPEG_SRC/lpvm.c \
 -I $LFS_SRC $LFS_SRC/lfs.c \
+-DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
+$ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
 lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
 cd $FM_HOME

@@ -1,6 +1,7 @@
 require "sqlite3"
 require "lpeg"
 require "lfs"
+require "zlib"
 
 local db=sqlite3.open('MyDatabase.sqlite3')
 db:exec[=[
@@ -25,3 +26,9 @@ print(sum:match("10,30,43"))
 for file in lfs.dir ("luafilesystem") do
     print (file)
 end
+
+local test_string = "abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv"
+local deflated = zlib.deflate()(test_string, "finish")
+local inflated = zlib.inflate()(deflated, "finish")
+print (inflated)
+print (inflated==test_string)

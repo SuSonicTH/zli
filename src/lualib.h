@@ -55,6 +55,9 @@ LUAMOD_API int (luaopen_lpeg) (lua_State *L);
 #define LUA_LFSLIBNAME	"lfs"
 LUAMOD_API int (luaopen_lfs) (lua_State *L);
 
+#define LUA_ZLIBLIBNAME	"zlib"
+LUAMOD_API int (luaopen_zlib) (lua_State *L);
+
 /* open all previous libraries */
 LUALIB_API void (luaL_openlibs) (lua_State *L);
 

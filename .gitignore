@@ -6,3 +6,4 @@ upx*/
 fullmoon
 *.sqlite3
 lpeg*/
+zlib*/

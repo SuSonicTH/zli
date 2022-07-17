@@ -54,9 +54,9 @@ static const luaL_Reg loadedlibs[] = {
   {LUA_SQLIT3LIBNAME, luaopen_lsqlite3},
   {LUA_LPEGLIBNAME, luaopen_lpeg},
   {LUA_LFSLIBNAME, luaopen_lfs},
+  {LUA_ZLIBLIBNAME, luaopen_zlib},
   {NULL, NULL}
 };
-
 
 LUALIB_API void luaL_openlibs (lua_State *L) {
   const luaL_Reg *lib;
