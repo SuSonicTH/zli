@@ -1,4 +1,5 @@
 require "sqlite3"
+require "lpeg"
 
 local db=sqlite3.open('MyDatabase.sqlite3')
 db:exec[=[
@@ -13,3 +14,9 @@ for a in db:nrows('SELECT * FROM numbers') do
     end
 end
 db:close()
+
+number = lpeg.R"09"^1 / tonumber
+list = number * ("," * number)^0
+function add (acc, newvalue) return acc + newvalue end
+sum = lpeg.Cf(list, add)
+print(sum:match("10,30,43"))

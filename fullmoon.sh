@@ -11,6 +11,7 @@ LUA_VERSION=lua-5.4.4
 SQLITE_VERSION=sqlite-amalgamation-3390100
 LUASQLITE_VERSION=lsqlite3_fsl09y
 UPX_VERSION=upx-3.96-amd64_linux
+LPEG_VERSION=lpeg-1.0.2
 
 if [ ! -d "musl" ]; then
     echo "installing musl"
@@ -33,10 +34,18 @@ if [ ! -d "$SQLITE_VERSION" ]; then
 fi
 
 if [ ! -d "$LUASQLITE_VERSION" ]; then
-    echo "downloading LuaSQLite3 $SQLITE_VERSION"
+    echo "downloading LuaSQLite3 $LUASQLITE_VERSION"
     wget http://lua.sqlite.org/index.cgi/zip/$LUASQLITE_VERSION.zip
     unzip $LUASQLITE_VERSION.zip
     rm $LUASQLITE_VERSION.zip
+fi
+
+
+if [ ! -d "$LPEG_VERSION" ]; then
+    echo "downloading lpeg $LPEG_VERSION"
+    wget http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
+    tar -xzf $LPEG_VERSION.tar.gz
+    rm $LPEG_VERSION.tar.gz
 fi
 
 if [ ! -d "$LUA_VERSION" ]; then
@@ -47,12 +56,15 @@ if [ ! -d "$LUA_VERSION" ]; then
     cp src/* $LUA_VERSION/src/
 fi
 
+LPEG_SRC=$FM_HOME/$LPEG_VERSION
+
 cd $LUA_VERSION/src 
 echo compiling fullmoon
 $FM_HOME/musl/bin/musl-gcc -O2 -Wall -Wextra -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
 lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
+-I $LPEG_SRC $LPEG_SRC/lpcap.c $LPEG_SRC/lpcode.c $LPEG_SRC/lpprint.c $LPEG_SRC/lptree.c $LPEG_SRC/lpvm.c \
 lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
 cd $FM_HOME
@@ -65,5 +77,5 @@ cd $FM_HOME
 #fi
 
 echo "compressing with UPX"
-#./$UPX_VERSION/upx --best fullmoon
-./upx-3.96-arm_linux/upx --best --lzma fullmoon
+./$UPX_VERSION/upx --best --lzma fullmoon
+#./upx-3.96-arm_linux/upx --best --lzma fullmoon

@@ -4,3 +4,5 @@ lua*/
 sqlite*/
 upx*/
 fullmoon
+*.sqlite3
+lpeg*/
