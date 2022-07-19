@@ -99,7 +99,7 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
 lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
-cd ..
+cd $FM_HOME
 
 #if [ ! -d "$UPX_VERSION" ]; then
 #    echo "downloading UPX $UPX_VERSION"
@@ -109,5 +109,4 @@ cd ..
 #fi
 
 echo "compressing with UPX"
-#./$UPX_VERSION/upx --best --lzma fullmoon
-./upx-3.96-arm_linux/upx --best --lzma fullmoon
+./upx*/upx --best --lzma fullmoon
