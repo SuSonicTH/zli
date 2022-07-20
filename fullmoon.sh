@@ -104,7 +104,7 @@ cd $FM_HOME
 #if [ ! -d "$UPX_VERSION" ]; then
 #    echo "downloading UPX $UPX_VERSION"
 #    wget  https://github.com/upx/upx/releases/download/v3.96/$UPX_VERSION.tar.xz
-#    tar -xzf $UPX_VERSION.tar.xz
+#    tar -xf $UPX_VERSION.tar.xz
 #    rm $UPX_VERSION.tar.xz
 #fi
 
