@@ -2,6 +2,7 @@ require "sqlite3"
 require "lpeg"
 require "lfs"
 require "zlib"
+require "os"
 
 local db=sqlite3.open('MyDatabase.sqlite3')
 db:exec[=[
@@ -16,6 +17,7 @@ for a in db:nrows('SELECT * FROM numbers') do
     end
 end
 db:close()
+os.remove('MyDatabase.sqlite3')
 
 number = lpeg.R"09"^1 / tonumber
 list = number * ("," * number)^0

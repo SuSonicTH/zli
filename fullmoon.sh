@@ -11,9 +11,23 @@ MUSL_VERSION=musl-1.2.3
 LUA_VERSION=lua-5.4.4
 SQLITE_VERSION=sqlite-amalgamation-3390100
 LUASQLITE_VERSION=lsqlite3_fsl09y
-UPX_VERSION=upx-4.0.2-amd64_linux
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
+
+if [ $1 = "clean" ]; then
+    echo "cleaning..."
+    rm -fr fullmoon
+    rm -fr musl
+    rm -fr $MUSL_VERSION
+    rm -fr $LUA_VERSION
+    rm -fr $SQLITE_VERSION
+    rm -fr $LUASQLITE_VERSION
+    rm -fr $LPEG_VERSION
+    rm -fr $ZLIB_VERSION
+    rm -fr luafilesystem
+    rm -fr lua-zlib
+    exit 1
+fi
 
 if [ ! -d "musl" ]; then
     echo "installing musl"
@@ -21,10 +35,10 @@ if [ ! -d "musl" ]; then
     tar -xzf $MUSL_VERSION.tar.gz
 	rm $MUSL_VERSION.tar.gz
     cd musl-1.2.3 
-    ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared 
-    make && make install
-	rm -fr $MUSL_VERSION
+    ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null
+    make > /dev/null && make install > /dev/null
     cd $FM_HOME
+	rm -fr $MUSL_VERSION
 fi 
 
 if [ ! -d "$SQLITE_VERSION" ]; then
