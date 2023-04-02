@@ -11,9 +11,9 @@ MUSL_VERSION=musl-1.2.3
 LUA_VERSION=lua-5.4.4
 SQLITE_VERSION=sqlite-amalgamation-3390100
 LUASQLITE_VERSION=lsqlite3_fsl09y
-UPX_VERSION=upx-3.96-amd64_linux
+UPX_VERSION=upx-4.0.2-amd64_linux
 LPEG_VERSION=lpeg-1.0.2
-ZLIB_VERSION=zlib-1.2.12
+ZLIB_VERSION=zlib-1.2.13
 
 if [ ! -d "musl" ]; then
     echo "installing musl"
@@ -51,11 +51,6 @@ fi
 if [ ! -d "luafilesystem" ]; then
     echo "downloading luafilesystem"
     git clone https://github.com/keplerproject/luafilesystem.git
-fi
-
-if [ ! -d "lua-zlib" ]; then
-    echo "downloading lua-zlib"
-    git clone https://github.com/brimworks/lua-zlib.git
 fi
 
 if [ ! -d "lua-zlib" ]; then
@@ -101,12 +96,9 @@ lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
 cd $FM_HOME
 
-#if [ ! -d "$UPX_VERSION" ]; then
-#    echo "downloading UPX $UPX_VERSION"
-#    wget  https://github.com/upx/upx/releases/download/v3.96/$UPX_VERSION.tar.xz
-#    tar -xf $UPX_VERSION.tar.xz
-#    rm $UPX_VERSION.tar.xz
-#fi
+if  command -v upx &> /dev/null
+then
+    echo "compressing with UPX"
+    upx --best --lzma fullmoon
+fi
 
-echo "compressing with UPX"
-./upx*/upx --best --lzma fullmoon
