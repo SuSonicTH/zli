@@ -16,7 +16,6 @@ ZLIB_VERSION=zlib-1.2.13
 
 if [ $1 = "clean" ]; then
     echo "cleaning..."
-    rm -fr fullmoon
     rm -fr musl
     rm -fr $MUSL_VERSION
     rm -fr $LUA_VERSION
@@ -30,11 +29,14 @@ if [ $1 = "clean" ]; then
 fi
 
 if [ ! -d "musl" ]; then
-    echo "installing musl"
+    echo "getting musl"
     wget http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
     tar -xzf $MUSL_VERSION.tar.gz
 	rm $MUSL_VERSION.tar.gz
-    cd musl-1.2.3 
+    
+    
+    echo "installing musl" 
+    cd $MUSL_VERSION
     ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null
     make > /dev/null && make install > /dev/null
     cd $FM_HOME
