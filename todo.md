@@ -1,13 +1,12 @@
 # FullMoon
 
 # fixes
-* add re.lua from lpeg to fullmoon binary
 
 # improvements of compilation
 * add detection if all needed tools are installed (zip, git, make, gcc,...)
 
 # additional libraries
-* http server/client
+* http server/client 
 * zip/unzip
 * terminal ui library, either some existing lua binding or own based on https://github.com/dankamongmen/notcurses
 * gui library https://github.com/Immediate-Mode-UI/Nuklear with wraper or https://www.raylib.com/ 
