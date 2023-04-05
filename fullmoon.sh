@@ -24,69 +24,79 @@ if [ "$1" = "clean" ]; then
     exit 1
 fi
 
+if [ ! -d "$LUA_VERSION" ]; then
+    echo "[ downloading lua ($LUA_VERSION) ]"
+    wget -q --show-progress https://www.lua.org/ftp/$LUA_VERSION.tar.gz 
+    tar -xzf $LUA_VERSION.tar.gz 
+    rm $LUA_VERSION.tar.gz 
+    cp src/* $LUA_VERSION/src/
+    echo ""
+fi
+
+if [ ! -d "$SQLITE_VERSION" ]; then
+    echo "[ downloading SQLite ($SQLITE_VERSION) ]"
+    wget -q --show-progress https://www.sqlite.org/2022/$SQLITE_VERSION.zip
+    unzip -q $SQLITE_VERSION.zip
+    rm $SQLITE_VERSION.zip
+    echo ""
+fi
+
+if [ ! -d "$LUASQLITE_VERSION" ]; then
+    echo "[ downloading LuaSQLite3 ($LUASQLITE_VERSION) ]"
+    wget -q --show-progress http://lua.sqlite.org/index.cgi/zip/$LUASQLITE_VERSION.zip
+    unzip -q $LUASQLITE_VERSION.zip
+    rm $LUASQLITE_VERSION.zip
+    echo ""
+fi
+
+if [ ! -d "luafilesystem" ]; then
+    echo "[ downloading luafilesystem (git)]"
+    git clone --quiet https://github.com/keplerproject/luafilesystem.git
+    echo ""
+fi
+
+if [ ! -d "$LPEG_VERSION" ]; then
+    echo "[ downloading lpeg ($LPEG_VERSION) ]"
+    wget -q --show-progress http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
+    tar -xzf $LPEG_VERSION.tar.gz
+    rm $LPEG_VERSION.tar.gz
+    echo ""
+fi
+
+if [ ! -d "lua-zlib" ]; then
+    echo "[ downloading lua-zlib (git) ]"
+    git clone --quiet https://github.com/brimworks/lua-zlib.git
+    echo ""
+fi
+
+if [ ! -d "$ZLIB_VERSION" ]; then
+    echo "[ downloading zlib ($ZLIB_VERSION) ]"
+    wget -q --show-progress https://zlib.net/$ZLIB_VERSION.tar.gz
+    tar -xzf $ZLIB_VERSION.tar.gz
+    rm $ZLIB_VERSION.tar.gz
+    echo ""
+fi
+
 if [ ! -d "musl" ]; then
-    echo "getting musl"
+    echo "[ downloading musel ($MUSL_VERSION) ]"
     wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
     tar -xzf $MUSL_VERSION.tar.gz
 	rm $MUSL_VERSION.tar.gz
     
-    
-    echo "installing musl" 
+    echo ""
+    echo "[ build musl ]" 
     cd $MUSL_VERSION
     ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null
-    make > /dev/null && make install > /dev/null
+    make  CFLAGS='-Wno-return-local-addr' > /dev/null 
+    make install > /dev/null
+    
     cd $FM_HOME
 	rm -fr $MUSL_VERSION
+	echo ""
 fi 
 
-if [ ! -d "$SQLITE_VERSION" ]; then
-    echo "downloading SQLite $SQLITE_VERSION"
-    wget https://www.sqlite.org/2022/$SQLITE_VERSION.zip
-    unzip $SQLITE_VERSION.zip
-    rm $SQLITE_VERSION.zip
-fi
-
-if [ ! -d "$LUASQLITE_VERSION" ]; then
-    echo "downloading LuaSQLite3 $LUASQLITE_VERSION"
-    wget http://lua.sqlite.org/index.cgi/zip/$LUASQLITE_VERSION.zip
-    unzip $LUASQLITE_VERSION.zip
-    rm $LUASQLITE_VERSION.zip
-fi
-
-if [ ! -d "$LPEG_VERSION" ]; then
-    echo "downloading lpeg $LPEG_VERSION"
-    wget http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
-    tar -xzf $LPEG_VERSION.tar.gz
-    rm $LPEG_VERSION.tar.gz
-fi
-
-if [ ! -d "luafilesystem" ]; then
-    echo "downloading luafilesystem"
-    git clone https://github.com/keplerproject/luafilesystem.git
-fi
-
-if [ ! -d "lua-zlib" ]; then
-    echo "downloading lua-zlib"
-    git clone https://github.com/brimworks/lua-zlib.git
-fi
-
-if [ ! -d "$ZLIB_VERSION" ]; then
-    echo "downloading zlib $ZLIB_VERSION"
-    wget https://zlib.net/$ZLIB_VERSION.tar.gz
-    tar -xzf $ZLIB_VERSION.tar.gz
-    rm $ZLIB_VERSION.tar.gz
-fi
-
-if [ ! -d "$LUA_VERSION" ]; then
-    echo "downloading lua $LUA_VERSION"
-    wget https://www.lua.org/ftp/$LUA_VERSION.tar.gz 
-    tar -xzf $LUA_VERSION.tar.gz 
-    rm $LUA_VERSION.tar.gz 
-    cp src/* $LUA_VERSION/src/
-fi
-
 ## FullMonn compilation
-echo compiling fullmoon
+echo "[ compiling fullmoon ]"
 
 LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
@@ -109,9 +119,12 @@ lua.c -Wl,-E,-strip-all -ldl -lm --static \
 -I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
 cd $FM_HOME
 
+echo ""
+
 if  command -v upx &> /dev/null
 then
-    echo "compressing with UPX"
-    upx --best --lzma fullmoon
+    echo "[ compressing with UPX ]"
+    upx --best --lzma -q fullmoon > /dev/null
+    echo ""
 fi
 
