@@ -1,9 +1,5 @@
 #!/bin/sh
-#gcc -O2 -Wall -Wextra -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
-#lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
-#lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
-#lua.c \
-#-Wl,-E -ldl -lm -o luaAll
+set -e
 
 FM_HOME=`pwd`
 
@@ -14,7 +10,7 @@ LUASQLITE_VERSION=lsqlite3_fsl09y
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
 
-if [ $1 = "clean" ]; then
+if [ "$1" = "clean" ]; then
     echo "cleaning..."
     rm -fr musl
     rm -fr $MUSL_VERSION
@@ -30,7 +26,7 @@ fi
 
 if [ ! -d "musl" ]; then
     echo "getting musl"
-    wget http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
+    wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
     tar -xzf $MUSL_VERSION.tar.gz
 	rm $MUSL_VERSION.tar.gz
     
