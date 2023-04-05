@@ -1,9 +1,9 @@
-require "sqlite3"
-require "lpeg"
-require "lfs"
-require "zlib"
-require "os"
-local lu = require 'luaunit/luaunit'
+local sqlite3 = require "sqlite3"
+local lpeg = require "lpeg"
+local lfs = require "lfs"
+local zlib = require "zlib"
+local lu = require 'luaunit'
+local re = require 're'
 
 TestLibraries = {}
 
@@ -11,7 +11,7 @@ function TestLibraries:test_zlib()
     local test_string = "abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv"
     local deflated = zlib.deflate()(test_string, "finish")
     local inflated = zlib.inflate()(deflated, "finish")
-    lu.assertEquals(test_string, inflated)
+    lu.assertEquals(inflated, test_string)
 end
 
 function TestLibraries:test_lpeg()
@@ -19,7 +19,11 @@ function TestLibraries:test_lpeg()
     local list = number * ("," * number) ^ 0
     local function add(acc, newvalue) return acc + newvalue end
     local sum = lpeg.Cf(list, add)
-    lu.assertEquals(83, sum:match("10,30,43"))
+    lu.assertEquals(sum:match("10,30,43"),83)
+end
+
+function TestLibraries:test_re()
+    lu.assertEquals(re.gsub("hello World", "[aeiou]", "."),"h.ll. W.rld")
 end
 
 function TestLibraries:test_lfs()
@@ -28,7 +32,7 @@ function TestLibraries:test_lfs()
         actual[#actual + 1] = file
     end
     table.sort(actual)
-    lu.assertEquals({ '.', '..', 'linit.c', 'lualib.h' }, actual)
+    lu.assertEquals(actual, {".", "..", "linit.c", "lualib.h"})
 end
 
 function TestLibraries:test_sqlite()
@@ -41,24 +45,15 @@ function TestLibraries:test_sqlite()
             ]=]
     
     local actual = {}
-    for a in db:nrows('SELECT * FROM numbers') do
-        for k,v in pairs(a) do
-            actual[#actual+1]=k..':'..v
-        end
+    for result in db:nrows('SELECT num, val FROM numbers order by 1') do
+        actual[#actual+1]=result.num..':'..result.val
     end
     db:close()
     os.remove('test.sqlite3')
     
-    local expected = {
-        "val:one",
-        "num:1",
-        "val:two",
-        "num:2",
-        "val:three",
-        "num:3",
-    }
+    local expected = {"1:one", "2:two", "3:three"}
     
-    lu.assertEquals(expected, actual)
+    lu.assertEquals(actual, expected)
 end
 
 local runner = lu.LuaUnit.new()

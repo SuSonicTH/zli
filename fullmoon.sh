@@ -60,6 +60,8 @@ if [ ! -d "$LPEG_VERSION" ]; then
     wget -q --show-progress http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
     tar -xzf $LPEG_VERSION.tar.gz
     rm $LPEG_VERSION.tar.gz
+
+    xxd -i -n re_lua $LPEG_VERSION/re.lua > $LUA_VERSION/src/re.h
     echo ""
 fi
 
@@ -80,6 +82,8 @@ fi
 if [ ! -d "luaunit" ]; then
     echo "[ downloading luaunit (git) ]"
     git clone --quiet https://github.com/bluebird75/luaunit.git
+
+    xxd -i -n luaunit_lua luaunit/luaunit.lua > $LUA_VERSION/src/luaunit.h
     echo ""
 fi
 

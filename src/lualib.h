@@ -46,7 +46,7 @@ LUAMOD_API int (luaopen_package) (lua_State *L);
 
 //full moon extra libraries
 
-#define LUA_SQLIT3LIBNAME	"sqlite3"
+#define LUA_SQLIT3LIBNAME "sqlite3"
 LUAMOD_API int (luaopen_lsqlite3) (lua_State *L);
 
 #define LUA_LPEGLIBNAME	"lpeg"
