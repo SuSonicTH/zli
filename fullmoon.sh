@@ -77,6 +77,12 @@ if [ ! -d "$ZLIB_VERSION" ]; then
     echo ""
 fi
 
+if [ ! -d "luaunit" ]; then
+    echo "[ downloading luaunit (git) ]"
+    git clone --quiet https://github.com/bluebird75/luaunit.git
+    echo ""
+fi
+
 if [ ! -d "musl" ]; then
     echo "[ downloading musel ($MUSL_VERSION) ]"
     wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
@@ -128,3 +134,5 @@ then
     echo ""
 fi
 
+echo "[ running unit tests ]"
+./fullmoon test.lua
