@@ -1,5 +1,6 @@
 #include "fm_aux.h"
 #include <stdlib.h>
+#include <string.h>
 
 //TODO: Test writelines and writefile functions
 //TODO: fw_aux_tabletostring: fix crash with bigger tables (stack problem?)
@@ -451,9 +452,9 @@ int fw_aux_concats(lua_State* L)
 	luaL_Buffer buffer;
 	unsigned int len=(unsigned int)lua_objlen(L,1);
 	const char *sep=NULL;
-	unsigned int seplen;
+	size_t seplen;
 	const char *itm;
-	unsigned int itmlen;
+	size_t itmlen;
 	unsigned int i;
 
 	if (!lua_isnoneornil(L,2)){
@@ -572,7 +573,7 @@ int fw_aux_readlines(lua_State* L)
 
 int fw_aux_writefile(lua_State* L)
 {
-	unsigned int len;
+	size_t len;
 	const char *data;
 	const char *filename=lua_tostring(L,1);
 	FILE *fh;
@@ -602,7 +603,7 @@ int fw_aux_writefile(lua_State* L)
 int fw_aux_writelines(lua_State* L)
 {
 	unsigned int tlen=(unsigned int)lua_objlen(L,2);
-	unsigned int len;
+	size_t len;
 	unsigned int i;
 	const char *data;
 	const char *le=lua_tostring(L,3);
@@ -638,46 +639,33 @@ int fw_aux_writelines(lua_State* L)
 
 /* String Buffer */
 
-const char lw_sb_dontcopy=0;
-const char lw_sb_copy=1;
-const char lw_sb_iscopy=2;
-
-typedef struct lw_sb_node{
-	char * str;
-	char copy;
-	int len;
-	struct lw_sb_node *next;
-}lw_sb_node;
-
-typedef struct lw_sb{
-	lw_sb_node *root;
-	lw_sb_node *last;
-	unsigned int len;
-}lw_sb;
+const char fm_sb_dontcopy=0;
+const char fm_sb_copy=1;
+const char fm_sb_iscopy=2;
 
 #include <stdlib.h>
 
-lw_sb *lw_sb_init(lw_sb *sb)
+fm_sb *fm_sb_init(fm_sb *sb)
 {
 	sb->last=NULL;
 	sb->root=NULL;
 	sb->len=0;
 }
 
-void lw_sb_add(lw_sb *sb,char *str,int len,char copy)
+void fm_sb_add(fm_sb *sb,const char *str,int len,char copy)
 {
-	lw_sb_node *node=malloc(sizeof(lw_sb_node));
-	char *cstr=str;
+	fm_sb_node *node=malloc(sizeof(fm_sb_node));
 
 	if (len<0){
 		len=strlen(str);
 	}
-	if (copy==lw_sb_copy){
-		cstr=malloc(len+1);
-		memcpy(cstr,str,len+1);
+	if (copy==fm_sb_copy){
+		node->str=malloc(len+1);
+		memcpy(node->str,str,len+1);
+	}else{
+		node->str= (char*)str;
 	}
 	
-	node->str=cstr;
 	node->len=len;
 	node->copy=copy;
 	node->next=NULL;
@@ -692,12 +680,13 @@ void lw_sb_add(lw_sb *sb,char *str,int len,char copy)
 	sb->len+=len;
 }
 
-char *lw_sb_concat(lw_sb *sb,unsigned int *len)
+char *fm_sb_concat(fm_sb *sb,unsigned int *len)
 {
 	char *str=NULL;
-	char *cpos,*dpos;
+	const char *cpos;
+	char *dpos;
 	int i;
-	lw_sb_node *cnode,*dnode;
+	fm_sb_node *cnode,*dnode;
 
 	if (len!=NULL){
 		*len=sb->len;
@@ -725,10 +714,10 @@ char *lw_sb_concat(lw_sb *sb,unsigned int *len)
 		}
 		*dpos=0;
 
-		cnode=malloc(sizeof(lw_sb_node));
+		cnode=malloc(sizeof(fm_sb_node));
 		cnode->str=str;
 		cnode->len=sb->len;
-		cnode->copy=lw_sb_iscopy;
+		cnode->copy=fm_sb_iscopy;
 		cnode->next=NULL;
 		sb->root=cnode;
 		sb->last=cnode;
@@ -739,9 +728,9 @@ char *lw_sb_concat(lw_sb *sb,unsigned int *len)
 	return str;
 }
 
-void lw_sb_free(lw_sb *sb)
+void fm_sb_free(fm_sb *sb)
 {
-	lw_sb_node *cnode,*dnode;
+	fm_sb_node *cnode,*dnode;
 	cnode=sb->root;
 	while(cnode){
 		if (cnode->copy){
@@ -751,12 +740,12 @@ void lw_sb_free(lw_sb *sb)
 		cnode=cnode->next;
 		free(dnode);
 	}
-	lw_sb_init(sb);
+	fm_sb_init(sb);
 }
 
 int fw_aux_tabletostring(lua_State* L)
 {
-	lw_sb buffer;
+	fm_sb buffer;
 	const char *name=lua_tostring(L,2);
 	const char *le=lua_tostring(L,3);
 	const char *ind=lua_tostring(L,4);
@@ -767,11 +756,11 @@ int fw_aux_tabletostring(lua_State* L)
 	if (le==NULL) le="\r\n";
 	if (ind==NULL) ind="\t";
 
-	lw_sb_init(&buffer);
+	fm_sb_init(&buffer);
 	if (name!=NULL){
-		lw_sb_add(&buffer,name,-1,lw_sb_copy);
-		lw_sb_add(&buffer,"={",2,lw_sb_dontcopy);
-		lw_sb_add(&buffer,le,-1,lw_sb_dontcopy);
+		fm_sb_add(&buffer,name,-1,fm_sb_copy);
+		fm_sb_add(&buffer,"={",2,fm_sb_dontcopy);
+		fm_sb_add(&buffer,le,-1,fm_sb_dontcopy);
 		lvl++;
 	}
 
@@ -779,17 +768,17 @@ int fw_aux_tabletostring(lua_State* L)
 	fw_aux_tabletostring_traverse(L,&buffer,lvl,le,ind);
 
 	if (name!=NULL){
-		lw_sb_add(&buffer,"}",1,lw_sb_dontcopy);
+		fm_sb_add(&buffer,"}",1,fm_sb_dontcopy);
 	}
 	
-	ret=lw_sb_concat(&buffer,&retlen);
+	ret=fm_sb_concat(&buffer,&retlen);
 	lua_pushlstring(L,ret,retlen);
-	lw_sb_free(&buffer);
+	fm_sb_free(&buffer);
 
 	return 1;
 }
 
-void fw_aux_tabletostring_traverse(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le, const char *ind)
+void fw_aux_tabletostring_traverse(lua_State* L,fm_sb *buffer,int lvl,const char *le, const char *ind)
 {
 	int n=lua_gettop(L);
 	unsigned int i=1;
@@ -826,11 +815,11 @@ void fw_aux_tabletostring_traverse(lua_State* L,luaL_Buffer *buffer,int lvl,cons
 }
 
 //TODO: fw_aux_tabletostring_additem: Hash Tables used and don't reuse them
-void fw_aux_tabletostring_additem(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le,const char *ind,int seq)
+void fw_aux_tabletostring_additem(lua_State* L,fm_sb *buffer,int lvl,const char *le,const char *ind,int seq)
 {
 	const char *cpos,*epos;
 	const char *key;
-	unsigned int keylen;
+	size_t keylen;
 	const char *value;
 	int l;
 	int quoutekey=0;
@@ -842,7 +831,7 @@ void fw_aux_tabletostring_additem(lua_State* L,luaL_Buffer *buffer,int lvl,const
 	}
 
 	for (l=1;l<=lvl;l++){
-		lw_sb_add(buffer,ind,-1,lw_sb_dontcopy);
+		fm_sb_add(buffer,ind,-1,fm_sb_dontcopy);
 	}
 
 	if (!seq){
@@ -862,34 +851,34 @@ void fw_aux_tabletostring_additem(lua_State* L,luaL_Buffer *buffer,int lvl,const
 		}
 
 		if (quoutekey){
-			lw_sb_add(buffer,"['",2,lw_sb_dontcopy);
+			fm_sb_add(buffer,"['",2,fm_sb_dontcopy);
 			//TODO: fw_aux_tabletostring_additem: escape special characters
-			lw_sb_add(buffer,key,-1,lw_sb_copy);
-			lw_sb_add(buffer,"']=",3,lw_sb_dontcopy);
+			fm_sb_add(buffer,key,-1,fm_sb_copy);
+			fm_sb_add(buffer,"']=",3,fm_sb_dontcopy);
 		}else{
-			lw_sb_add(buffer,key,-1,lw_sb_copy);
-			lw_sb_add(buffer,"=",1,lw_sb_dontcopy);
+			fm_sb_add(buffer,key,-1,fm_sb_copy);
+			fm_sb_add(buffer,"=",1,fm_sb_dontcopy);
 		}
 	}
 
 	if (lua_istable(L,-1)){
-		lw_sb_add(buffer,"{",1,lw_sb_dontcopy);
-		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
+		fm_sb_add(buffer,"{",1,fm_sb_dontcopy);
+		fm_sb_add(buffer,le,-1,fm_sb_dontcopy);
 		fw_aux_tabletostring_traverse(L,buffer,lvl+1,le,ind);
 		for (l=1;l<=lvl;l++){
-			lw_sb_add(buffer,ind,-1,lw_sb_dontcopy);
+			fm_sb_add(buffer,ind,-1,fm_sb_dontcopy);
 		}
-		lw_sb_add(buffer,"},",2,lw_sb_dontcopy);
-		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
+		fm_sb_add(buffer,"},",2,fm_sb_dontcopy);
+		fm_sb_add(buffer,le,-1,fm_sb_dontcopy);
 	}else if(lua_isnumber(L,-1)){
-		lw_sb_add(buffer,value,-1,lw_sb_copy);
-		lw_sb_add(buffer,",",1,lw_sb_dontcopy);
-		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
+		fm_sb_add(buffer,value,-1,fm_sb_copy);
+		fm_sb_add(buffer,",",1,fm_sb_dontcopy);
+		fm_sb_add(buffer,le,-1,fm_sb_dontcopy);
 	}else{
 		//TODO: fw_aux_tabletostring_additem: Check for Functions
-		lw_sb_add(buffer,"\"",1,lw_sb_dontcopy);
-		lw_sb_add(buffer,value,-1,lw_sb_copy);
-		lw_sb_add(buffer,"\",",2,lw_sb_dontcopy);
-		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
+		fm_sb_add(buffer,"\"",1,fm_sb_dontcopy);
+		fm_sb_add(buffer,value,-1,fm_sb_copy);
+		fm_sb_add(buffer,"\",",2,fm_sb_dontcopy);
+		fm_sb_add(buffer,le,-1,fm_sb_dontcopy);
 	}
 }

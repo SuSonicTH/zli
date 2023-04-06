@@ -4,6 +4,19 @@
 #include <lauxlib.h>
 #include <lx_value.h>
 
+typedef struct fm_sb_node{
+	char * str;
+	char copy;
+	int len;
+	struct fm_sb_node *next;
+}fm_sb_node;
+
+typedef struct fm_sb{
+	fm_sb_node *root;
+	fm_sb_node *last;
+	unsigned int len;
+}fm_sb;
+
 int luaopen_fwaux (lua_State *L);
 
 int fw_aux_extend_libs(lua_State* L);
@@ -24,8 +37,8 @@ int fw_aux_kpairs_iter(lua_State* L);
 int fw_aux_copy_table(lua_State* L);
 int fw_aux_concats(lua_State* L);
 int fw_aux_tabletostring(lua_State* L);
-void fw_aux_tabletostring_traverse(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le, const char *ind);
-void fw_aux_tabletostring_additem(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le,const char *ind,int seq);
+void fw_aux_tabletostring_traverse(lua_State* L,fm_sb *buffer,int lvl,const char *le, const char *ind);
+void fw_aux_tabletostring_additem(lua_State* L,fm_sb *buffer,int lvl,const char *le,const char *ind,int seq);
 
 int fw_aux_readlines(lua_State* L);
 int fw_aux_readfile(lua_State* L);
