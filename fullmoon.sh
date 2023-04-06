@@ -136,9 +136,9 @@ cd $FM_HOME
 
 echo ""
 
-#need to cehck for UPX currently not working
-#echo "[ compressing with UPX ]"
-#upx --best --lzma -q fullmoon > /dev/null
-
 echo "[ running unit tests ]"
 ./fullmoon test.lua
+
+#need to check for UPX -> currently not working
+echo "[ compressing with UPX ]"
+upx --best --lzma -q fullmoon > /dev/null
