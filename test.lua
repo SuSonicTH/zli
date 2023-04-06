@@ -1,10 +1,11 @@
 local sqlite3 = require "sqlite3"
 local lpeg = require "lpeg"
-local lfs = require "lfs"
+require "lfs" --patch lfs to not set a global variable
 local zlib = require "zlib"
 local lu = require 'luaunit'
 local re = require 're'
 local aux = require "aux"
+aux.extendlibs()
 
 TestLibraries = {}
 
@@ -20,11 +21,11 @@ function TestLibraries:test_lpeg()
     local list = number * ("," * number) ^ 0
     local function add(acc, newvalue) return acc + newvalue end
     local sum = lpeg.Cf(list, add)
-    lu.assertEquals(sum:match("10,30,43"),83)
+    lu.assertEquals(sum:match("10,30,43"), 83)
 end
 
 function TestLibraries:test_re()
-    lu.assertEquals(re.gsub("hello World", "[aeiou]", "."),"h.ll. W.rld")
+    lu.assertEquals(re.gsub("hello World", "[aeiou]", "."), "h.ll. W.rld")
 end
 
 function TestLibraries:test_lfs()
@@ -46,32 +47,71 @@ function TestLibraries:test_lfs()
 end
 
 function TestLibraries:test_sqlite()
-    local db=sqlite3.open('test.sqlite3')
-    db:exec[=[
+    local db = sqlite3.open('test.sqlite3')
+    db:exec [=[
               CREATE TABLE numbers(num,val);
               INSERT INTO numbers VALUES(1,'one');
               INSERT INTO numbers VALUES(2,'two');
               INSERT INTO numbers VALUES(3,'three');
             ]=]
-    
+
     local actual = {}
     for result in db:nrows('SELECT num, val FROM numbers order by 1') do
-        actual[#actual+1]=result.num..':'..result.val
+        actual[#actual + 1] = result.num .. ':' .. result.val
     end
     db:close()
     os.remove('test.sqlite3')
-    
-    local expected = {"1:one", "2:two", "3:three"}
-    
+
+    local expected = { "1:one", "2:two", "3:three" }
+
     lu.assertEquals(actual, expected)
 end
 
-function TestLibraries:test_aux()
-    local TEST="   TEST   "
+TestAuxLib = {}
+
+function TestAuxLib:test_string()
+    local TEST = "   TEST   "
     lu.assertEquals(aux.ltrim(TEST), "TEST   ")
     lu.assertEquals(aux.rtrim(TEST), "   TEST")
     lu.assertEquals(aux.trim(TEST), "TEST")
-    lu.assertEquals({aux.split("1,2,3")}, {"1","2","3"})
+    lu.assertEquals({ aux.split("1,2,3") }, { "1", "2", "3" })
+end
+
+function TestAuxLib:test_string_extended()
+    local TEST = "   \tTEST   \n"
+    local list = "1,2,3"
+    lu.assertEquals(TEST:ltrim(), "TEST   \n")
+    lu.assertEquals(TEST:rtrim(), "   \tTEST")
+    lu.assertEquals(TEST:trim(), "TEST")
+    lu.assertEquals({ list:split() }, { "1", "2", "3" })
+end
+
+function TestAuxLib:test_kpairs()
+    local tbl = { y = "two", z = "three", x = "one" }
+
+    local actual = ""
+    for k, v in aux.kpairs(tbl) do
+        actual = actual .. k .. ":" .. v .. "\n"
+    end
+    lu.assertEquals("x:one\ny:two\nz:three\n", actual)
+end
+
+function TestAuxLib:test_copytyble()
+    local tbl = { y = "two", z = "three", x = "one" }
+    lu.assertEquals(tbl, aux.copytable(tbl))
+    lu.assertEquals(tbl, table.copy(tbl))
+end
+
+function TestAuxLib:test_concats()
+    local tbl = { 1, "2", 3 }
+    lu.assertEquals(aux.concats(tbl), "123")
+    lu.assertEquals(aux.concats(tbl, ','), "1,2,3")
+end
+
+function TestAuxLib:test_table_to_String()
+    local tbl = { 1, "2", 3, key = "value" }
+    lu.assertEquals(aux.tabletostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
+    lu.assertEquals(table.tostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
 end
 
 local runner = lu.LuaUnit.new()

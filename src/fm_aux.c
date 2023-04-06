@@ -8,8 +8,6 @@
 
 int luaopen_lwaux(lua_State *L) {
     luaL_newlib(L, fw_auxlib);
-    lua_pushvalue(L, -1);
-    lua_setglobal(L, "aux");
     return 1;
 }
 
@@ -463,7 +461,7 @@ int fw_aux_concats(lua_State *L) {
 int fw_aux_readfile(lua_State *L) {
     FILE *fh;
     char *buffer;
-    unsigned int len;
+    size_t len;
     const char *filename = lua_tostring(L, 1);
 
     // open file
@@ -485,7 +483,7 @@ int fw_aux_readfile(lua_State *L) {
     }
 
     // read file
-    len = (unsigned int)fread(buffer, 1, len, fh);
+    len = fread(buffer, 1, len, fh);
 
     // push buffer
     lua_pushlstring(L, buffer, len);
@@ -728,9 +726,9 @@ int fw_aux_tabletostring(lua_State *L) {
     unsigned int retlen;
 
     if (le == NULL)
-        le = "\r\n";
+        le = "\n";
     if (ind == NULL)
-        ind = "\t";
+        ind = "  ";
 
     fm_sb_init(&buffer);
     if (name != NULL) {
