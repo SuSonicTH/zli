@@ -4,6 +4,7 @@ local lfs = require "lfs"
 local zlib = require "zlib"
 local lu = require 'luaunit'
 local re = require 're'
+local aux = require "aux"
 
 TestLibraries = {}
 
@@ -32,7 +33,16 @@ function TestLibraries:test_lfs()
         actual[#actual + 1] = file
     end
     table.sort(actual)
-    lu.assertEquals(actual, {".", "..", "linit.c", "lualib.h"})
+    lu.assertEquals(actual, {
+        ".",
+        "..",
+        "fm_aux.c",
+        "fm_aux.h",
+        "linit.c",
+        "lualib.h",
+        "lx_value.c",
+        "lx_value.h"
+    })
 end
 
 function TestLibraries:test_sqlite()
@@ -54,6 +64,14 @@ function TestLibraries:test_sqlite()
     local expected = {"1:one", "2:two", "3:three"}
     
     lu.assertEquals(actual, expected)
+end
+
+function TestLibraries:test_aux()
+    local TEST="   TEST   "
+    lu.assertEquals(aux.ltrim(TEST), "TEST   ")
+    lu.assertEquals(aux.rtrim(TEST), "   TEST")
+    lu.assertEquals(aux.trim(TEST), "TEST")
+    lu.assertEquals({aux.split("1,2,3")}, {"1","2","3"})
 end
 
 local runner = lu.LuaUnit.new()

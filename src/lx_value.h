@@ -3,26 +3,18 @@
 
 #include <lauxlib.h>
 
-#ifndef LUAX_API
-	#ifdef LUAX_EXPORTS
-		#define LUAX_API __declspec(dllexport)
-	#else
-		#define LUAX_API
-	#endif
-#endif
-
 typedef struct luax_const{
 	char *name;
 	LUA_NUMBER value;
 }luax_const;
 
-LUAX_API void luax_settable_function_list(lua_State* L,int n,const luaL_Reg *lf);
-LUAX_API void luax_settable_constant_list(lua_State *L,int n,const luax_const *lc);
-LUAX_API void luax_tableinsert(lua_State* L,int tblidx,int pos);
-LUAX_API void luax_tableremove(lua_State* L,int tblidx,int pos);
-LUAX_API void luax_call(lua_State* L,char *name,int nargs,int nresults,int pop);
-LUAX_API void luax_call_lib(lua_State* L,char *package,char *function,int nargs,int nresults,int pop);
-LUAX_API void luax_regtable_create_list(lua_State* L,const char **name);
+void luax_settable_function_list(lua_State* L,int n,const luaL_Reg *lf);
+void luax_settable_constant_list(lua_State *L,int n,const luax_const *lc);
+void luax_tableinsert(lua_State* L,int tblidx,int pos);
+void luax_tableremove(lua_State* L,int tblidx,int pos);
+void luax_call(lua_State* L,char *name,int nargs,int nresults,int pop);
+void luax_call_lib(lua_State* L,char *package,char *function,int nargs,int nresults,int pop);
+void luax_regtable_create_list(lua_State* L,const char **name);
 
 #define luax_tolong(L,n)\
 	(long)lua_tonumber(L,n)

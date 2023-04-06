@@ -1,44 +1,46 @@
-#include "lwin_aux.h"
+#include "fm_aux.h"
 #include <stdlib.h>
 
 //TODO: Test writelines and writefile functions
-//TODO: lw_aux_tabletostring: fix crash with bigger tables (stack problem?)
+//TODO: fw_aux_tabletostring: fix crash with bigger tables (stack problem?)
 
-LWAUX_API int luaopen_lwaux (lua_State *L)
+int luaopen_lwaux (lua_State *L)
 {
-	luaL_register(L, LUA_AUXLIBNAME, lw_auxlib);
+	luaL_newlib(L, fw_auxlib);
+  	lua_pushvalue(L, -1);
+  	lua_setglobal(L, "aux");
 	return 1;
 }
 
-int lw_aux_extend_libs(lua_State* L)
+int fw_aux_extend_libs(lua_State* L)
 {
 	lua_settop(L,0);
 
 	lua_getglobal(L,"string");
 	if (!lua_isnil(L,-1)){
-		luax_settable_cfunction(L,1,"split",lw_aux_split);
-		luax_settable_cfunction(L,1,"trim",lw_aux_trim);
-		luax_settable_cfunction(L,1,"ltrim",lw_aux_ltrim);
-		luax_settable_cfunction(L,1,"rtrim",lw_aux_rtrim);
+		luax_settable_cfunction(L,1,"split",fw_aux_split);
+		luax_settable_cfunction(L,1,"trim",fw_aux_trim);
+		luax_settable_cfunction(L,1,"ltrim",fw_aux_ltrim);
+		luax_settable_cfunction(L,1,"rtrim",fw_aux_rtrim);
 	}
 	lua_pop(L,1);
 
 	lua_getglobal(L,"table");
 	if (!lua_isnil(L,-1)){
-		luax_settable_cfunction(L,1,"mergesort",lw_aux_mergesort_ext);
-		luax_settable_cfunction(L,1,"kpairs",lw_aux_kpairs);
-		luax_settable_cfunction(L,1,"copy",lw_aux_copy_table);
-		luax_settable_cfunction(L,1,"concats",lw_aux_concats);
-		luax_settable_cfunction(L,1,"tostring",lw_aux_tabletostring);
+		luax_settable_cfunction(L,1,"mergesort",fw_aux_mergesort_ext);
+		luax_settable_cfunction(L,1,"kpairs",fw_aux_kpairs);
+		luax_settable_cfunction(L,1,"copy",fw_aux_copy_table);
+		luax_settable_cfunction(L,1,"concats",fw_aux_concats);
+		luax_settable_cfunction(L,1,"tostring",fw_aux_tabletostring);
 	}
 	lua_pop(L,1);
 
 	lua_getglobal(L,"io");
 	if (!lua_isnil(L,-1)){
-		luax_settable_cfunction(L,1,"readlines",lw_aux_readlines);
-		luax_settable_cfunction(L,1,"readfile",lw_aux_readfile);
-		luax_settable_cfunction(L,1,"writelines",lw_aux_writelines);
-		luax_settable_cfunction(L,1,"writefile",lw_aux_writefile);
+		luax_settable_cfunction(L,1,"readlines",fw_aux_readlines);
+		luax_settable_cfunction(L,1,"readfile",fw_aux_readfile);
+		luax_settable_cfunction(L,1,"writelines",fw_aux_writelines);
+		luax_settable_cfunction(L,1,"writefile",fw_aux_writefile);
 
 	}
 	lua_pop(L,1);
@@ -46,7 +48,7 @@ int lw_aux_extend_libs(lua_State* L)
 	return 0;
 }
 
-int lw_aux_split(lua_State* L)
+int fw_aux_split(lua_State* L)
 {
 	const char *seperator;
 	char sep=',';
@@ -67,7 +69,7 @@ int lw_aux_split(lua_State* L)
 
 	cpos=string;
 	spos=string;
-	epos=string+len;
+	epos=string+len-1;
 
 	while(cpos<=epos){
 		if (*cpos==sep){
@@ -96,7 +98,7 @@ int lw_aux_split(lua_State* L)
 	return cnt;
 }
 
-int lw_aux_trim(lua_State* L)
+int fw_aux_trim(lua_State* L)
 {
 	const char *spos;
 	const char *epos;
@@ -126,7 +128,7 @@ int lw_aux_trim(lua_State* L)
 	return 1;
 }
 
-int lw_aux_ltrim(lua_State* L)
+int fw_aux_ltrim(lua_State* L)
 {
 	const char *spos;
 	const char *epos;
@@ -143,7 +145,7 @@ int lw_aux_ltrim(lua_State* L)
 	return 1;
 }
 
-int lw_aux_rtrim(lua_State* L)
+int fw_aux_rtrim(lua_State* L)
 {
 	const char *spos;
 	const char *epos;
@@ -161,7 +163,7 @@ int lw_aux_rtrim(lua_State* L)
 }
 
 /* Mergesort */
-int lw_aux_chek_lte(lua_State* L,int *al,int *bl,int a,int b,int idx,int func)
+int fw_aux_chek_lte(lua_State* L,int *al,int *bl,int a,int b,int idx,int func)
 {
 	int ret;
 
@@ -181,17 +183,17 @@ int lw_aux_chek_lte(lua_State* L,int *al,int *bl,int a,int b,int idx,int func)
 	return ret;
 }
 
-int *lw_aux_mergesort_sublist(lua_State* L,int *in,int *tmp,int len,int idx,int func)
+int *fw_aux_mergesort_sublist(lua_State* L,int *in,int *tmp,int len,int idx,int func)
 {
 	switch(len){
 		case 3:
-			if (lw_aux_chek_lte(L,in,in,0,1,idx,func)){
-				if (lw_aux_chek_lte(L,in,in,1,2,idx,func)){
+			if (fw_aux_chek_lte(L,in,in,0,1,idx,func)){
+				if (fw_aux_chek_lte(L,in,in,1,2,idx,func)){
 					tmp[0]=in[0];
 					tmp[1]=in[1];
 					tmp[2]=in[2];
 				}else{
-					if (lw_aux_chek_lte(L,in,in,0,2,idx,func)){
+					if (fw_aux_chek_lte(L,in,in,0,2,idx,func)){
 						tmp[0]=in[0];
 						tmp[1]=in[2];
 						tmp[2]=in[1];
@@ -202,8 +204,8 @@ int *lw_aux_mergesort_sublist(lua_State* L,int *in,int *tmp,int len,int idx,int 
 					}
 				}
 			}else{
-				if (lw_aux_chek_lte(L,in,in,1,2,idx,func)){
-					if (lw_aux_chek_lte(L,in,in,0,2,idx,func)){
+				if (fw_aux_chek_lte(L,in,in,1,2,idx,func)){
+					if (fw_aux_chek_lte(L,in,in,0,2,idx,func)){
 						tmp[0]=in[1];
 						tmp[1]=in[0];
 						tmp[2]=in[2];
@@ -221,7 +223,7 @@ int *lw_aux_mergesort_sublist(lua_State* L,int *in,int *tmp,int len,int idx,int 
 			return tmp;
 		break;
 		case 2:
-			if (lw_aux_chek_lte(L,in,in,0,1,idx,func)){
+			if (fw_aux_chek_lte(L,in,in,0,1,idx,func)){
 				tmp[0]=in[0];
 				tmp[1]=in[1];
 			}else{
@@ -231,12 +233,12 @@ int *lw_aux_mergesort_sublist(lua_State* L,int *in,int *tmp,int len,int idx,int 
 			return tmp;
 		break;
 		default:
-			return lw_aux_mergesort_impl(L,in,tmp,len,idx,func);
+			return fw_aux_mergesort_impl(L,in,tmp,len,idx,func);
 		break;
 	}
 }
 
-int *lw_aux_mergesort_impl(lua_State* L,int *in,int *tmp,int len,int idx,int func)
+int *fw_aux_mergesort_impl(lua_State* L,int *in,int *tmp,int len,int idx,int func)
 {
 	int *lt,*rt;
 	int lp=0,rp=0;
@@ -246,11 +248,11 @@ int *lw_aux_mergesort_impl(lua_State* L,int *in,int *tmp,int len,int idx,int fun
 
 	//sort left sublist
 	ls=len/2;
-	lt=lw_aux_mergesort_sublist(L,in,tmp,ls,idx,func);
+	lt=fw_aux_mergesort_sublist(L,in,tmp,ls,idx,func);
 
 	//sort right sublist
 	rs=len-ls;
-	rt=lw_aux_mergesort_sublist(L,in+ls,tmp+ls,rs,idx,func);
+	rt=fw_aux_mergesort_sublist(L,in+ls,tmp+ls,rs,idx,func);
 	
 	//allocate output list
 	out=malloc(sizeof(int)*len);
@@ -302,7 +304,7 @@ int *lw_aux_mergesort_impl(lua_State* L,int *in,int *tmp,int len,int idx,int fun
 	return out;
 }
 
-int *lw_aux_mergesort_arr(lua_State* L,int idx,int func,unsigned int *tlen)
+int *fw_aux_mergesort_arr(lua_State* L,int idx,int func,unsigned int *tlen)
 {
 	int *in,*out,*tmp;
 	unsigned int i;
@@ -331,23 +333,23 @@ int *lw_aux_mergesort_arr(lua_State* L,int idx,int func,unsigned int *tlen)
 
 	if (len<=3){
 		//the array has only 2 or 3 elements -> sort them by fixed sorting
-		out=lw_aux_mergesort_sublist(L,in,tmp,len,idx,func);
+		out=fw_aux_mergesort_sublist(L,in,tmp,len,idx,func);
 	}else{
 		//sort in array with merge sort and get sorted data back in out
-		out=lw_aux_mergesort_impl(L,in,tmp,len,idx,func);
+		out=fw_aux_mergesort_impl(L,in,tmp,len,idx,func);
 		free(tmp);
 	}
 	free(in);
 	return out;
 }
 
-int lw_aux_mergesort_int(lua_State* L,int idx,int func,int copy)
+int fw_aux_mergesort_int(lua_State* L,int idx,int func,int copy)
 {
 	int *out;
 	int len;
 	int i,n;
 	
-	out=lw_aux_mergesort_arr(L,idx,func,&len);
+	out=fw_aux_mergesort_arr(L,idx,func,&len);
 
 	//write sorted table entries in return table
 	lua_newtable(L);
@@ -369,18 +371,18 @@ int lw_aux_mergesort_int(lua_State* L,int idx,int func,int copy)
 	return 1;
 }
 
-int lw_aux_mergesort_ext(lua_State* L)
+int fw_aux_mergesort_ext(lua_State* L)
 {
 	unsigned int len=(unsigned int)lua_objlen(L,1);
 	int func=lua_isfunction(L,2);
 	int copy=lua_toboolean(L,3);
 	
-	lw_aux_mergesort_int(L,1,func?2:0,copy);
+	fw_aux_mergesort_int(L,1,func?2:0,copy);
 
 	return 1;
 }
 
-int lw_aux_kpairs(lua_State* L)
+int fw_aux_kpairs(lua_State* L)
 {
 	int i=1;
 	int func=lua_isfunction(L,2);
@@ -405,12 +407,12 @@ int lw_aux_kpairs(lua_State* L)
 	//push iterator function
 	lua_pushvalue(L,1);
 	lua_pushnumber(L,1);
-	lua_pushcclosure(L,lw_aux_kpairs_iter,3);
+	lua_pushcclosure(L,fw_aux_kpairs_iter,3);
 
 	return 1;
 }
 
-int lw_aux_kpairs_iter(lua_State* L)
+int fw_aux_kpairs_iter(lua_State* L)
 {
 	unsigned int i=(unsigned int)lua_tonumber(L,lua_upvalueindex(3));
 	lua_rawgeti(L,lua_upvalueindex(1),i);
@@ -421,7 +423,7 @@ int lw_aux_kpairs_iter(lua_State* L)
 	return 2;
 }
 
-int lw_aux_copy_table(lua_State* L)
+int fw_aux_copy_table(lua_State* L)
 {
 	int t=lua_gettop(L);
 	int n=t+1;
@@ -429,7 +431,7 @@ int lw_aux_copy_table(lua_State* L)
 	lua_pushnil(L);
 	while(lua_next(L,t)){
 		if (lua_istable(L,-1)){
-			lw_aux_copy_table(L);
+			fw_aux_copy_table(L);
 			lua_pushvalue(L,-3);//key
 			lua_pushvalue(L,-2);//value
 			lua_rawset(L,n);
@@ -444,7 +446,7 @@ int lw_aux_copy_table(lua_State* L)
 	return 1;
 }
 
-int lw_aux_concats(lua_State* L)
+int fw_aux_concats(lua_State* L)
 {
 	luaL_Buffer buffer;
 	unsigned int len=(unsigned int)lua_objlen(L,1);
@@ -473,7 +475,7 @@ int lw_aux_concats(lua_State* L)
 	return 1;
 }
 
-int lw_aux_readfile(lua_State* L)
+int fw_aux_readfile(lua_State* L)
 {
 	FILE *fh;
 	char *buffer;
@@ -511,7 +513,7 @@ int lw_aux_readfile(lua_State* L)
 	return 1;
 }
 
-int lw_aux_readlines(lua_State* L)
+int fw_aux_readlines(lua_State* L)
 {
 	FILE *fh;
 	char *buffer,*spos,*cpos,*epos;
@@ -568,7 +570,7 @@ int lw_aux_readlines(lua_State* L)
 }
 
 
-int lw_aux_writefile(lua_State* L)
+int fw_aux_writefile(lua_State* L)
 {
 	unsigned int len;
 	const char *data;
@@ -597,7 +599,7 @@ int lw_aux_writefile(lua_State* L)
 	return 1;
 }
 
-int lw_aux_writelines(lua_State* L)
+int fw_aux_writelines(lua_State* L)
 {
 	unsigned int tlen=(unsigned int)lua_objlen(L,2);
 	unsigned int len;
@@ -752,7 +754,7 @@ void lw_sb_free(lw_sb *sb)
 	lw_sb_init(sb);
 }
 
-int lw_aux_tabletostring(lua_State* L)
+int fw_aux_tabletostring(lua_State* L)
 {
 	lw_sb buffer;
 	const char *name=lua_tostring(L,2);
@@ -774,7 +776,7 @@ int lw_aux_tabletostring(lua_State* L)
 	}
 
 	lua_pushvalue(L,1);
-	lw_aux_tabletostring_traverse(L,&buffer,lvl,le,ind);
+	fw_aux_tabletostring_traverse(L,&buffer,lvl,le,ind);
 
 	if (name!=NULL){
 		lw_sb_add(&buffer,"}",1,lw_sb_dontcopy);
@@ -787,7 +789,7 @@ int lw_aux_tabletostring(lua_State* L)
 	return 1;
 }
 
-void lw_aux_tabletostring_traverse(lua_State* L,lw_sb *buffer,int lvl,const char *le, const char *ind)
+void fw_aux_tabletostring_traverse(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le, const char *ind)
 {
 	int n=lua_gettop(L);
 	unsigned int i=1;
@@ -798,7 +800,7 @@ void lw_aux_tabletostring_traverse(lua_State* L,lw_sb *buffer,int lvl,const char
 	for (i=1;i<=len;i++){
 		lua_pushnumber(L,i);
 		lua_rawgeti(L,n,i);
-		lw_aux_tabletostring_additem(L,buffer,lvl,le,ind,1);
+		fw_aux_tabletostring_additem(L,buffer,lvl,le,ind,1);
 		lua_pop(L,2);
 	}
 
@@ -809,7 +811,7 @@ void lw_aux_tabletostring_traverse(lua_State* L,lw_sb *buffer,int lvl,const char
 			if (num<1 || num>len || num!=(int)num){
 				lua_pushvalue(L,-2);
 				lua_pushvalue(L,-2);
-				lw_aux_tabletostring_additem(L,buffer,lvl,le,ind,0);
+				fw_aux_tabletostring_additem(L,buffer,lvl,le,ind,0);
 				lua_pop(L,3);
 			}else{
 				lua_pop(L,1);
@@ -817,14 +819,14 @@ void lw_aux_tabletostring_traverse(lua_State* L,lw_sb *buffer,int lvl,const char
 		}else{
 			lua_pushvalue(L,-2);
 			lua_pushvalue(L,-2);
-			lw_aux_tabletostring_additem(L,buffer,lvl,le,ind,0);
+			fw_aux_tabletostring_additem(L,buffer,lvl,le,ind,0);
 			lua_pop(L,3);
 		}
 	}
 }
 
-//TODO: lw_aux_tabletostring_additem: Hash Tables used and don't reuse them
-void lw_aux_tabletostring_additem(lua_State* L,lw_sb *buffer,int lvl,const char *le,const char *ind,int seq)
+//TODO: fw_aux_tabletostring_additem: Hash Tables used and don't reuse them
+void fw_aux_tabletostring_additem(lua_State* L,luaL_Buffer *buffer,int lvl,const char *le,const char *ind,int seq)
 {
 	const char *cpos,*epos;
 	const char *key;
@@ -861,7 +863,7 @@ void lw_aux_tabletostring_additem(lua_State* L,lw_sb *buffer,int lvl,const char 
 
 		if (quoutekey){
 			lw_sb_add(buffer,"['",2,lw_sb_dontcopy);
-			//TODO: lw_aux_tabletostring_additem: escape special characters
+			//TODO: fw_aux_tabletostring_additem: escape special characters
 			lw_sb_add(buffer,key,-1,lw_sb_copy);
 			lw_sb_add(buffer,"']=",3,lw_sb_dontcopy);
 		}else{
@@ -873,7 +875,7 @@ void lw_aux_tabletostring_additem(lua_State* L,lw_sb *buffer,int lvl,const char 
 	if (lua_istable(L,-1)){
 		lw_sb_add(buffer,"{",1,lw_sb_dontcopy);
 		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
-		lw_aux_tabletostring_traverse(L,buffer,lvl+1,le,ind);
+		fw_aux_tabletostring_traverse(L,buffer,lvl+1,le,ind);
 		for (l=1;l<=lvl;l++){
 			lw_sb_add(buffer,ind,-1,lw_sb_dontcopy);
 		}
@@ -884,7 +886,7 @@ void lw_aux_tabletostring_additem(lua_State* L,lw_sb *buffer,int lvl,const char 
 		lw_sb_add(buffer,",",1,lw_sb_dontcopy);
 		lw_sb_add(buffer,le,-1,lw_sb_dontcopy);
 	}else{
-		//TODO: lw_aux_tabletostring_additem: Check for Functions
+		//TODO: fw_aux_tabletostring_additem: Check for Functions
 		lw_sb_add(buffer,"\"",1,lw_sb_dontcopy);
 		lw_sb_add(buffer,value,-1,lw_sb_copy);
 		lw_sb_add(buffer,"\",",2,lw_sb_dontcopy);

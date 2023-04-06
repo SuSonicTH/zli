@@ -1,7 +1,7 @@
 #include <lauxlib.h>
 #include "lx_value.h"
 
-LUAX_API void luax_settable_constant_list(lua_State *L,int n,const luax_const *list)
+void luax_settable_constant_list(lua_State *L,int n,const luax_const *list)
 {
 	while(list->name!=NULL){
 		luax_settable_number(L,n,list->name,list->value); 
@@ -9,7 +9,7 @@ LUAX_API void luax_settable_constant_list(lua_State *L,int n,const luax_const *l
 	}
 }
 
-LUAX_API void luax_settable_function_list(lua_State* L,int n,const luaL_Reg *list)
+void luax_settable_function_list(lua_State* L,int n,const luaL_Reg *list)
 {
 	while(list->name!=NULL){
 		luax_settable_cfunction(L,n,list->name,list->func);
@@ -17,14 +17,14 @@ LUAX_API void luax_settable_function_list(lua_State* L,int n,const luaL_Reg *lis
 	}
 }
 
-LUAX_API void luax_regtable_create_list(lua_State* L,const char **name)
+void luax_regtable_create_list(lua_State* L,const char **name)
 {
 	while(*name!=NULL){
 		luax_regtable_create(*name);
 		name++;
 	}
 }
-LUAX_API void luax_tableinsert(lua_State* L,int tblidx,int pos)
+void luax_tableinsert(lua_State* L,int tblidx,int pos)
 {
 	int i;
 	if (tblidx<1){
@@ -37,7 +37,7 @@ LUAX_API void luax_tableinsert(lua_State* L,int tblidx,int pos)
 	lua_rawseti(L,tblidx,pos);
 }
 
-LUAX_API void luax_tableremove(lua_State* L,int tblidx,int pos)
+void luax_tableremove(lua_State* L,int tblidx,int pos)
 {
 	int i,len;
 	if (tblidx<1){
@@ -51,7 +51,7 @@ LUAX_API void luax_tableremove(lua_State* L,int tblidx,int pos)
 }
 
 //TODO: luax_call: Test function
-LUAX_API void luax_call(lua_State* L,char *name,int nargs,int nresults,int pop)
+void luax_call(lua_State* L,char *name,int nargs,int nresults,int pop)
 {
 	int i;
 	int n=lua_gettop(L);
@@ -71,7 +71,7 @@ LUAX_API void luax_call(lua_State* L,char *name,int nargs,int nresults,int pop)
 }
 
 
-LUAX_API void luax_call_lib(lua_State* L,char *package,char *function,int nargs,int nresults,int pop)
+void luax_call_lib(lua_State* L,char *package,char *function,int nargs,int nresults,int pop)
 {
 	int i;
 	int n=lua_gettop(L);

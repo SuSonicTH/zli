@@ -62,6 +62,7 @@ static const luaL_Reg fullmoon_preload[] = {
     {LUA_LPEGLIBNAME, luaopen_lpeg},
     {LUA_LFSLIBNAME, luaopen_lfs},
     {LUA_ZLIBLIBNAME, luaopen_zlib},
+    {LUA_FMAUXLIBNAME, luaopen_lwaux},
     {"luaunit", luaopen_luascript},
     {"re", luaopen_luascript},
     {NULL, NULL}

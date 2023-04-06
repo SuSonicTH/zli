@@ -44,7 +44,7 @@ LUAMOD_API int (luaopen_debug) (lua_State *L);
 #define LUA_LOADLIBNAME	"package"
 LUAMOD_API int (luaopen_package) (lua_State *L);
 
-//full moon extra libraries
+//full moon 3rd party libraries
 
 #define LUA_SQLIT3LIBNAME "sqlite3"
 LUAMOD_API int (luaopen_lsqlite3) (lua_State *L);
@@ -57,6 +57,11 @@ LUAMOD_API int (luaopen_lfs) (lua_State *L);
 
 #define LUA_ZLIBLIBNAME	"zlib"
 LUAMOD_API int (luaopen_zlib) (lua_State *L);
+
+//full moon extra libraries
+#define LUA_FMAUXLIBNAME "aux"
+LUAMOD_API int (luaopen_lwaux) (lua_State *L);
+
 
 /* open all previous libraries */
 LUALIB_API void (luaL_openlibs) (lua_State *L);
