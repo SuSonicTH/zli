@@ -61,7 +61,9 @@ if [ ! -d "$LPEG_VERSION" ]; then
     tar -xzf $LPEG_VERSION.tar.gz
     rm $LPEG_VERSION.tar.gz
 
-    xxd -i -n re_lua $LPEG_VERSION/re.lua > $LUA_VERSION/src/re.h
+    cd $LPEG_VERSION
+    xxd -i re.lua > $FM_HOME/$LUA_VERSION/src/re.h
+    cd $FM_HOME
     echo ""
 fi
 
@@ -83,7 +85,9 @@ if [ ! -d "luaunit" ]; then
     echo "[ downloading luaunit (git) ]"
     git clone --quiet https://github.com/bluebird75/luaunit.git
 
-    xxd -i -n luaunit_lua luaunit/luaunit.lua > $LUA_VERSION/src/luaunit.h
+    cd luaunit
+    xxd -i luaunit.lua > $FM_HOME/$LUA_VERSION/src/luaunit.h
+    cd $FM_HOME
     echo ""
 fi
 
@@ -131,12 +135,9 @@ cd $FM_HOME
 
 echo ""
 
-if  command -v upx &> /dev/null
-then
-    echo "[ compressing with UPX ]"
-    upx --best --lzma -q fullmoon > /dev/null
-    echo ""
-fi
+#need to cehck for UPX currently not working
+#echo "[ compressing with UPX ]"
+#upx --best --lzma -q fullmoon > /dev/null
 
 echo "[ running unit tests ]"
 ./fullmoon test.lua
