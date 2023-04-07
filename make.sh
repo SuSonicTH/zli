@@ -127,9 +127,10 @@ cp src/* $LUA_VERSION/src
 
 cd $LUA_VERSION/src
 
-#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype \
-$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static \
--I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
+#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype -DLUA_USE_LINUX\
+#zig cc -lm --static -target x86_64-windows-gnu -Wdeprecated-non-prototype -LFS_EXPORT \
+$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX\
+-I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3  \
 lua.c lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
