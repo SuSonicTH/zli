@@ -3,8 +3,11 @@ lsqlite3*/
 lua*/
 sqlite*/
 upx*/
-fullmoon
 *.sqlite3
 lpeg*/
 zlib*/
+zig-*/
 .vscode/
+fullmoon
+fullmoon.pdb
+lua.lib

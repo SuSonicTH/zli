@@ -1,11 +1,15 @@
 #!/bin/bash
 function print_help() {
-    echo "fullmoon make.sh"
-    echo "usage ./make.sh [OPTION]"
+    echo "fullmoon compilation"
+    echo ""
+    echo "usage ./make.sh [--zig|--gcc] [--windows|--linux] [--clean]"
     echo ""
     echo "options:"
     echo "        -h | --help      print this help"
     echo "        -c | --clean     clean directory"
+    echo "        -z | --zig       compile using zig cc"
+    echo "        -g | --gcc       compile using gcc and musl"
+    echo "        -w | --windows   compile for windows only valid for --zig"
     echo ""
 }
 
@@ -18,6 +22,14 @@ function exit_on_error() {
     fi
 }
 
+function exit_argument_error() {
+    error=$1
+    print_help
+    >&2 echo "error: $error"
+    >&2 echo ""
+    exit 1
+}
+
 function assert_tool_installed() {
     tool=$1
     if ! command -v $tool &> /dev/null
@@ -28,15 +40,35 @@ function assert_tool_installed() {
 }
 
 FM_HOME=`pwd`
+
 CLEAN="false"
+TARGET=""
+USE_ZIG=""
+USE_GCC=""
+COMPILE_COMMAND=""
 
 while (( "$#" )); do
     case "$1" in
         -h | --help ) print_help; exit 1;;
         -c | --clean ) CLEAN="true"; shift;;
-        * ) print_help; >&2 echo "unknown argument: $1"; exit 1;;
+        --zig ) USE_ZIG="true"; shift;;
+        --gcc ) USE_GCC="true"; shift;;
+        --windows ) TARGET="WINDOWS"; shift;;
+        * ) print_help; exit_argument_error "unknown command $1";;
     esac
 done
+
+if [ "$USE_GCC" = "true" ]; then
+    COMPILE_COMMAND="$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX "
+    elif [ "$USE_ZIG" = "true" ]; then
+    if [ "$TARGET" = "WINDOWS" ]; then
+        COMPILE_COMMAND="zig cc -lm --static -target x86_64-windows-gnu -Wdeprecated-non-prototype -LFS_EXPORT "
+    else
+        COMPILE_COMMAND="zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype -DLUA_USE_LINUX "
+    fi
+else
+    exit_argument_error "set either --zig or --gcc"
+fi
 
 MUSL_VERSION=musl-1.2.3
 LUA_VERSION=lua-5.4.4
@@ -44,6 +76,7 @@ SQLITE_VERSION=sqlite-amalgamation-3390100
 LUASQLITE_VERSION=lsqlite3_fsl09y
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
+ZIG_VERSION="zig-linux-x86_64-0.10.1"
 
 if [ "$CLEAN" = "true" ]; then
     echo "[ cleaning... ]"
@@ -57,10 +90,11 @@ if [ "$CLEAN" = "true" ]; then
     rm -fr luafilesystem
     rm -fr lua-zlib
     rm -fr luaunit
+    rm -fr fullmoon.pdb
+    rm -fr lua.lib
     echo ""
     exit 1
 fi
-
 
 echo "[ checking dependencies ]"
 assert_tool_installed "wget"
@@ -139,7 +173,7 @@ if [ ! -d "luaunit" ]; then
     echo ""
 fi
 
-if [ ! -d "musl" ]; then
+if [ "$USE_GCC" = "true" ] && [ ! -d "musl" ]; then
     echo "[ downloading musel ($MUSL_VERSION) ]"
     wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz  || exit_on_error
     tar -xzf $MUSL_VERSION.tar.gz || exit_on_error
@@ -157,6 +191,17 @@ if [ ! -d "musl" ]; then
     echo ""
 fi
 
+if [ "$USE_ZIG" = "true" ];then
+    if [ ! -d "$ZIG_VERSION" ]; then
+        echo "[ downloading zig ($ZIG_VERSION) ]"
+        wget -q --show-progress https://ziglang.org/download/0.10.1/$ZIG_VERSION.tar.xz  || exit_on_error
+        tar -xf $ZIG_VERSION.tar.xz  || exit_on_error
+        rm $ZIG_VERSION.tar.xz
+        echo ""
+    fi
+    PATH=$FM_HOME/$ZIG_VERSION:$PATH
+fi
+
 ## FullMonn compilation
 echo "[ compiling fullmoon ]"
 
@@ -165,13 +210,9 @@ LFS_SRC=$FM_HOME/luafilesystem/src
 ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
 SRC=$FM_HOME/src
 
-cp src/* $LUA_VERSION/src
-
 cd $LUA_VERSION/src
 
-#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype -DLUA_USE_LINUX \
-#zig cc -lm --static -target x86_64-windows-gnu -Wdeprecated-non-prototype -LFS_EXPORT \
-$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX \
+$COMPILE_COMMAND \
 -I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3  \
 lua.c lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c \
@@ -191,18 +232,15 @@ echo "[ running unit tests ]"
 echo ""
 
 echo "[ stripping binary ]"
-if ! command -v strip &> /dev/null
-then
+if [ ! command -v strip ] &> /dev/null;then
     echo "strip not installed skipping"
 else
     strip --strip-all fullmoon || exit_on_error
 fi
 echo ""
 
-
 echo "[ compressing with UPX ]"
-if ! command -v upx &> /dev/null
-then
+if [! command -v upx] &> /dev/null;then
     echo "upx not installed skipping"
 else
     upx --best --lzma -q fullmoon > /dev/null
