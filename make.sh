@@ -8,8 +8,26 @@ LUASQLITE_VERSION=lsqlite3_fsl09y
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
 
+function exit_on_error() {
+    if [ $? -ne 0 ]; then
+        >&2 echo ""
+        >&2 echo "an error occured, stopping."
+        >&2 echo ""
+        exit 1
+    fi
+}
+
+function assert_tool_installed() {
+    tool=$1
+    if ! command -v $tool &> /dev/null
+    then
+        echo "required command '$tool' could not be found"
+        exit 1
+    fi
+}
+
 if [ "$1" = "clean" ]; then
-    echo "cleaning..."
+    echo "[ cleaning... ]"
     rm -fr musl
     rm -fr $MUSL_VERSION
     rm -fr $LUA_VERSION
@@ -20,23 +38,25 @@ if [ "$1" = "clean" ]; then
     rm -fr luafilesystem
     rm -fr lua-zlib
     rm -fr luaunit
+    echo ""
     exit 1
 fi
 
-function exit_on_error() {
-    if [ $? -ne 0 ]; then
-        >&2 echo ""
-        >&2 echo "an error occured, stopping."
-        >&2 echo ""
-        exit 1
-    fi
-}
+
+echo "[ checking dependencies ]"
+assert_tool_installed "wget"
+assert_tool_installed "tar"
+assert_tool_installed "git"
+assert_tool_installed "unzip"
+assert_tool_installed "xxd"
+echo "OK"
+echo ""
 
 if [ ! -d "$LUA_VERSION" ]; then
     echo "[ downloading lua ($LUA_VERSION) ]"
     wget -q --show-progress https://www.lua.org/ftp/$LUA_VERSION.tar.gz || exit_on_error
     tar -xzf $LUA_VERSION.tar.gz || exit_on_error
-    rm $LUA_VERSION.tar.gz 
+    rm $LUA_VERSION.tar.gz
     echo ""
 fi
 
@@ -67,7 +87,7 @@ if [ ! -d "$LPEG_VERSION" ]; then
     wget -q --show-progress http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz || exit_on_error
     tar -xzf $LPEG_VERSION.tar.gz || exit_on_error
     rm $LPEG_VERSION.tar.gz
-
+    
     cd $LPEG_VERSION
     xxd -i re.lua > $FM_HOME/$LUA_VERSION/src/re.h || exit_on_error
     cd $FM_HOME
@@ -91,7 +111,7 @@ fi
 if [ ! -d "luaunit" ]; then
     echo "[ downloading luaunit (git) ]"
     git clone --quiet https://github.com/bluebird75/luaunit.git || exit_on_error
-
+    
     cd luaunit
     xxd -i luaunit.lua > $FM_HOME/$LUA_VERSION/src/luaunit.h || exit_on_error
     cd $FM_HOME
@@ -102,19 +122,19 @@ if [ ! -d "musl" ]; then
     echo "[ downloading musel ($MUSL_VERSION) ]"
     wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz  || exit_on_error
     tar -xzf $MUSL_VERSION.tar.gz || exit_on_error
-	rm $MUSL_VERSION.tar.gz
+    rm $MUSL_VERSION.tar.gz
     
     echo ""
-    echo "[ build musl ]" 
+    echo "[ build musl ]"
     cd $MUSL_VERSION
     ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null || exit_on_error
     make CFLAGS='-Wno-return-local-addr' > /dev/null  || exit_on_error
     make install > /dev/null || exit_on_error
     
     cd $FM_HOME
-	rm -fr $MUSL_VERSION
-	echo ""
-fi 
+    rm -fr $MUSL_VERSION
+    echo ""
+fi
 
 ## FullMonn compilation
 echo "[ compiling fullmoon ]"
@@ -127,9 +147,9 @@ cp src/* $LUA_VERSION/src
 
 cd $LUA_VERSION/src
 
-#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype -DLUA_USE_LINUX\
+#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype -DLUA_USE_LINUX \
 #zig cc -lm --static -target x86_64-windows-gnu -Wdeprecated-non-prototype -LFS_EXPORT \
-$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX\
+$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX \
 -I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3  \
 lua.c lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
@@ -149,12 +169,22 @@ echo "[ running unit tests ]"
 echo ""
 
 echo "[ stripping binary ]"
-strip --strip-all fullmoon || exit_on_error
+if ! command -v strip &> /dev/null
+then
+    echo "strip not installed skipping"
+else
+    strip --strip-all fullmoon || exit_on_error
+fi
 echo ""
 
-#need to check for UPX -> currently not working
+
 echo "[ compressing with UPX ]"
-upx --best --lzma -q fullmoon > /dev/null
+if ! command -v upx &> /dev/null
+then
+    echo "upx not installed skipping"
+else
+    upx --best --lzma -q fullmoon > /dev/null
+fi
 echo ""
 
 
