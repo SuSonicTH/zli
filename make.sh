@@ -1,12 +1,13 @@
 #!/bin/bash
-FM_HOME=`pwd`
-
-MUSL_VERSION=musl-1.2.3
-LUA_VERSION=lua-5.4.4
-SQLITE_VERSION=sqlite-amalgamation-3390100
-LUASQLITE_VERSION=lsqlite3_fsl09y
-LPEG_VERSION=lpeg-1.0.2
-ZLIB_VERSION=zlib-1.2.13
+function print_help() {
+    echo "fullmoon make.sh"
+    echo "usage ./make.sh [OPTION]"
+    echo ""
+    echo "options:"
+    echo "        -h | --help      print this help"
+    echo "        -c | --clean     clean directory"
+    echo ""
+}
 
 function exit_on_error() {
     if [ $? -ne 0 ]; then
@@ -21,12 +22,30 @@ function assert_tool_installed() {
     tool=$1
     if ! command -v $tool &> /dev/null
     then
-        echo "required command '$tool' could not be found"
+        >&2 echo "required command '$tool' could not be found"
         exit 1
     fi
 }
 
-if [ "$1" = "clean" ]; then
+FM_HOME=`pwd`
+CLEAN="false"
+
+while (( "$#" )); do
+    case "$1" in
+        -h | --help ) print_help; exit 1;;
+        -c | --clean ) CLEAN="true"; shift;;
+        * ) print_help; >&2 echo "unknown argument: $1"; exit 1;;
+    esac
+done
+
+MUSL_VERSION=musl-1.2.3
+LUA_VERSION=lua-5.4.4
+SQLITE_VERSION=sqlite-amalgamation-3390100
+LUASQLITE_VERSION=lsqlite3_fsl09y
+LPEG_VERSION=lpeg-1.0.2
+ZLIB_VERSION=zlib-1.2.13
+
+if [ "$CLEAN" = "true" ]; then
     echo "[ cleaning... ]"
     rm -fr musl
     rm -fr $MUSL_VERSION
@@ -51,6 +70,8 @@ assert_tool_installed "unzip"
 assert_tool_installed "xxd"
 echo "OK"
 echo ""
+
+## Downloading dependencies if needed
 
 if [ ! -d "$LUA_VERSION" ]; then
     echo "[ downloading lua ($LUA_VERSION) ]"
@@ -142,6 +163,7 @@ echo "[ compiling fullmoon ]"
 LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
 ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
+SRC=$FM_HOME/src
 
 cp src/* $LUA_VERSION/src
 
@@ -152,11 +174,11 @@ cd $LUA_VERSION/src
 $FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX \
 -I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3  \
 lua.c lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
-lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
+lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c \
+-I $SRC $SRC/linit.c $SRC/fm_aux.c $SRC/lx_value.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
 -I $LPEG_SRC $LPEG_SRC/lpcap.c $LPEG_SRC/lpcode.c $LPEG_SRC/lpprint.c $LPEG_SRC/lptree.c $LPEG_SRC/lpvm.c \
 -I $LFS_SRC $LFS_SRC/lfs.c \
-fm_aux.c lx_value.c \
 -DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
 -o $FM_HOME/fullmoon  || exit_on_error
