@@ -1,6 +1,4 @@
-#!/bin/sh
-set -e
-
+#!/bin/bash
 FM_HOME=`pwd`
 
 MUSL_VERSION=musl-1.2.3
@@ -25,85 +23,93 @@ if [ "$1" = "clean" ]; then
     exit 1
 fi
 
+function exit_on_error() {
+    if [ $? -ne 0 ]; then
+        >&2 echo ""
+        >&2 echo "an error occured, stopping."
+        >&2 echo ""
+        exit 1
+    fi
+}
+
 if [ ! -d "$LUA_VERSION" ]; then
     echo "[ downloading lua ($LUA_VERSION) ]"
-    wget -q --show-progress https://www.lua.org/ftp/$LUA_VERSION.tar.gz 
-    tar -xzf $LUA_VERSION.tar.gz 
+    wget -q --show-progress https://www.lua.org/ftp/$LUA_VERSION.tar.gz || exit_on_error
+    tar -xzf $LUA_VERSION.tar.gz || exit_on_error
     rm $LUA_VERSION.tar.gz 
-    cp src/* $LUA_VERSION/src/
     echo ""
 fi
 
 if [ ! -d "$SQLITE_VERSION" ]; then
     echo "[ downloading SQLite ($SQLITE_VERSION) ]"
-    wget -q --show-progress https://www.sqlite.org/2022/$SQLITE_VERSION.zip
-    unzip -q $SQLITE_VERSION.zip
+    wget -q --show-progress https://www.sqlite.org/2022/$SQLITE_VERSION.zip || exit_on_error
+    unzip -q $SQLITE_VERSION.zip || exit_on_error
     rm $SQLITE_VERSION.zip
     echo ""
 fi
 
 if [ ! -d "$LUASQLITE_VERSION" ]; then
     echo "[ downloading LuaSQLite3 ($LUASQLITE_VERSION) ]"
-    wget -q --show-progress http://lua.sqlite.org/index.cgi/zip/$LUASQLITE_VERSION.zip
-    unzip -q $LUASQLITE_VERSION.zip
+    wget -q --show-progress http://lua.sqlite.org/index.cgi/zip/$LUASQLITE_VERSION.zip || exit_on_error
+    unzip -q $LUASQLITE_VERSION.zip || exit_on_error
     rm $LUASQLITE_VERSION.zip
     echo ""
 fi
 
 if [ ! -d "luafilesystem" ]; then
     echo "[ downloading luafilesystem (git)]"
-    git clone --quiet https://github.com/keplerproject/luafilesystem.git
+    git clone --quiet https://github.com/keplerproject/luafilesystem.git || exit_on_error
     echo ""
 fi
 
 if [ ! -d "$LPEG_VERSION" ]; then
     echo "[ downloading lpeg ($LPEG_VERSION) ]"
-    wget -q --show-progress http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz
-    tar -xzf $LPEG_VERSION.tar.gz
+    wget -q --show-progress http://www.inf.puc-rio.br/~roberto/lpeg/$LPEG_VERSION.tar.gz || exit_on_error
+    tar -xzf $LPEG_VERSION.tar.gz || exit_on_error
     rm $LPEG_VERSION.tar.gz
 
     cd $LPEG_VERSION
-    xxd -i re.lua > $FM_HOME/$LUA_VERSION/src/re.h
+    xxd -i re.lua > $FM_HOME/$LUA_VERSION/src/re.h || exit_on_error
     cd $FM_HOME
     echo ""
 fi
 
 if [ ! -d "lua-zlib" ]; then
     echo "[ downloading lua-zlib (git) ]"
-    git clone --quiet https://github.com/brimworks/lua-zlib.git
+    git clone --quiet https://github.com/brimworks/lua-zlib.git || exit_on_error
     echo ""
 fi
 
 if [ ! -d "$ZLIB_VERSION" ]; then
     echo "[ downloading zlib ($ZLIB_VERSION) ]"
-    wget -q --show-progress https://zlib.net/$ZLIB_VERSION.tar.gz
-    tar -xzf $ZLIB_VERSION.tar.gz
+    wget -q --show-progress https://zlib.net/$ZLIB_VERSION.tar.gz || exit_on_error
+    tar -xzf $ZLIB_VERSION.tar.gz || exit_on_error
     rm $ZLIB_VERSION.tar.gz
     echo ""
 fi
 
 if [ ! -d "luaunit" ]; then
     echo "[ downloading luaunit (git) ]"
-    git clone --quiet https://github.com/bluebird75/luaunit.git
+    git clone --quiet https://github.com/bluebird75/luaunit.git || exit_on_error
 
     cd luaunit
-    xxd -i luaunit.lua > $FM_HOME/$LUA_VERSION/src/luaunit.h
+    xxd -i luaunit.lua > $FM_HOME/$LUA_VERSION/src/luaunit.h || exit_on_error
     cd $FM_HOME
     echo ""
 fi
 
 if [ ! -d "musl" ]; then
     echo "[ downloading musel ($MUSL_VERSION) ]"
-    wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz 
-    tar -xzf $MUSL_VERSION.tar.gz
+    wget -q --show-progress http://musl.libc.org/releases/$MUSL_VERSION.tar.gz  || exit_on_error
+    tar -xzf $MUSL_VERSION.tar.gz || exit_on_error
 	rm $MUSL_VERSION.tar.gz
     
     echo ""
     echo "[ build musl ]" 
     cd $MUSL_VERSION
-    ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null
-    make  CFLAGS='-Wno-return-local-addr' > /dev/null 
-    make install > /dev/null
+    ./configure --prefix=$FM_HOME/musl --exec-prefix=$FM_HOME/musl --disable-shared > /dev/null || exit_on_error
+    make CFLAGS='-Wno-return-local-addr' > /dev/null  || exit_on_error
+    make install > /dev/null || exit_on_error
     
     cd $FM_HOME
 	rm -fr $MUSL_VERSION
@@ -132,20 +138,23 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 fm_aux.c lx_value.c \
 -DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
--o $FM_HOME/fullmoon 
+-o $FM_HOME/fullmoon  || exit_on_error
 
 cd $FM_HOME
 echo ""
 
 echo "[ running unit tests ]"
-./fullmoon test.lua
+./fullmoon test.lua || exit_on_error
 echo ""
 
 echo "[ stripping binary ]"
-strip --strip-all fullmoon
+strip --strip-all fullmoon || exit_on_error
 echo ""
 
 #need to check for UPX -> currently not working
 echo "[ compressing with UPX ]"
 upx --best --lzma -q fullmoon > /dev/null
 echo ""
+
+
+
