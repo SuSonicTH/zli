@@ -10,4 +10,5 @@ zig-*/
 .vscode/
 fullmoon
 fullmoon.pdb
+fullmoon.exe
 lua.lib

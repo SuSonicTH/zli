@@ -209,6 +209,11 @@ LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
 ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
 SRC=$FM_HOME/src
+OUTPUT=$FM_HOME/fullmoon
+
+if [ "$TARGET" = "WINDOWS" ];then
+    OUTPUT=$FM_HOME/fullmoon.exe
+fi
 
 cd $LUA_VERSION/src
 
@@ -222,20 +227,22 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 -I $LFS_SRC $LFS_SRC/lfs.c \
 -DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
--o $FM_HOME/fullmoon  || exit_on_error
+-o $OUTPUT || exit_on_error
 
 cd $FM_HOME
 echo ""
 
-echo "[ running unit tests ]"
-./fullmoon test.lua || exit_on_error
-echo ""
+if [ ! "$TARGET" = "WINDOWS" ];then
+    echo "[ running unit tests ]"
+    ./fullmoon test.lua || exit_on_error
+    echo ""
+fi
 
 echo "[ stripping binary ]"
 if [ ! command -v strip ] &> /dev/null;then
     echo "strip not installed skipping"
 else
-    strip --strip-all fullmoon || exit_on_error
+    strip --strip-all $OUTPUT || exit_on_error
 fi
 echo ""
 
@@ -243,7 +250,7 @@ echo "[ compressing with UPX ]"
 if [! command -v upx] &> /dev/null;then
     echo "upx not installed skipping"
 else
-    upx --best --lzma -q fullmoon > /dev/null
+    upx --best --lzma -q $OUTPUT > /dev/null
 fi
 echo ""
 
