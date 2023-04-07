@@ -58,6 +58,24 @@ while (( "$#" )); do
     esac
 done
 
+if [ "$CLEAN" = "true" ]; then
+    echo "[ cleaning... ]"
+    rm -fr musl
+    rm -fr $MUSL_VERSION
+    rm -fr $LUA_VERSION
+    rm -fr $SQLITE_VERSION
+    rm -fr $LUASQLITE_VERSION
+    rm -fr $LPEG_VERSION
+    rm -fr $ZLIB_VERSION
+    rm -fr luafilesystem
+    rm -fr lua-zlib
+    rm -fr luaunit
+    rm -fr fullmoon.pdb
+    rm -fr lua.lib
+    echo ""
+    exit 1
+fi
+
 if [ "$USE_GCC" = "true" ]; then
     COMPILE_COMMAND="$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX "
     elif [ "$USE_ZIG" = "true" ]; then
@@ -77,24 +95,6 @@ LUASQLITE_VERSION=lsqlite3_fsl09y
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
 ZIG_VERSION="zig-linux-x86_64-0.10.1"
-
-if [ "$CLEAN" = "true" ]; then
-    echo "[ cleaning... ]"
-    rm -fr musl
-    rm -fr $MUSL_VERSION
-    rm -fr $LUA_VERSION
-    rm -fr $SQLITE_VERSION
-    rm -fr $LUASQLITE_VERSION
-    rm -fr $LPEG_VERSION
-    rm -fr $ZLIB_VERSION
-    rm -fr luafilesystem
-    rm -fr lua-zlib
-    rm -fr luaunit
-    rm -fr fullmoon.pdb
-    rm -fr lua.lib
-    echo ""
-    exit 1
-fi
 
 echo "[ checking dependencies ]"
 assert_tool_installed "wget"
@@ -253,6 +253,3 @@ else
     upx --best --lzma -q $OUTPUT > /dev/null
 fi
 echo ""
-
-
-
