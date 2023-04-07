@@ -10,8 +10,8 @@ fullmoon is a portable lua interpreter statically compiled with musl with additi
 * [luaunit](https://github.com/bluebird75/luaunit)
 
 ## compilation
-The compilation is done trough a simple shell script `fullmoon.sh` that downloads musl, lua and all the required libraries and compiles them into a singe portable application.
-Just execute `./fullmoon.sh` in the main directory and wait.
+The compilation is done trough a simple shell script `make.sh` that downloads musl, lua and all the required libraries and compiles them into a singe portable application.
+Just execute `./make.sh` in the main directory and wait.
 If you have [upx](https://upx.github.io/) installed the binary will be also compressed with upx.
 
 ## cleanup 
