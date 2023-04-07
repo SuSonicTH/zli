@@ -121,9 +121,10 @@ cp src/* $LUA_VERSION/src
 
 cd $LUA_VERSION/src
 
-$FM_HOME/musl/bin/musl-gcc -O2 -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
--Wno-implicit-function-declaration \
-lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
+#zig cc -ldl -lm --static -target x86_64-linux-musl -Wdeprecated-non-prototype \
+$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static \
+-I $FM_HOME/$LUA_VERSION/src -Wno-implicit-function-declaration -O2 -DLUA_COMPAT_5_3 -DLUA_USE_LINUX \
+lua.c lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c \
 lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c \
 -I $FM_HOME/$SQLITE_VERSION $FM_HOME/$SQLITE_VERSION/sqlite3.c $FM_HOME/$LUASQLITE_VERSION/lsqlite3.c \
 -I $LPEG_SRC $LPEG_SRC/lpcap.c $LPEG_SRC/lpcode.c $LPEG_SRC/lpprint.c $LPEG_SRC/lptree.c $LPEG_SRC/lpvm.c \
@@ -131,15 +132,20 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 fm_aux.c lx_value.c \
 -DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
-lua.c -Wl,-E,-strip-all -ldl -lm --static \
--I $FM_HOME/$LUA_VERSION/src -o $FM_HOME/fullmoon 
-cd $FM_HOME
+-o $FM_HOME/fullmoon 
 
+cd $FM_HOME
 echo ""
 
 echo "[ running unit tests ]"
 ./fullmoon test.lua
+echo ""
+
+echo "[ stripping binary ]"
+strip --strip-all fullmoon
+echo ""
 
 #need to check for UPX -> currently not working
 echo "[ compressing with UPX ]"
 upx --best --lzma -q fullmoon > /dev/null
+echo ""
