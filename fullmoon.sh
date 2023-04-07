@@ -21,6 +21,7 @@ if [ "$1" = "clean" ]; then
     rm -fr $ZLIB_VERSION
     rm -fr luafilesystem
     rm -fr lua-zlib
+    rm -fr luaunit
     exit 1
 fi
 
