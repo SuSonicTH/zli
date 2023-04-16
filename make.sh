@@ -58,6 +58,24 @@ while (( "$#" )); do
     esac
 done
 
+if [ "$CLEAN" = "true" ]; then
+    echo "[ cleaning... ]"
+    rm -fr musl
+    rm -fr $MUSL_VERSION
+    rm -fr $LUA_VERSION
+    rm -fr $SQLITE_VERSION
+    rm -fr $LUASQLITE_VERSION
+    rm -fr $LPEG_VERSION
+    rm -fr $ZLIB_VERSION
+    rm -fr luafilesystem
+    rm -fr lua-zlib
+    rm -fr luaunit
+    rm -fr fullmoon.pdb
+    rm -fr lua.lib
+    echo ""
+    exit 1
+fi
+
 if [ "$USE_GCC" = "true" ]; then
     COMPILE_COMMAND="$FM_HOME/musl/bin/musl-gcc -Wl,-E,-strip-all -ldl -lm --static -DLUA_USE_LINUX "
     elif [ "$USE_ZIG" = "true" ]; then
@@ -77,24 +95,6 @@ LUASQLITE_VERSION=lsqlite3_fsl09y
 LPEG_VERSION=lpeg-1.0.2
 ZLIB_VERSION=zlib-1.2.13
 ZIG_VERSION="zig-linux-x86_64-0.10.1"
-
-if [ "$CLEAN" = "true" ]; then
-    echo "[ cleaning... ]"
-    rm -fr musl
-    rm -fr $MUSL_VERSION
-    rm -fr $LUA_VERSION
-    rm -fr $SQLITE_VERSION
-    rm -fr $LUASQLITE_VERSION
-    rm -fr $LPEG_VERSION
-    rm -fr $ZLIB_VERSION
-    rm -fr luafilesystem
-    rm -fr lua-zlib
-    rm -fr luaunit
-    rm -fr fullmoon.pdb
-    rm -fr lua.lib
-    echo ""
-    exit 1
-fi
 
 echo "[ checking dependencies ]"
 assert_tool_installed "wget"
@@ -209,6 +209,11 @@ LPEG_SRC=$FM_HOME/$LPEG_VERSION
 LFS_SRC=$FM_HOME/luafilesystem/src
 ZLIB_SRC=$FM_HOME/$ZLIB_VERSION
 SRC=$FM_HOME/src
+OUTPUT=$FM_HOME/fullmoon
+
+if [ "$TARGET" = "WINDOWS" ];then
+    OUTPUT=$FM_HOME/fullmoon.exe
+fi
 
 cd $LUA_VERSION/src
 
@@ -222,20 +227,22 @@ lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c loslib.c 
 -I $LFS_SRC $LFS_SRC/lfs.c \
 -DLZLIB_COMPAT -I $ZLIB_SRC $FM_HOME/lua-zlib/lua_zlib.c \
 $ZLIB_SRC/adler32.c $ZLIB_SRC/crc32.c $ZLIB_SRC/gzclose.c $ZLIB_SRC/gzread.c $ZLIB_SRC/infback.c $ZLIB_SRC/inflate.c $ZLIB_SRC/trees.c $ZLIB_SRC/zutil.c $ZLIB_SRC/compress.c $ZLIB_SRC/deflate.c $ZLIB_SRC/gzlib.c $ZLIB_SRC/gzwrite.c $ZLIB_SRC/inffast.c $ZLIB_SRC/inftrees.c $ZLIB_SRC/uncompr.c \
--o $FM_HOME/fullmoon  || exit_on_error
+-o $OUTPUT || exit_on_error
 
 cd $FM_HOME
 echo ""
 
-echo "[ running unit tests ]"
-./fullmoon test.lua || exit_on_error
-echo ""
+if [ ! "$TARGET" = "WINDOWS" ];then
+    echo "[ running unit tests ]"
+    ./fullmoon test.lua || exit_on_error
+    echo ""
+fi
 
 echo "[ stripping binary ]"
 if [ ! command -v strip ] &> /dev/null;then
     echo "strip not installed skipping"
 else
-    strip --strip-all fullmoon || exit_on_error
+    strip --strip-all $OUTPUT || exit_on_error
 fi
 echo ""
 
@@ -243,9 +250,6 @@ echo "[ compressing with UPX ]"
 if [! command -v upx] &> /dev/null;then
     echo "upx not installed skipping"
 else
-    upx --best --lzma -q fullmoon > /dev/null
+    upx --best --lzma -q $OUTPUT > /dev/null
 fi
 echo ""
-
-
-
