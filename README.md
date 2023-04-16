@@ -10,6 +10,18 @@ fullmoon is a portable lua interpreter statically compiled with musl with additi
 * [luaunit](https://github.com/bluebird75/luaunit)
 
 ## compilation
-To compile fullmoon you need zig on your path.
-Either install trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
-To build and test just run `zig build test`
+The build requires you to have git an dzig installed
+Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
+
+## build process:
+```bash
+git clone --recurse-submodules https://github.com/SuSonicTH/fullmoon.git
+cd fullmoon
+zig build test
+```
+binaries are saved in zig-out/bin/
+
+### release buld
+```bash
+zig build -Doptimize=ReleaseFast
+```
