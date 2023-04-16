@@ -1,7 +1,5 @@
 #include "lx_value.h"
 
-#include <lauxlib.h>
-
 void luax_settable_constant_list(lua_State *L, int n, const luax_const *list) {
     while (list->name != NULL) {
         luax_settable_number(L, n, list->name, list->value);
@@ -28,7 +26,7 @@ void luax_tableinsert(lua_State *L, int tblidx, int pos) {
     if (tblidx < 1) {
         tblidx = lua_gettop(L) + tblidx + 1;
     }
-    for (i = lua_objlen(L, tblidx); i >= pos; i--) {
+    for (i = lua_rawlen(L, tblidx); i >= pos; i--) {
         lua_rawgeti(L, tblidx, i);
         lua_rawseti(L, tblidx, i + 1);
     }
@@ -40,7 +38,7 @@ void luax_tableremove(lua_State *L, int tblidx, int pos) {
     if (tblidx < 1) {
         tblidx = lua_gettop(L) + tblidx + 1;
     }
-    len = lua_objlen(L, tblidx);
+    len = lua_rawlen(L, tblidx);
     for (i = pos; i <= len; i++) {
         lua_rawgeti(L, tblidx, i + 1);
         lua_rawseti(L, tblidx, i);

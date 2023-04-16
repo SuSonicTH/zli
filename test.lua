@@ -40,9 +40,12 @@ function TestLibraries:test_lfs()
         "fm_aux.c",
         "fm_aux.h",
         "linit.c",
+        "lua.c",
         "lualib.h",
+        "luaunit.h",
         "lx_value.c",
-        "lx_value.h"
+        "lx_value.h",
+        "re.h"
     })
 end
 
