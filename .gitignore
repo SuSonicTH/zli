@@ -1,14 +1,7 @@
-musl*/
-lsqlite3*/
-lua*/
-sqlite*/
-upx*/
-*.sqlite3
-lpeg*/
-zlib*/
-zig-*/
 .vscode/
 fullmoon
 fullmoon.pdb
 fullmoon.exe
 lua.lib
+zig-cache
+zig-out
