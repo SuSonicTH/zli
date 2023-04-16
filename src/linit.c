@@ -54,7 +54,7 @@ static int luaopen_luascript(lua_State *L);
 // fullmoon libraries preloaded ready to require
 static const luaL_Reg fullmoon_preload[] = {
     {LUA_SQLIT3LIBNAME, luaopen_lsqlite3},
-//    {LUA_LPEGLIBNAME, luaopen_lpeg},
+    {LUA_LPEGLIBNAME, luaopen_lpeg},
     {LUA_LFSLIBNAME, luaopen_lfs},
     {LUA_ZLIBLIBNAME, luaopen_zlib},
 //    {LUA_FMAUXLIBNAME, luaopen_lwaux},
