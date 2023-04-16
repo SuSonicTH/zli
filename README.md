@@ -6,7 +6,7 @@ fullmoon is a portable lua interpreter statically compiled with musl with additi
 * [LuaSQLite3](http://lua.sqlite.org/)
 * [luafilesystem](https://github.com/lunarmodules/luafilesystem)
 * [lua-zlib](https://github.com/brimworks/lua-zlib)
-* [lpeg](https://www.inf.puc-rio.br/~roberto/lpeg/) includes re module
+* [LPeg](https://www.inf.puc-rio.br/~roberto/lpeg/) includes re module
 * [luaunit](https://github.com/bluebird75/luaunit)
 
 ## compilation
