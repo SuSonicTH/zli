@@ -19,7 +19,7 @@ typedef struct fm_sb {
     unsigned int len;
 } fm_sb;
 
-int luaopen_fwaux(lua_State *L);
+int luaopen_fmaux(lua_State *L);
 
 int fm_aux_extend_libs(lua_State *L);
 int fm_aux_split(lua_State *L);

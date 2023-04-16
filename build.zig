@@ -190,5 +190,6 @@ const fullmoon_c_sources = [_][]const u8{
     "src/linit.c",
     "src/lua.c",
     "src/fm_aux.c",
+    "src/fm_csv.c",
     "src/lx_value.c",
 };

@@ -57,7 +57,10 @@ LUAMOD_API int(luaopen_zlib)(lua_State *L);
 
 // full moon extra libraries
 #define LUA_FMAUXLIBNAME "aux"
-LUAMOD_API int(luaopen_lwaux)(lua_State *L);
+LUAMOD_API int(luaopen_fmaux)(lua_State *L);
+
+#define LUA_FMCSVLIBNAME "csv"
+LUAMOD_API int(luaopen_fmcsv)(lua_State *L);
 
 /* open all previous libraries */
 LUALIB_API void(luaL_openlibs)(lua_State *L);

@@ -5,6 +5,7 @@ local zlib = require "zlib"
 local lu = require 'luaunit'
 local re = require 're'
 local aux = require "aux"
+local csv = require "csv"
 aux.extendlibs()
 
 TestLibraries = {}
@@ -39,6 +40,8 @@ function TestLibraries:test_lfs()
         "..",
         "fm_aux.c",
         "fm_aux.h",
+        "fm_csv.c",
+        "fm_csv.h",
         "linit.c",
         "lua.c",
         "lualib.h",
@@ -115,6 +118,27 @@ function TestAuxLib:test_table_to_String()
     local tbl = { 1, "2", 3, key = "value" }
     lu.assertEquals(aux.tabletostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
     lu.assertEquals(table.tostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
+end
+
+function TestLibraries:test_csv_create_and_read()
+    aux.writefile("test.csv", [[
+A,B,C
+A1,B1,C1
+A2,B2,C2
+A3,B3,C3
+]])
+
+    local actual = {}
+    for r, row in ipairs(csv.read("test.csv", true)) do
+        actual[#actual + 1] = r .. ":" .. row[1] .. '-' .. row[2] .. "-" .. row[3]
+    end
+
+    lu.assertEquals(actual, {
+        "1:A1-B1-C1",
+        "2:A2-B2-C2",
+        "3:A3-B3-C3",
+    })
+    os.remove("test.csv")
 end
 
 local runner = lu.LuaUnit.new()

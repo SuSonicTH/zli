@@ -1,6 +1,6 @@
 #include "fm_aux.h"
 
-int luaopen_lwaux(lua_State *L) {
+int luaopen_fmaux(lua_State *L) {
     luaL_newlib(L, fm_auxlib);
     return 1;
 }
