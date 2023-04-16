@@ -3,11 +3,13 @@
 # fixes
 
 # improvements of compilation
-* add detection if all needed tools are installed (zip, git, make, gcc,...)
+* generate lua source libryry header in buld (luaunit.lua , re.lua) instead of having it in repo
 
 # additional libraries
+* cleanup & include zip/unzip
+* json library
 * http server/client 
-* zip/unzip
+* tar library
 * terminal ui library, either some existing lua binding or own based on https://github.com/dankamongmen/notcurses
 * gui library https://github.com/Immediate-Mode-UI/Nuklear with wraper or https://www.raylib.com/ 
 
