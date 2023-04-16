@@ -1,7 +1,7 @@
 #ifndef LUAX_VALUE
 #define LUAX_VALUE
 
-#include <lauxlib.h>
+#include "lauxlib.h"
 
 typedef struct luax_const {
     char *name;

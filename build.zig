@@ -88,16 +88,14 @@ pub fn build(b: *std.Build) void {
         //        },
     };
 
-    const exe = b.addExecutable(.{
-        .name = "fullmoon",
+    const lua = b.addStaticLibrary(.{
+        .name = "lua",
         .target = target,
         .optimize = optimize,
     });
 
-    exe.addIncludePath("src/");
-    exe.addIncludePath("lua/src");
-    exe.addCSourceFiles(&.{
-        "src/linit.c",
+    lua.addIncludePath("lua/src");
+    lua.addCSourceFiles(&.{
         "lua/src/lapi.c",
         "lua/src/lauxlib.c",
         "lua/src/lbaselib.c",
@@ -131,6 +129,23 @@ pub fn build(b: *std.Build) void {
         "lua/src/lvm.c",
         "lua/src/lzio.c",
     }, &lua_flags);
+    lua.linkLibC();
+
+    const exe = b.addExecutable(.{
+        .name = "fullmoon",
+        .target = target,
+        .optimize = optimize,
+    });
+
+    exe.addIncludePath("src/");
+    exe.addIncludePath("lua/src");
+    exe.addCSourceFiles(&.{
+        "src/linit.c",
+        "src/lua.c",
+        "src/fm_aux.c",
+        "src/lx_value.c",
+    }, &lua_flags);
+    exe.linkLibrary(lua);
     exe.linkLibrary(lsqlite3);
     exe.linkLibrary(lpeg);
     exe.linkLibrary(lfs);
@@ -150,15 +165,11 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
-    //    const unit_tests = b.addTest(.{
-    //        .root_source_file = .{ .path = "src/main.zig" },
-    //        .target = target,
-    //        .optimize = optimize,
-    //    });
-    //
-    //    const run_unit_tests = b.addRunArtifact(unit_tests);
-    //
-    //    const test_step = b.step("test", "Run unit tests");
-    //    test_step.dependOn(&run_unit_tests.step);
+    const test_cmd = b.addRunArtifact(exe);
 
+    test_cmd.step.dependOn(b.getInstallStep());
+    test_cmd.addArgs(&[_][]const u8{"Test.lua"});
+
+    const test_step = b.step("test", "Test the app");
+    test_step.dependOn(&test_cmd.step);
 }

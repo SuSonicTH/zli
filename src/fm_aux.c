@@ -169,7 +169,7 @@ int fw_aux_chek_lte(lua_State *L, int *al, int *bl, int a, int b, int idx, int f
     } else {
         lua_rawgeti(L, idx, al[a]);
         lua_rawgeti(L, idx, bl[b]);
-        ret = lua_lessthan(L, -2, -1) || lua_equal(L, -1, -2);
+        ret = lua_compare(L, -2, -1, LUA_OPLT) || lua_compare(L, -1, -2,LUA_OPEQ);
         lua_pop(L, 2);
     }
     return ret;
@@ -265,7 +265,7 @@ int *fw_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, in
         while (lp < ls && rp < rs) {
             lua_rawgeti(L, idx, lt[lp]);
             lua_rawgeti(L, idx, rt[rp]);
-            if (lua_lessthan(L, -2, -1) || lua_equal(L, -2, -1)) {
+            if (lua_compare(L, -2, -1, LUA_OPLT) || lua_compare(L, -2, -1,LUA_OPEQ)) {
                 out[cnt++] = lt[lp++];
             } else {
                 out[cnt++] = rt[rp++];
@@ -297,7 +297,7 @@ int *fw_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, in
 int *fw_aux_mergesort_arr(lua_State *L, int idx, int func, unsigned int *tlen) {
     int *in, *out, *tmp;
     unsigned int i;
-    unsigned int len = (unsigned int)lua_objlen(L, idx);
+    unsigned int len = (unsigned int)lua_rawlen(L, idx);
 
     if (tlen != NULL) {
         *tlen = len;
@@ -360,7 +360,7 @@ int fw_aux_mergesort_int(lua_State *L, int idx, int func, int copy) {
 }
 
 int fw_aux_mergesort_ext(lua_State *L) {
-    unsigned int len = (unsigned int)lua_objlen(L, 1);
+    unsigned int len = (unsigned int)lua_rawlen(L, 1);
     int func = lua_isfunction(L, 2);
     int copy = lua_toboolean(L, 3);
 
@@ -432,7 +432,7 @@ int fw_aux_copy_table(lua_State *L) {
 
 int fw_aux_concats(lua_State *L) {
     luaL_Buffer buffer;
-    unsigned int len = (unsigned int)lua_objlen(L, 1);
+    unsigned int len = (unsigned int)lua_rawlen(L, 1);
     const char *sep = NULL;
     size_t seplen;
     const char *itm;
@@ -579,7 +579,7 @@ int fw_aux_writefile(lua_State *L) {
 }
 
 int fw_aux_writelines(lua_State *L) {
-    unsigned int tlen = (unsigned int)lua_objlen(L, 2);
+    unsigned int tlen = (unsigned int)lua_rawlen(L, 2);
     size_t len;
     unsigned int i;
     const char *data;
@@ -755,7 +755,7 @@ int fw_aux_tabletostring(lua_State *L) {
 void fw_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind) {
     int n = lua_gettop(L);
     unsigned int i = 1;
-    unsigned int len = (unsigned int)lua_objlen(L, n);
+    unsigned int len = (unsigned int)lua_rawlen(L, n);
     double num;
 
     lua_checkstack(L, n + 4);

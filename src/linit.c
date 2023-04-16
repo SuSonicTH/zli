@@ -29,8 +29,9 @@
 #include "lprefix.h"
 #include "lua.h"
 #include "lualib.h"
-//#include "luaunit.h"
-//#include "re.h"
+
+#include "luaunit.h"
+#include "re.h"
 
 /*
 ** these libs are loaded by lua.c and are readily available to any Lua
@@ -57,9 +58,9 @@ static const luaL_Reg fullmoon_preload[] = {
     {LUA_LPEGLIBNAME, luaopen_lpeg},
     {LUA_LFSLIBNAME, luaopen_lfs},
     {LUA_ZLIBLIBNAME, luaopen_zlib},
-//    {LUA_FMAUXLIBNAME, luaopen_lwaux},
-//    {"luaunit", luaopen_luascript},
-//    {"re", luaopen_luascript},
+    {LUA_FMAUXLIBNAME, luaopen_lwaux},
+    {"luaunit", luaopen_luascript},
+    {"re", luaopen_luascript},
     {NULL, NULL}};
 
 LUALIB_API void luaL_openlibs(lua_State *L) {
@@ -84,9 +85,9 @@ static int luaopen_luascript(lua_State *L) {
     int result = 1;
 
     if (strcmp(modname, "luaunit") == 0) {
-        //result = luaL_loadbufferx(L, luaunit_lua, luaunit_lua_len, "luaunit", "t");
+        result = luaL_loadbufferx(L, (char*)luaunit_lua, luaunit_lua_len, "luaunit", "t");
     } else if (strcmp(modname, "re") == 0) {
-        //result = luaL_loadbufferx(L, re_lua, re_lua_len, "re", "t");
+        result = luaL_loadbufferx(L, (char*)re_lua, re_lua_len, "re", "t");
     } else {
         return luaL_error(L, "unknown module \"%s\"", modname);
     }
