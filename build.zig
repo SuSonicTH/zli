@@ -5,16 +5,13 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const c_flags = [_][]const u8{};
 
-    const lua_path = "lua-5.4.4/src/";
-    const zlib_path = "zlib-1.2.13/";
-
     const lsqlite3 = b.addStaticLibrary(.{
         .name = "lsqlite3",
         .target = target,
         .optimize = optimize,
     });
-    lsqlite3.addIncludePath(lua_path);
-    lsqlite3.addIncludePath("lsqlite3");
+    lsqlite3.addIncludePath("lua/src/");
+    lsqlite3.addIncludePath("lsqlite3/");
     lsqlite3.addCSourceFile("lsqlite3/lsqlite3.c", &c_flags);
     lsqlite3.addCSourceFile("lsqlite3/sqlite3.c", &c_flags);
     lsqlite3.linkLibC();
@@ -24,33 +21,50 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lfs.addIncludePath(lua_path);
+    lfs.addIncludePath("lua/src/");
     lfs.addIncludePath("luafilesystem/src/");
     lfs.addCSourceFile("luafilesystem/src/lfs.c", &c_flags);
     lfs.linkLibC();
+
+    const lpeg = b.addStaticLibrary(.{
+        .name = "lpeg",
+        .target = target,
+        .optimize = optimize,
+    });
+
+    lpeg.addIncludePath("lpeg/");
+    lpeg.addIncludePath("lua/src/");
+    lpeg.addCSourceFiles(&.{
+        "lpeg/lpcap.c",
+        "lpeg/lpcode.c",
+        "lpeg/lpprint.c",
+        "lpeg/lptree.c",
+        "lpeg/lpvm.c",
+    }, &c_flags);
+    lpeg.linkLibC();
 
     const zlib = b.addStaticLibrary(.{
         .name = "zlib",
         .target = target,
         .optimize = optimize,
     });
-    zlib.addIncludePath(zlib_path);
+    zlib.addIncludePath("zlib/");
     zlib.addCSourceFiles(&.{
-        zlib_path ++ "adler32.c",
-        zlib_path ++ "crc32.c",
-        zlib_path ++ "gzclose.c",
-        zlib_path ++ "gzread.c",
-        zlib_path ++ "infback.c",
-        zlib_path ++ "inflate.c",
-        zlib_path ++ "trees.c",
-        zlib_path ++ "zutil.c",
-        zlib_path ++ "compress.c",
-        zlib_path ++ "deflate.c",
-        zlib_path ++ "gzlib.c",
-        zlib_path ++ "gzwrite.c",
-        zlib_path ++ "inffast.c",
-        zlib_path ++ "inftrees.c",
-        zlib_path ++ "uncompr.c",
+        "zlib/adler32.c",
+        "zlib/crc32.c",
+        "zlib/gzclose.c",
+        "zlib/gzread.c",
+        "zlib/infback.c",
+        "zlib/inflate.c",
+        "zlib/trees.c",
+        "zlib/zutil.c",
+        "zlib/compress.c",
+        "zlib/deflate.c",
+        "zlib/gzlib.c",
+        "zlib/gzwrite.c",
+        "zlib/inffast.c",
+        "zlib/inftrees.c",
+        "zlib/uncompr.c",
     }, &c_flags);
     zlib.linkLibC();
 
@@ -59,8 +73,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lua_zlib.addIncludePath(lua_path);
-    lua_zlib.addIncludePath(zlib_path);
+    lua_zlib.addIncludePath("lua/src/");
+    lua_zlib.addIncludePath("zlib/");
     lua_zlib.addCSourceFile("lua-zlib/lua_zlib.c", &[_][]const u8{"-DLZLIB_COMPAT"});
     lua_zlib.linkLibC();
 
@@ -81,43 +95,44 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.addIncludePath("src/");
-    exe.addIncludePath(lua_path);
+    exe.addIncludePath("lua/src");
     exe.addCSourceFiles(&.{
         "src/linit.c",
-        lua_path ++ "lapi.c",
-        lua_path ++ "lauxlib.c",
-        lua_path ++ "lbaselib.c",
-        lua_path ++ "lcode.c",
-        lua_path ++ "lcorolib.c",
-        lua_path ++ "lctype.c",
-        lua_path ++ "ldblib.c",
-        lua_path ++ "ldebug.c",
-        lua_path ++ "ldo.c",
-        lua_path ++ "ldump.c",
-        lua_path ++ "lfunc.c",
-        lua_path ++ "lgc.c",
-        lua_path ++ "liolib.c",
-        lua_path ++ "llex.c",
-        lua_path ++ "lmathlib.c",
-        lua_path ++ "lmem.c",
-        lua_path ++ "loadlib.c",
-        lua_path ++ "lobject.c",
-        lua_path ++ "lopcodes.c",
-        lua_path ++ "loslib.c",
-        lua_path ++ "lparser.c",
-        lua_path ++ "lstate.c",
-        lua_path ++ "lstring.c",
-        lua_path ++ "lstrlib.c",
-        lua_path ++ "ltable.c",
-        lua_path ++ "ltablib.c",
-        lua_path ++ "ltm.c",
-        lua_path ++ "lua.c",
-        lua_path ++ "lundump.c",
-        lua_path ++ "lutf8lib.c",
-        lua_path ++ "lvm.c",
-        lua_path ++ "lzio.c",
+        "lua/src/lapi.c",
+        "lua/src/lauxlib.c",
+        "lua/src/lbaselib.c",
+        "lua/src/lcode.c",
+        "lua/src/lcorolib.c",
+        "lua/src/lctype.c",
+        "lua/src/ldblib.c",
+        "lua/src/ldebug.c",
+        "lua/src/ldo.c",
+        "lua/src/ldump.c",
+        "lua/src/lfunc.c",
+        "lua/src/lgc.c",
+        "lua/src/liolib.c",
+        "lua/src/llex.c",
+        "lua/src/lmathlib.c",
+        "lua/src/lmem.c",
+        "lua/src/loadlib.c",
+        "lua/src/lobject.c",
+        "lua/src/lopcodes.c",
+        "lua/src/loslib.c",
+        "lua/src/lparser.c",
+        "lua/src/lstate.c",
+        "lua/src/lstring.c",
+        "lua/src/lstrlib.c",
+        "lua/src/ltable.c",
+        "lua/src/ltablib.c",
+        "lua/src/ltm.c",
+        "lua/src/lua.c",
+        "lua/src/lundump.c",
+        "lua/src/lutf8lib.c",
+        "lua/src/lvm.c",
+        "lua/src/lzio.c",
     }, &lua_flags);
     exe.linkLibrary(lsqlite3);
+    exe.linkLibrary(lpeg);
     exe.linkLibrary(lfs);
     exe.linkLibrary(zlib);
     exe.linkLibrary(lua_zlib);

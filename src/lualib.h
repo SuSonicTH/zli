@@ -46,8 +46,8 @@ LUAMOD_API int(luaopen_package)(lua_State *L);
 #define LUA_SQLIT3LIBNAME "sqlite3"
 LUAMOD_API int(luaopen_lsqlite3)(lua_State *L);
 
-//#define LUA_LPEGLIBNAME "lpeg"
-//LUAMOD_API int(luaopen_lpeg)(lua_State *L);
+#define LUA_LPEGLIBNAME "lpeg"
+LUAMOD_API int(luaopen_lpeg)(lua_State *L);
 
 #define LUA_LFSLIBNAME "lfs"
 LUAMOD_API int(luaopen_lfs)(lua_State *L);
