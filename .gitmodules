@@ -1,0 +1,9 @@
+[submodule "luafilesystem"]
+	path = luafilesystem
+	url = https://github.com/lunarmodules/luafilesystem.git
+[submodule "luaunit"]
+	path = luaunit
+	url = https://github.com/bluebird75/luaunit.git
+[submodule "lua-zlib"]
+	path = lua-zlib
+	url = https://github.com/brimworks/lua-zlib

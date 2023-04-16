@@ -3,7 +3,9 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const c_flags = [_][]const u8{};
+    const c_flags = [_][]const u8{
+        "-std=gnu99",
+    };
 
     const lsqlite3 = b.addStaticLibrary(.{
         .name = "lsqlite3",
@@ -65,7 +67,7 @@ pub fn build(b: *std.Build) void {
         "zlib/inffast.c",
         "zlib/inftrees.c",
         "zlib/uncompr.c",
-    }, &c_flags);
+    }, &.{"-std=c89"});
     zlib.linkLibC();
 
     const lua_zlib = b.addStaticLibrary(.{
@@ -123,7 +125,6 @@ pub fn build(b: *std.Build) void {
         "lua/src/ltable.c",
         "lua/src/ltablib.c",
         "lua/src/ltm.c",
-        "lua/src/lua.c",
         "lua/src/lundump.c",
         "lua/src/lutf8lib.c",
         "lua/src/lvm.c",
@@ -168,7 +169,7 @@ pub fn build(b: *std.Build) void {
     const test_cmd = b.addRunArtifact(exe);
 
     test_cmd.step.dependOn(b.getInstallStep());
-    test_cmd.addArgs(&[_][]const u8{"Test.lua"});
+    test_cmd.addArgs(&[_][]const u8{"test.lua"});
 
     const test_step = b.step("test", "Test the app");
     test_step.dependOn(&test_cmd.step);
