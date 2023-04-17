@@ -7,7 +7,6 @@
 
 # additional libraries
 * cleanup & include zip/unzip
-* json library
 * http server/client 
 * tar library
 * terminal ui library, either some existing lua binding or own based on https://github.com/dankamongmen/notcurses

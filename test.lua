@@ -2,10 +2,11 @@ local sqlite3 = require "sqlite3"
 local lpeg = require "lpeg"
 require "lfs" --patch lfs to not set a global variable
 local zlib = require "zlib"
-local lu = require 'luaunit'
-local re = require 're'
+local lu = require "luaunit"
+local re = require "re"
 local aux = require "aux"
 local csv = require "csv"
+local json = require "cjson"
 aux.extendlibs()
 
 TestLibraries = {}
@@ -20,7 +21,9 @@ end
 function TestLibraries:test_lpeg()
     local number = lpeg.R "09" ^ 1 / tonumber
     local list = number * ("," * number) ^ 0
-    local function add(acc, newvalue) return acc + newvalue end
+    local function add(acc, newvalue)
+        return acc + newvalue
+    end
     local sum = lpeg.Cf(list, add)
     lu.assertEquals(sum:match("10,30,43"), 83)
 end
@@ -35,25 +38,28 @@ function TestLibraries:test_lfs()
         actual[#actual + 1] = file
     end
     table.sort(actual)
-    lu.assertEquals(actual, {
-        ".",
-        "..",
-        "fm_aux.c",
-        "fm_aux.h",
-        "fm_csv.c",
-        "fm_csv.h",
-        "linit.c",
-        "lua.c",
-        "lualib.h",
-        "luaunit.h",
-        "lx_value.c",
-        "lx_value.h",
-        "re.h"
-    })
+    lu.assertEquals(
+        actual,
+        {
+            ".",
+            "..",
+            "fm_aux.c",
+            "fm_aux.h",
+            "fm_csv.c",
+            "fm_csv.h",
+            "linit.c",
+            "lua.c",
+            "lualib.h",
+            "luaunit.h",
+            "lx_value.c",
+            "lx_value.h",
+            "re.h"
+        }
+    )
 end
 
 function TestLibraries:test_sqlite()
-    local db = sqlite3.open('test.sqlite3')
+    local db = sqlite3.open("test.sqlite3")
     db:exec [=[
               CREATE TABLE numbers(num,val);
               INSERT INTO numbers VALUES(1,'one');
@@ -62,13 +68,13 @@ function TestLibraries:test_sqlite()
             ]=]
 
     local actual = {}
-    for result in db:nrows('SELECT num, val FROM numbers order by 1') do
-        actual[#actual + 1] = result.num .. ':' .. result.val
+    for result in db:nrows("SELECT num, val FROM numbers order by 1") do
+        actual[#actual + 1] = result.num .. ":" .. result.val
     end
     db:close()
-    os.remove('test.sqlite3')
+    os.remove("test.sqlite3")
 
-    local expected = { "1:one", "2:two", "3:three" }
+    local expected = {"1:one", "2:two", "3:three"}
 
     lu.assertEquals(actual, expected)
 end
@@ -80,7 +86,7 @@ function TestAuxLib:test_string()
     lu.assertEquals(aux.ltrim(TEST), "TEST   ")
     lu.assertEquals(aux.rtrim(TEST), "   TEST")
     lu.assertEquals(aux.trim(TEST), "TEST")
-    lu.assertEquals({ aux.split("1,2,3") }, { "1", "2", "3" })
+    lu.assertEquals({aux.split("1,2,3")}, {"1", "2", "3"})
 end
 
 function TestAuxLib:test_string_extended()
@@ -89,11 +95,11 @@ function TestAuxLib:test_string_extended()
     lu.assertEquals(TEST:ltrim(), "TEST   \n")
     lu.assertEquals(TEST:rtrim(), "   \tTEST")
     lu.assertEquals(TEST:trim(), "TEST")
-    lu.assertEquals({ list:split() }, { "1", "2", "3" })
+    lu.assertEquals({list:split()}, {"1", "2", "3"})
 end
 
 function TestAuxLib:test_kpairs()
-    local tbl = { y = "two", z = "three", x = "one" }
+    local tbl = {y = "two", z = "three", x = "one"}
 
     local actual = ""
     for k, v in aux.kpairs(tbl) do
@@ -103,21 +109,21 @@ function TestAuxLib:test_kpairs()
 end
 
 function TestAuxLib:test_copytyble()
-    local tbl = { y = "two", z = "three", x = "one" }
+    local tbl = {y = "two", z = "three", x = "one"}
     lu.assertEquals(tbl, aux.copytable(tbl))
     lu.assertEquals(tbl, table.copy(tbl))
 end
 
 function TestAuxLib:test_concats()
-    local tbl = { 1, "2", 3 }
+    local tbl = {1, "2", 3}
     lu.assertEquals(aux.concats(tbl), "123")
-    lu.assertEquals(aux.concats(tbl, ','), "1,2,3")
+    lu.assertEquals(aux.concats(tbl, ","), "1,2,3")
 end
 
 function TestAuxLib:test_table_to_String()
-    local tbl = { 1, "2", 3, key = "value" }
-    lu.assertEquals(aux.tabletostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
-    lu.assertEquals(table.tostring(tbl, "tbl"), "tbl={\n  1,\n  2,\n  3,\n  key=\"value\",\n}")
+    local tbl = {1, "2", 3, key = "value"}
+    lu.assertEquals(aux.tabletostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
+    lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
 end
 
 function TestLibraries:test_csv_create_and_read()
@@ -130,15 +136,28 @@ A3,B3,C3
 
     local actual = {}
     for r, row in ipairs(csv.read("test.csv", true)) do
-        actual[#actual + 1] = r .. ":" .. row[1] .. '-' .. row[2] .. "-" .. row[3]
+        actual[#actual + 1] = r .. ":" .. row[1] .. "-" .. row[2] .. "-" .. row[3]
     end
 
-    lu.assertEquals(actual, {
-        "1:A1-B1-C1",
-        "2:A2-B2-C2",
-        "3:A3-B3-C3",
-    })
+    lu.assertEquals(
+        actual,
+        {
+            "1:A1-B1-C1",
+            "2:A2-B2-C2",
+            "3:A3-B3-C3"
+        }
+    )
     os.remove("test.csv")
+end
+
+function TestLibraries:test_cjson_decode_encode()
+    local decoded = json.decode('{"test":true,"name":"test_cjson_decode_encode", "days":[1,2,3]}')
+    lu.assertEquals(true, decoded.test)
+    lu.assertEquals("test_cjson_decode_encode", decoded.name)
+    lu.assertEquals({1, 2, 3}, decoded.days)
+    
+    local encoded = json.encode(decoded)
+    lu.assertEquals({test = true, name = "test_cjson_decode_encode", days = {1, 2, 3}}, json.decode(encoded))
 end
 
 local runner = lu.LuaUnit.new()

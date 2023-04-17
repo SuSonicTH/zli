@@ -55,6 +55,9 @@ LUAMOD_API int(luaopen_lfs)(lua_State *L);
 #define LUA_ZLIBLIBNAME "zlib"
 LUAMOD_API int(luaopen_zlib)(lua_State *L);
 
+#define LUA_CJSONLIBNAME "cjson"
+LUAMOD_API int(luaopen_cjson)(lua_State *L);
+
 // full moon extra libraries
 #define LUA_FMAUXLIBNAME "aux"
 LUAMOD_API int(luaopen_fmaux)(lua_State *L);

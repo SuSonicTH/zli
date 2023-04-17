@@ -60,6 +60,17 @@ pub fn build(b: *std.Build) void {
     lua_zlib.addCSourceFile("lua-zlib/lua_zlib.c", &[_][]const u8{"-DLZLIB_COMPAT"});
     lua_zlib.linkLibC();
 
+    //lua-cjason
+    const lua_cjson = b.addStaticLibrary(.{
+        .name = "lua_cjson",
+        .target = target,
+        .optimize = optimize,
+    });
+    lua_cjson.addIncludePath("lua/src/");
+    lua_cjson.addIncludePath("lua-cjson/");
+    lua_cjson.addCSourceFiles(&lua_cjson_c_sources, &c_flags);
+    lua_cjson.linkLibC();
+
     //Lua
     const lua = b.addStaticLibrary(.{
         .name = "lua",
@@ -87,6 +98,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(lfs);
     exe.linkLibrary(zlib);
     exe.linkLibrary(lua_zlib);
+    exe.linkLibrary(lua_cjson);
     exe.linkLibC();
 
     b.installArtifact(exe);
@@ -192,4 +204,12 @@ const fullmoon_c_sources = [_][]const u8{
     "src/fm_aux.c",
     "src/fm_csv.c",
     "src/lx_value.c",
+};
+
+const lua_cjson_c_sources = [_][]const u8{
+    //"lua-cjson/dtoa.c",
+    "lua-cjson/fpconv.c",
+    "lua-cjson/g_fmt.c",
+    "lua-cjson/lua_cjson.c",
+    "lua-cjson/strbuf.c",
 };
