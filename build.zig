@@ -82,16 +82,25 @@ pub fn build(b: *std.Build) void {
     lua.addCSourceFiles(&lua_c_sources, &lua_flags);
     lua.linkLibC();
 
-    //FullMoon
+    //FullMoon libraries
+    const fullmoon = b.addStaticLibrary(.{
+        .name = "fullmoonLib",
+        .root_source_file = .{ .path = "fm_libraries.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    fullmoon.addIncludePath("./");
+    fullmoon.addIncludePath("lua/src");
+    fullmoon.addCSourceFiles(&fullmoon_c_sources, &c_flags);
+    fullmoon.linkLibC();
+
+    //FullMoon exe
     const exe = b.addExecutable(.{
         .name = "fullmoon",
         .target = target,
         .optimize = optimize,
     });
-
-    exe.addIncludePath("src/");
-    exe.addIncludePath("lua/src");
-    exe.addCSourceFiles(&fullmoon_c_sources, &c_flags);
+    exe.linkLibrary(fullmoon);
     exe.linkLibrary(lua);
     exe.linkLibrary(lsqlite3);
     exe.linkLibrary(lpeg);
@@ -99,7 +108,6 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(zlib);
     exe.linkLibrary(lua_zlib);
     exe.linkLibrary(lua_cjson);
-    exe.linkLibC();
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -199,15 +207,13 @@ const zlib_c_sources = [_][]const u8{
 };
 
 const fullmoon_c_sources = [_][]const u8{
-    "src/linit.c",
-    "src/lua.c",
-    "src/fm_aux.c",
-    "src/fm_csv.c",
-    "src/lx_value.c",
+    "lua/src/lua.c",
+    "fm_aux.c",
+    "fm_csv.c",
+    "lx_value.c",
 };
 
 const lua_cjson_c_sources = [_][]const u8{
-    //"lua-cjson/dtoa.c",
     "lua-cjson/fpconv.c",
     "lua-cjson/g_fmt.c",
     "lua-cjson/lua_cjson.c",

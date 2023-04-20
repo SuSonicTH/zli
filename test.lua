@@ -1,6 +1,6 @@
 local sqlite3 = require "sqlite3"
 local lpeg = require "lpeg"
-require "lfs" --patch lfs to not set a global variable
+require "lfs" -- patch lfs to not set a global variable
 local zlib = require "zlib"
 local lu = require "luaunit"
 local re = require "re"
@@ -34,28 +34,11 @@ end
 
 function TestLibraries:test_lfs()
     local actual = {}
-    for file in lfs.dir("./src/") do
+    for file in lfs.dir("./lua/") do
         actual[#actual + 1] = file
     end
     table.sort(actual)
-    lu.assertEquals(
-        actual,
-        {
-            ".",
-            "..",
-            "fm_aux.c",
-            "fm_aux.h",
-            "fm_csv.c",
-            "fm_csv.h",
-            "linit.c",
-            "lua.c",
-            "lualib.h",
-            "luaunit.h",
-            "lx_value.c",
-            "lx_value.h",
-            "re.h"
-        }
-    )
+    lu.assertEquals(actual, {".", "..", "Makefile", "README", "doc", "src"})
 end
 
 function TestLibraries:test_sqlite()
@@ -99,7 +82,11 @@ function TestAuxLib:test_string_extended()
 end
 
 function TestAuxLib:test_kpairs()
-    local tbl = {y = "two", z = "three", x = "one"}
+    local tbl = {
+        y = "two",
+        z = "three",
+        x = "one"
+    }
 
     local actual = ""
     for k, v in aux.kpairs(tbl) do
@@ -109,7 +96,11 @@ function TestAuxLib:test_kpairs()
 end
 
 function TestAuxLib:test_copytyble()
-    local tbl = {y = "two", z = "three", x = "one"}
+    local tbl = {
+        y = "two",
+        z = "three",
+        x = "one"
+    }
     lu.assertEquals(tbl, aux.copytable(tbl))
     lu.assertEquals(tbl, table.copy(tbl))
 end
@@ -121,7 +112,12 @@ function TestAuxLib:test_concats()
 end
 
 function TestAuxLib:test_table_to_String()
-    local tbl = {1, "2", 3, key = "value"}
+    local tbl = {
+        1,
+        "2",
+        3,
+        key = "value"
+    }
     lu.assertEquals(aux.tabletostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
     lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
 end
@@ -139,14 +135,7 @@ A3,B3,C3
         actual[#actual + 1] = r .. ":" .. row[1] .. "-" .. row[2] .. "-" .. row[3]
     end
 
-    lu.assertEquals(
-        actual,
-        {
-            "1:A1-B1-C1",
-            "2:A2-B2-C2",
-            "3:A3-B3-C3"
-        }
-    )
+    lu.assertEquals(actual, {"1:A1-B1-C1", "2:A2-B2-C2", "3:A3-B3-C3"})
     os.remove("test.csv")
 end
 
@@ -155,9 +144,13 @@ function TestLibraries:test_cjson_decode_encode()
     lu.assertEquals(true, decoded.test)
     lu.assertEquals("test_cjson_decode_encode", decoded.name)
     lu.assertEquals({1, 2, 3}, decoded.days)
-    
+
     local encoded = json.encode(decoded)
-    lu.assertEquals({test = true, name = "test_cjson_decode_encode", days = {1, 2, 3}}, json.decode(encoded))
+    lu.assertEquals({
+        test = true,
+        name = "test_cjson_decode_encode",
+        days = {1, 2, 3}
+    }, json.decode(encoded))
 end
 
 local runner = lu.LuaUnit.new()
