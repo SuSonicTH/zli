@@ -15,7 +15,7 @@ const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
 const strlen = std.zig.c_builtins.__builtin_strlen;
 
-const loadedlibs: [11]c.luaL_Reg = [11]c.luaL_Reg{
+const loadedlibs = [_]c.luaL_Reg{
     c.luaL_Reg{
         .name = "_G",
         .func = &c.luaopen_base,
@@ -56,13 +56,9 @@ const loadedlibs: [11]c.luaL_Reg = [11]c.luaL_Reg{
         .name = "debug",
         .func = &c.luaopen_debug,
     },
-    c.luaL_Reg{
-        .name = null,
-        .func = null,
-    },
 };
 
-const fullmoon_preload: [10]c.luaL_Reg = [10]c.luaL_Reg{
+const fullmoon_preload = [_]c.luaL_Reg{
     c.luaL_Reg{
         .name = "sqlite3",
         .func = &luaopen_lsqlite3,
@@ -99,13 +95,9 @@ const fullmoon_preload: [10]c.luaL_Reg = [10]c.luaL_Reg{
         .name = "re",
         .func = &luaopen_luascript,
     },
-    c.luaL_Reg{
-        .name = null,
-        .func = null,
-    },
 };
 
-const luascript = extern struct {
+const luascript = struct {
     name: [*c]const u8,
     script: [*c]const u8,
 };
@@ -117,20 +109,23 @@ const luascripts = [_]luascript{
 
 pub export fn luaL_openlibs(arg_L: ?*c.lua_State) callconv(.C) void {
     var L = arg_L;
-    var lib: [*c]const c.luaL_Reg = undefined;
 
-    lib = @ptrCast([*c]const c.luaL_Reg, @alignCast(@import("std").meta.alignment([*c]const c.luaL_Reg), &loadedlibs));
-    while (lib.*.func != null) : (lib += 1) {
-        c.luaL_requiref(L, lib.*.name, lib.*.func, 1);
+    for (loadedlibs) |lib| {
+        c.luaL_requiref(L, lib.name, lib.func, 1);
         c.lua_settop(L, -1 - 1);
     }
 
     _ = c.luaL_getsubtable(L, c.LUA_REGISTRYINDEX, c.LUA_PRELOAD_TABLE);
-    lib = @ptrCast([*c]const c.luaL_Reg, @alignCast(@import("std").meta.alignment([*c]const c.luaL_Reg), &fullmoon_preload));
-    while (lib.*.func != null) : (lib += 1) {
-        c.lua_pushcclosure(L, lib.*.func, 0);
-        c.lua_setfield(L, -2, lib.*.name);
+    for (fullmoon_preload) |fm_lib| {
+        c.lua_pushcclosure(L, fm_lib.func, 0);
+        c.lua_setfield(L, -2, fm_lib.name);
     }
+
+    for (luascripts) |lua| {
+        c.lua_pushcclosure(L, luaopen_luascript, 0);
+        c.lua_setfield(L, -2, lua.name);
+    }
+
     c.lua_settop(L, -1 - 1);
 }
 
@@ -143,7 +138,7 @@ fn luaopen_luascript(L: ?*c.lua_State) callconv(.C) c_int {
             if (result != 0) {
                 return c.lua_error(L);
             }
-            c.lua_callk(L, 0, 1, @bitCast(c.lua_KContext, @as(c_longlong, 0)), null);
+            c.lua_callk(L, 0, 1, 0, null);
             return 1;
         }
     }

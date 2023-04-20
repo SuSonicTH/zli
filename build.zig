@@ -79,7 +79,7 @@ pub fn build(b: *std.Build) void {
     });
 
     lua.addIncludePath("lua/src");
-    lua.addCSourceFiles(&lua_c_sources, &lua_flags);
+    lua.addCSourceFiles(&lua_c_sources, &c_flags);
     lua.linkLibC();
 
     //FullMoon libraries
@@ -134,16 +134,6 @@ pub fn build(b: *std.Build) void {
 
 const c_flags = [_][]const u8{
     "-std=gnu99",
-};
-
-const lua_flags = [_][]const u8{
-    "-std=gnu99",
-    //        switch (target.os.tag) {
-    //            .linux => "-DLUA_USE_LINUX",
-    //            .macos => "-DLUA_USE_MACOSX",
-    //            .windows => "-DLUA_USE_WINDOWS",
-    //            else => "-DLUA_USE_POSIX",
-    //        },
 };
 
 const lua_c_sources = [_][]const u8{
