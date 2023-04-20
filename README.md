@@ -9,9 +9,10 @@ fullmoon is a portable lua interpreter statically compiled with musl with additi
 * [LPeg](https://www.inf.puc-rio.br/~roberto/lpeg/) includes re module
 * [luaunit](https://github.com/bluebird75/luaunit)
 * [lua-cjson](https://github.com/openresty/lua-cjson)
+* [argparse](https://github.com/luarocks/argparse)
 
 ## compilation
-The build requires you to have git an dzig installed
+The build requires you to have git and zig installed
 Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
 
 ## build process:

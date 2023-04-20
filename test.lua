@@ -7,6 +7,7 @@ local re = require "re"
 local aux = require "aux"
 local csv = require "csv"
 local json = require "cjson"
+local argparse = require "argparse"
 aux.extendlibs()
 
 TestLibraries = {}
@@ -141,16 +142,30 @@ end
 
 function TestLibraries:test_cjson_decode_encode()
     local decoded = json.decode('{"test":true,"name":"test_cjson_decode_encode", "days":[1,2,3]}')
-    lu.assertEquals(true, decoded.test)
-    lu.assertEquals("test_cjson_decode_encode", decoded.name)
-    lu.assertEquals({1, 2, 3}, decoded.days)
+    lu.assertEquals( decoded.test, true)
+    lu.assertEquals( decoded.name, "test_cjson_decode_encode")
+    lu.assertEquals(decoded.days, {1, 2, 3})
 
     local encoded = json.encode(decoded)
-    lu.assertEquals({
+    lu.assertEquals(json.decode(encoded), {
         test = true,
         name = "test_cjson_decode_encode",
         days = {1, 2, 3}
-    }, json.decode(encoded))
+    })
+end
+
+function TestLibraries:test_argparse()
+    local argparse = require "argparse"
+
+    local parser = argparse("script", "An example.")
+    parser:argument("input", "Input file.")
+    parser:option("-o --output", "Output file.", "a.out")
+    parser:option("-I --include", "Include locations."):count("*")
+
+    local args = parser:parse({'inputFile', '-I', 'incl', '-o','outputFile'})
+    lu.assertEquals(args.input,"inputFile")
+    lu.assertEquals(args.output,"outputFile")
+    lu.assertEquals(args.include,{'incl'})
 end
 
 local runner = lu.LuaUnit.new()

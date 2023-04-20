@@ -10,3 +10,6 @@
 [submodule "lua-cjson"]
 	path = lua-cjson
 	url = https://github.com/openresty/lua-cjson.git
+[submodule "argparse"]
+	path = argparse
+	url = https://github.com/luarocks/argparse.git

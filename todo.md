@@ -8,7 +8,6 @@
 * automatic UPX download and build option
 
 # additional libraries
-* argparse https://github.com/luarocks/argparse
 * cleanup & include zip/unzip
 * Luasocket https://github.com/lunarmodules/luasocket
 * http server/client (based on luasocket)
