@@ -3,7 +3,6 @@
 # fixes
 
 # improvements of compilation
-* generate lua source library header in buld (luaunit.lua , re.lua) instead of having it in repo
 
 # possible improvements of compilation
 * automatic UPX download and build option
