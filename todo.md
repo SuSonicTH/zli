@@ -8,6 +8,8 @@
 * automatic UPX download and build option
 
 # additional libraries
+* logger. Either https://github.com/doronbehar/lua-logger or own
+* https://github.com/daurnimator/lpeg_patterns ?
 * cleanup & include zip/unzip
 * Luasocket https://github.com/lunarmodules/luasocket
 * http server/client (based on luasocket)
@@ -20,7 +22,7 @@
 * Penlight pure lua libraries https://lunarmodules.github.io/Penlight/
 * a markdown library. either https://github.com/mpeterv/markdown or https://github.com/asb/lua-discount/
 * gui library https://github.com/Immediate-Mode-UI/Nuklear with wraper or https://www.raylib.com/ 
-* als reader/writer own or https://xlsxwriterlua.readthedocs.io/ https://github.com/jjensen/lua-xlsx/blob/master/xlsx.lua
+* xls reader/writer own or https://xlsxwriterlua.readthedocs.io/ https://github.com/jjensen/lua-xlsx/blob/master/xlsx.lua
 * maybe add some of these with a lua wraper
     * https://github.com/nothings/single_file_libs
     * https://github.com/nothings/stb
