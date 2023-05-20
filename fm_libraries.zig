@@ -106,6 +106,7 @@ const luascripts = [_]luascript{
     luascript{ .name = "luaunit", .script = @embedFile("luaunit/luaunit.lua") },
     luascript{ .name = "re", .script = @embedFile("lpeg/re.lua") },
     luascript{ .name = "argparse", .script = @embedFile("argparse/src/argparse.lua") },
+    luascript{ .name = "log", .script = @embedFile("fm_log.lua") },
 };
 
 pub export fn luaL_openlibs(arg_L: ?*c.lua_State) callconv(.C) void {

@@ -8,7 +8,6 @@
 * automatic UPX download and build option
 
 # additional libraries
-* logger. Either https://github.com/doronbehar/lua-logger or own
 * https://github.com/daurnimator/lpeg_patterns ?
 * cleanup & include zip/unzip
 * Luasocket https://github.com/lunarmodules/luasocket

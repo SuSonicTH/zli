@@ -8,6 +8,7 @@ local aux = require "aux"
 local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
+local log = require "log"
 aux.extendlibs()
 
 TestLibraries = {}
@@ -155,8 +156,6 @@ function TestLibraries:test_cjson_decode_encode()
 end
 
 function TestLibraries:test_argparse()
-    local argparse = require "argparse"
-
     local parser = argparse("script", "An example.")
     parser:argument("input", "Input file.")
     parser:option("-o --output", "Output file.", "a.out")
@@ -166,6 +165,41 @@ function TestLibraries:test_argparse()
     lu.assertEquals(args.input,"inputFile")
     lu.assertEquals(args.output,"outputFile")
     lu.assertEquals(args.include,{'incl'})
+end
+
+
+function logCollector()
+    local collector = {
+        logs={}
+    }
+    function collector:append(logger, level, message)
+        self.logs[#self.logs+1] = {logger._name, level, message}
+    end
+    return collector
+end
+
+function TestLibraries:test_log()
+    local appender= logCollector();
+    log:setAppender(appender)
+    log:info("First line")
+
+    local testlog=log["TEST"]
+    testlog:setLevel(log.level.ERROR)
+    testlog:info("Not shown")
+    testlog:error("Some error")
+    
+    log:info("Last line")
+
+    log:setLevel(log.level.ERROR)
+    log:info("Not shown")
+    log:error("Some error")
+
+    lu.assertEquals(appender.logs,{
+        {'ROOT',5,"First line"},
+        {'TEST',3,"Some error"},
+        {'ROOT',5,"Last line"},
+        {'ROOT',3,"Some error"},
+    })
 end
 
 local runner = lu.LuaUnit.new()
