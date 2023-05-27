@@ -201,5 +201,3 @@ function TestLibraries:test_log()
         {'ROOT',3,"Some error"},
     })
 end
-
-os.exit(lu.LuaUnit.run('--pattern', 'Test'))

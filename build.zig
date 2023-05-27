@@ -91,9 +91,9 @@ pub fn build(b: *std.Build) void {
     });
     lua.linkLibC();
 
-    //FullMoon libraries
+    //FullMoon
     const fullmoon = b.addStaticLibrary(.{
-        .name = "fullmoonLib",
+        .name = "fullmoon",
         .root_source_file = .{ .path = "fm_libraries.zig" },
         .target = target,
         .optimize = optimize,
@@ -135,7 +135,7 @@ pub fn build(b: *std.Build) void {
     const test_cmd = b.addRunArtifact(exe);
 
     test_cmd.step.dependOn(b.getInstallStep());
-    test_cmd.addArgs(&[_][]const u8{"test.lua"});
+    test_cmd.addArgs(&[_][]const u8{ "--test", "test.lua" });
 
     const test_step = b.step("test", "Test the app");
     test_step.dependOn(&test_cmd.step);

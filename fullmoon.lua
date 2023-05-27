@@ -1,13 +1,22 @@
 local argparse = require "argparse"
 
-local parser = argparse(arg[0], "A lua interpreter")
-parser:argument("script", "script to execute")
+local parser = argparse("FullMoon", "A cross platform interpreter with batteries included")
+parser:argument("script", "script to execute"):args("?")
+parser:option("-t --test", "run unit tests")
 
 local args = parser:parse()
+if (args.test) then
+    local script = io.open(args.test, 'r')
+    local source = script:read('a')
+    script:close()
 
-local lala="asdfgh"
-print (lala:sub(1,1))
+    source = source .. [[
+        local luaunit = require 'luaunit'
+        os.exit(luaunit.LuaUnit.run('--pattern', 'Test'))
+    ]]
+    assert(load(source, args.test))()
+end
 
-print("Executing "..args.script)
-assert(loadfile(args.script))()
-print("Done")
+if (args.script) then
+    assert(loadfile(args.script))()
+end
