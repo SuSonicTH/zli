@@ -206,7 +206,8 @@ const zlib_c_sources = [_][]const u8{
 };
 
 const fullmoon_c_sources = [_][]const u8{
-    "lua/src/lua.c",
+    //"lua/src/lua.c",
+    "fullmoon.c",
     "fm_aux.c",
     "fm_csv.c",
     "lx_value.c",

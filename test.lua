@@ -202,6 +202,4 @@ function TestLibraries:test_log()
     })
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType("text")
-os.exit(runner:runSuite())
+os.exit(lu.LuaUnit.run('--pattern', 'Test'))

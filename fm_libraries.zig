@@ -109,6 +109,8 @@ const luascripts = [_]luascript{
     luascript{ .name = "log", .script = @embedFile("fm_log.lua") },
 };
 
+export const fullmoon_main: [*c]const u8 = @embedFile("fullmoon.lua");
+
 pub export fn luaL_openlibs(arg_L: ?*c.lua_State) callconv(.C) void {
     var L = arg_L;
 
