@@ -104,5 +104,11 @@ int fm_crossline_cursor_move(lua_State* L) {
 }
 
 int fm_crossline_cursor_hide(lua_State* L) {
+    crossline_cursor_hide(1);
+    return 0;
+}
+
+int fm_crossline_cursor_show(lua_State* L) {
+    crossline_cursor_hide(0);
     return 0;
 }
