@@ -13,3 +13,6 @@
 [submodule "argparse"]
 	path = argparse
 	url = https://github.com/luarocks/argparse.git
+[submodule "Crossline"]
+	path = Crossline
+	url = https://github.com/jcwangxp/Crossline.git

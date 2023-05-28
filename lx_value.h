@@ -8,13 +8,26 @@ typedef struct luax_const {
     LUA_NUMBER value;
 } luax_const;
 
-void luax_settable_function_list(lua_State *L, int n, const luaL_Reg *lf);
-void luax_settable_constant_list(lua_State *L, int n, const luax_const *lc);
+void luax_settable_function_list(lua_State *L, int n, const luaL_Reg *list);
+void luax_create_subtable_function_list(lua_State *L, int n, const char *name, const luaL_Reg *list);
+
+void luax_settable_constant_list(lua_State *L, int n, const luax_const *list);
+void luax_create_subtable_constant_list(lua_State *L, int n, const char *name, const luax_const *list);
+
 void luax_tableinsert(lua_State *L, int tblidx, int pos);
 void luax_tableremove(lua_State *L, int tblidx, int pos);
 void luax_call(lua_State *L, char *name, int nargs, int nresults, int pop);
 void luax_call_lib(lua_State *L, char *package, char *function, int nargs, int nresults, int pop);
 void luax_regtable_create_list(lua_State *L, const char **name);
+
+#define luax_add_function_list_sub_table(L, tblidx, name, lf) \
+    do {                                                      \
+        int tbl = tblidx;                                     \
+        lua_pushliteral(L, name);                             \
+        lua_newtable(L);                                      \
+        luax_settable_function_list(L, lua_gettop(L), lf);    \
+        lua_settable(L, tbl)                                  \
+    } while (0)
 
 #define luax_tolong(L, n) \
     (long)lua_tonumber(L, n)

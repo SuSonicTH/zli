@@ -7,11 +7,25 @@ void luax_settable_constant_list(lua_State *L, int n, const luax_const *list) {
     }
 }
 
+void luax_create_subtable_constant_list(lua_State *L, int n, const char *name, const luax_const *list) {
+    lua_pushstring(L, name);
+    lua_newtable(L);
+    luax_settable_constant_list(L, lua_gettop(L), list);
+    lua_settable(L, n);
+}
+
 void luax_settable_function_list(lua_State *L, int n, const luaL_Reg *list) {
     while (list->name != NULL) {
         luax_settable_cfunction(L, n, list->name, list->func);
         list++;
     }
+}
+
+void luax_create_subtable_function_list(lua_State *L, int n, const char *name, const luaL_Reg *list) {
+    lua_pushstring(L, name);
+    lua_newtable(L);
+    luax_settable_function_list(L, lua_gettop(L), list);
+    lua_settable(L, n);
 }
 
 void luax_regtable_create_list(lua_State *L, const char **name) {

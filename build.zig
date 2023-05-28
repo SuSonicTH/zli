@@ -71,6 +71,16 @@ pub fn build(b: *std.Build) void {
     lua_cjson.addCSourceFiles(&lua_cjson_c_sources, &c_flags);
     lua_cjson.linkLibC();
 
+    //crossline
+    const crossline = b.addStaticLibrary(.{
+        .name = "crossline",
+        .target = target,
+        .optimize = optimize,
+    });
+    crossline.addIncludePath("Crossline/");
+    crossline.addCSourceFile("Crossline/crossline.c", &c_flags);
+    crossline.linkLibC();
+
     //Lua
     const lua = b.addStaticLibrary(.{
         .name = "lua",
@@ -99,7 +109,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     fullmoon.addIncludePath("./");
-    fullmoon.addIncludePath("lua/src");
+    fullmoon.addIncludePath("lua/src/");
+    fullmoon.addIncludePath("Crossline/");
     fullmoon.addCSourceFiles(&fullmoon_c_sources, &c_flags);
     fullmoon.linkLibC();
 
@@ -117,6 +128,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(zlib);
     exe.linkLibrary(lua_zlib);
     exe.linkLibrary(lua_cjson);
+    exe.linkLibrary(crossline);
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -206,10 +218,10 @@ const zlib_c_sources = [_][]const u8{
 };
 
 const fullmoon_c_sources = [_][]const u8{
-    //"lua/src/lua.c",
     "fullmoon.c",
     "fm_aux.c",
     "fm_csv.c",
+    "fm_crossline.c",
     "lx_value.c",
 };
 

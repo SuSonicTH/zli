@@ -10,6 +10,7 @@ pub extern fn luaopen_zlib(L: ?*c.lua_State) c_int;
 pub extern fn luaopen_cjson(L: ?*c.lua_State) c_int;
 pub extern fn luaopen_fmaux(L: ?*c.lua_State) c_int;
 pub extern fn luaopen_fmcsv(L: ?*c.lua_State) c_int;
+pub extern fn luaopen_fmcrossline(L: ?*c.lua_State) c_int;
 
 const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
@@ -94,6 +95,10 @@ const fullmoon_preload = [_]c.luaL_Reg{
     c.luaL_Reg{
         .name = "re",
         .func = &luaopen_luascript,
+    },
+    c.luaL_Reg{
+        .name = "crossline",
+        .func = &luaopen_fmcrossline,
     },
 };
 
