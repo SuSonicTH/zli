@@ -10,35 +10,67 @@
 static char fm_crossline_buffer[FM_CROSSLINE_BUFFER_SIZE];
 
 int luaopen_fmcrossline(lua_State* L);
+
 void fm_crossline_register_colors(lua_State* L);
-void fm_register_screen(lua_State* L);
 
 int fm_crossline_readline(lua_State* L);
 int fm_crossline_prompt_color_set(lua_State* L);
 int fm_crossline_color_set(lua_State* L);
+int fm_crossline_delimiter_set(lua_State* L);
+int fm_crossline_getch(lua_State* L);
 
 static const luaL_Reg fm_crossline[] = {
     {"readline", fm_crossline_readline},
     {"set_prompt_color", fm_crossline_prompt_color_set},
     {"set_color", fm_crossline_color_set},
+    {"set_delimiter", fm_crossline_delimiter_set},
+    {"getch", fm_crossline_getch},
+    {NULL, NULL}};
+
+int fm_crossline_paging_start(lua_State* L);
+int fm_crossline_paging_stop(lua_State* L);
+int fm_crossline_paging_check(lua_State* L);
+int fm_crossline_paging_print(lua_State* L);
+
+static const luaL_Reg fm_crossline_paging[] = {
+    {"start", fm_crossline_paging_start},
+    {"stop", fm_crossline_paging_stop},
+    {"check", fm_crossline_paging_check},
+    {"print", fm_crossline_paging_print},
     {NULL, NULL}};
 
 int fm_crossline_screen_get(lua_State* L);
 int fm_crossline_screen_clear(lua_State* L);
+
+static const luaL_Reg fm_crossline_screen[] = {
+    {"dimentions", fm_crossline_screen_get},
+    {"clear", fm_crossline_screen_clear},
+    {NULL, NULL}};
+
 int fm_crossline_cursor_get(lua_State* L);
 int fm_crossline_cursor_set(lua_State* L);
 int fm_crossline_cursor_move(lua_State* L);
 int fm_crossline_cursor_hide(lua_State* L);
 int fm_crossline_cursor_show(lua_State* L);
 
-static const luaL_Reg fm_crossline_screen[] = {
-    {"dimentions", fm_crossline_screen_get},
-    {"clear", fm_crossline_screen_clear},
-    {"get_cursor", fm_crossline_cursor_get},
-    {"set_cursor", fm_crossline_cursor_set},
-    {"move_cursor", fm_crossline_cursor_move},
-    {"hide_cursor", fm_crossline_cursor_hide},
-    {"show_cursor", fm_crossline_cursor_show},
+static const luaL_Reg fm_crossline_cursor[] = {
+    {"get", fm_crossline_cursor_get},
+    {"set", fm_crossline_cursor_set},
+    {"move", fm_crossline_cursor_move},
+    {"hide", fm_crossline_cursor_hide},
+    {"show", fm_crossline_cursor_show},
+    {NULL, NULL}};
+
+int fm_crossline_history_save(lua_State* L);
+int fm_crossline_history_load(lua_State* L);
+int fm_crossline_history_show(lua_State* L);
+int fm_crossline_history_clear(lua_State* L);
+
+static const luaL_Reg fm_crossline_history[] = {
+    {"save", fm_crossline_history_save},
+    {"load", fm_crossline_history_load},
+    {"show", fm_crossline_history_show},
+    {"clear", fm_crossline_history_clear},
     {NULL, NULL}};
 
 typedef struct {

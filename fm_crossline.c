@@ -3,7 +3,13 @@
 int luaopen_fmcrossline(lua_State* L) {
     luaL_newlib(L, fm_crossline);
     fm_crossline_register_colors(L);
-    luax_create_subtable_function_list(L, lua_gettop(L), "screen", fm_crossline_screen);
+
+    int index = lua_gettop(L);
+    luax_create_subtable_function_list(L, index, "paging", fm_crossline_paging);
+    luax_create_subtable_function_list(L, index, "screen", fm_crossline_screen);
+    luax_create_subtable_function_list(L, index, "cursor", fm_crossline_cursor);
+    luax_create_subtable_function_list(L, index, "history", fm_crossline_history);
+
     return 1;
 }
 
@@ -17,20 +23,6 @@ void fm_crossline_register_colors(lua_State* L) {
     luax_create_subtable_constant_list(L, lua_gettop(L), "bg", fm_crossline_bg_color);
 
     lua_settable(L, top);
-}
-
-int fm_crossline_prompt_color_set(lua_State* L) {
-    int fg = lua_tointeger(L, 1);
-    int bg = lua_tointeger(L, 2);
-    crossline_prompt_color_set(fg | bg);
-    return 0;
-}
-
-int fm_crossline_color_set(lua_State* L) {
-    int fg = lua_tointeger(L, 1);
-    int bg = lua_tointeger(L, 2);
-    crossline_color_set(fg | bg);
-    return 0;
 }
 
 int fm_crossline_readline(lua_State* L) {
@@ -49,6 +41,32 @@ int fm_crossline_readline(lua_State* L) {
     }
 
     lua_pushstring(L, line);
+    return 1;
+}
+
+int fm_crossline_prompt_color_set(lua_State* L) {
+    int fg = lua_tointeger(L, 1);
+    int bg = lua_tointeger(L, 2);
+    crossline_prompt_color_set(fg | bg);
+    return 0;
+}
+
+int fm_crossline_color_set(lua_State* L) {
+    int fg = lua_tointeger(L, 1);
+    int bg = lua_tointeger(L, 2);
+    crossline_color_set(fg | bg);
+    return 0;
+}
+
+int fm_crossline_delimiter_set(lua_State* L) {
+    crossline_delimiter_set(luaL_checkstring(L, 1));
+    return 0;
+}
+
+int fm_crossline_getch(lua_State* L) {
+    char character[2] = {0, 0};
+    character[0] = (char)crossline_getch();
+    lua_pushlstring(L, character, 1);
     return 1;
 }
 
@@ -101,6 +119,7 @@ int fm_crossline_cursor_move(lua_State* L) {
         y = luaL_checkinteger(L, 2);
     }
     crossline_cursor_move(y, x);
+    return 0;
 }
 
 int fm_crossline_cursor_hide(lua_State* L) {
@@ -110,5 +129,69 @@ int fm_crossline_cursor_hide(lua_State* L) {
 
 int fm_crossline_cursor_show(lua_State* L) {
     crossline_cursor_hide(0);
+    return 0;
+}
+
+int fm_crossline_paging_start(lua_State* L) {
+    crossline_paging_set(1);
+    return 0;
+}
+
+int fm_crossline_paging_stop(lua_State* L) {
+    crossline_paging_set(0);
+    return 0;
+}
+
+int fm_crossline_paging_check(lua_State* L) {
+    int length = luaL_checkinteger(L, 1);
+    int stop = crossline_paging_check(length);
+    lua_pushboolean(L, stop);
+    return 1;
+}
+
+int fm_crossline_paging_print_output(lua_State* L) {
+    size_t length;
+    char* string = lua_tolstring(L, -1, &length);
+    fwrite(string, 1, length, stdout);
+    if (string[length - 1] != '\n') {
+        putchar('\n');
+    }
+    return crossline_paging_check(length);
+}
+
+int fm_crossline_paging_print(lua_State* L) {
+    int stop = 0;
+    if (lua_type(L, 1) == LUA_TTABLE) {
+        lua_len(L, 1);
+        int size = lua_tointeger(L, -1);
+        for (int i = 1; i <= size && !stop; i++) {
+            lua_geti(L, 1, i);
+            stop = fm_crossline_paging_print_output(L);
+            lua_pop(L, 1);
+        }
+    } else {
+        stop = fm_crossline_paging_print_output(L);
+    }
+    lua_pushboolean(L, stop);
+    return 1;
+}
+
+int fm_crossline_history_save(lua_State* L) {
+    crossline_history_save(luaL_checkstring(L, 1));
+    return 0;
+}
+
+int fm_crossline_history_load(lua_State* L) {
+    crossline_history_load(luaL_checkstring(L, 1));
+    return 0;
+}
+
+int fm_crossline_history_show(lua_State* L) {
+    crossline_history_show();
+    return 0;
+}
+
+int fm_crossline_history_clear(lua_State* L) {
+    crossline_history_clear();
     return 0;
 }
