@@ -1,11 +1,22 @@
-# FullMoon
+# FullMoon todo
 
 # fixes
 
 # improvements of compilation
+* add goals for release build (for all platforms)
 
 # possible improvements of compilation
 * automatic UPX download and build option
+
+# additional functionality
+* add commandline option to execute buildin tools (ie fullmoon @repl executes buildin tool fm_repl.lua)
+* add option to extend lua-c-libraries with extra functionality with lua scripts? (without changing the c-library)
+* add functionality to add payload (scripts, modules and resources) to end of exe
+** builtin tool to "compile" exe
+** module can load payload files
+** io.open io.read,... can load payload files
+** fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
+* add commandline option to execute payload scripts (also @script.lua ??)
 
 # additional libraries
 * https://github.com/daurnimator/lpeg_patterns ?
@@ -15,8 +26,9 @@
 * xml library
 * tar library
 * terminal ui library, either some existing lua binding
-    * or own based on https://github.com/dankamongmen/notcurses
     * https://github.com/hoelzro/lua-term <-- simple (almost) pure lua
+    * or own based on https://github.com/dankamongmen/notcurses
+    * or own based an already included Crossline lib
 * luacheck. Static analyser and linter https://github.com/lunarmodules/luacheck
 * Penlight pure lua libraries https://lunarmodules.github.io/Penlight/
 * a markdown library. either https://github.com/mpeterv/markdown or https://github.com/asb/lua-discount/
