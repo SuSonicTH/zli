@@ -129,6 +129,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(lua_zlib);
     exe.linkLibrary(lua_cjson);
     exe.linkLibrary(crossline);
+    exe.strip = true;
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
