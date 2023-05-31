@@ -15,4 +15,4 @@
 	url = https://github.com/luarocks/argparse.git
 [submodule "Crossline"]
 	path = Crossline
-	url = https://github.com/jcwangxp/Crossline.git
+	url = https://github.com/SuSonicTH/Crossline.git
