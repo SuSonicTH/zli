@@ -222,6 +222,7 @@ const fullmoon_c_sources = [_][]const u8{
     "fm_aux.c",
     "fm_csv.c",
     "fm_crossline.c",
+    "fm_sb.c",
     "lx_value.c",
 };
 

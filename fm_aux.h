@@ -5,19 +5,8 @@
 #include <lx_value.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fm_sb.h>
 
-typedef struct fm_sb_node {
-    char *str;
-    char copy;
-    int len;
-    struct fm_sb_node *next;
-} fm_sb_node;
-
-typedef struct fm_sb {
-    fm_sb_node *root;
-    fm_sb_node *last;
-    unsigned int len;
-} fm_sb;
 
 int luaopen_fmaux(lua_State *L);
 
