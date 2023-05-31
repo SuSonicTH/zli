@@ -120,8 +120,8 @@ function TestAuxLib:test_table_to_String()
         3,
         key = "value"
     }
-    lu.assertEquals(aux.tabletostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
-    lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl={\n  1,\n  2,\n  3,\n  key="value",\n}')
+    lu.assertEquals(aux.tabletostring(tbl, "tbl"), 'tbl = {\n  1,\n  2,\n  3,\n  key = "value",\n}')
+    lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl = {\n  1,\n  2,\n  3,\n  key = "value",\n}')
 end
 
 function TestLibraries:test_csv_create_and_read()
