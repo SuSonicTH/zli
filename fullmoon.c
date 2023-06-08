@@ -8,19 +8,11 @@
 #include "lua.h"
 #include "lualib.h"
 
-#if !defined(LUA_PROGNAME)
-#define LUA_PROGNAME "FullMoon"
-#endif
-
-#if !defined(LUA_INIT_VAR)
-#define LUA_INIT_VAR "LUA_INIT"
-#endif
-
-#define LUA_INITVARVERSION LUA_INIT_VAR LUA_VERSUFFIX
+#define PROGRAMM_NAME "FullMoon"
 
 static lua_State *globalL = NULL;
 
-static const char *progname = LUA_PROGNAME;
+static const char *progname = PROGRAMM_NAME;
 
 #if defined(LUA_USE_POSIX)
 
@@ -48,12 +40,6 @@ static void laction(int i) {
     int flag = LUA_MASKCALL | LUA_MASKRET | LUA_MASKLINE | LUA_MASKCOUNT;
     setsignal(i, SIG_DFL); /* if another SIGINT happens, terminate process */
     lua_sethook(globalL, lstop, flag, 1);
-}
-
-static void print_usage(const char *message) {
-    lua_writestringerror("%s: ", progname);
-    lua_writestringerror("%s\n", message);
-    lua_writestringerror("usage: %s script [args]\n", progname);
 }
 
 static void l_message(const char *pname, const char *msg) {
@@ -84,22 +70,17 @@ static int msghandler(lua_State *L) {
     return 1;                     /* return the traceback */
 }
 
-static int docall(lua_State *L, int narg, int nres) {
+static int docall(lua_State *L) {
     int status;
-    int base = lua_gettop(L) - narg;  /* function index */
+    int base = lua_gettop(L);  /* function index */
     lua_pushcfunction(L, msghandler); /* push message handler */
     lua_insert(L, base);              /* put it under function and args */
     globalL = L;                      /* to be available to 'laction' */
     setsignal(SIGINT, laction);       /* set C-signal handler */
-    status = lua_pcall(L, narg, nres, base);
+    status = lua_pcall(L, 0, 0, base);
     setsignal(SIGINT, SIG_DFL); /* reset C-signal handler */
     lua_remove(L, base);        /* remove message handler from the stack */
     return status;
-}
-
-static void print_version(void) {
-    lua_writestring(LUA_COPYRIGHT, strlen(LUA_COPYRIGHT));
-    lua_writeline();
 }
 
 static void createargtable(lua_State *L, char **argv, int argc) {
@@ -112,7 +93,7 @@ static void createargtable(lua_State *L, char **argv, int argc) {
 }
 
 static int dochunk(lua_State *L, int status) {
-    if (status == LUA_OK) status = docall(L, 0, 0);
+    if (status == LUA_OK) status = docall(L);
     return report(L, status);
 }
 
@@ -136,34 +117,6 @@ static int pushargs(lua_State *L) {
     return n;
 }
 
-static int handle_script(lua_State *L, char **argv) {
-    int status;
-    const char *fname = argv[0];
-    if (strcmp(fname, "-") == 0 && strcmp(argv[-1], "--") != 0)
-        fname = NULL; /* stdin */
-    status = luaL_loadfile(L, fname);
-    if (status == LUA_OK) {
-        int n = pushargs(L); /* push arguments to script */
-        status = docall(L, n, LUA_MULTRET);
-    }
-    return report(L, status);
-}
-
-static int handle_luainit(lua_State *L) {
-    const char *name = "=" LUA_INITVARVERSION;
-    const char *init = getenv(name + 1);
-    if (init == NULL) {
-        name = "=" LUA_INIT_VAR;
-        init = getenv(name + 1); /* try alternative name */
-    }
-    if (init == NULL)
-        return LUA_OK;
-    else if (init[0] == '@')
-        return dofile(L, init + 1);
-    else
-        return dostring(L, init, name);
-}
-
 extern const char *fullmoon_main;
 
 static int pmain(lua_State *L) {
@@ -175,13 +128,11 @@ static int pmain(lua_State *L) {
     luaL_openlibs(L);                      /* open standard libraries */
     createargtable(L, argv, argc); /* create table 'arg' */
     lua_gc(L, LUA_GCGEN, 0, 0);            /* GC in generational mode */
-    if (handle_luainit(L) != LUA_OK)       /* run LUA_INIT */
-        return 0;                          /* error running LUA_INIT */
 
     if (argc >= 2 && argv[1][0] == '-' && argv[1][1] == 0) {
         return dochunk(L, luaL_loadfile(L, NULL));
     } else {
-        return dostring(L, fullmoon_main, "fullmoon");
+        return dostring(L, fullmoon_main, PROGRAMM_NAME);
     }
     lua_pushboolean(L, 1); /* signal no errors */
     return 1;
