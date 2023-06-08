@@ -112,6 +112,7 @@ const luascripts = [_]luascript{
     luascript{ .name = "re", .script = @embedFile("lpeg/re.lua") },
     luascript{ .name = "argparse", .script = @embedFile("argparse/src/argparse.lua") },
     luascript{ .name = "log", .script = @embedFile("fm_log.lua") },
+    luascript{ .name = "repl", .script = @embedFile("fm_repl.lua") },
 };
 
 export const fullmoon_main: [*c]const u8 = @embedFile("fullmoon.lua");

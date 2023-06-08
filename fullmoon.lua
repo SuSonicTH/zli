@@ -1,4 +1,6 @@
 local argparse = require "argparse"
+local aux = require "aux"
+aux.extendlibs()
 
 local parser = argparse("FullMoon", "A cross platform interpreter with batteries included")
 parser:argument("script", "script to execute"):args("?")
@@ -15,8 +17,8 @@ if (args.test) then
         os.exit(luaunit.LuaUnit.run('--pattern', 'Test'))
     ]]
     assert(load(source, args.test))()
-end
-
-if (args.script) then
+elseif (args.script) then
     assert(loadfile(args.script))()
+else
+    require("repl").execute()
 end

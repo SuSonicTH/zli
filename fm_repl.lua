@@ -35,7 +35,7 @@ local function printError(type, message)
     io.write(message, "\n")
 end
 
-function Pretty_print(name, value) 
+function Pretty_print(name, value)
     if type(value) == 'table' then
         print(table.tostring(value, name))
     elseif type(value) == 'string' then
@@ -60,38 +60,41 @@ local function get_multi_line(block)
         quit_if_requested(line)
         block = block .. "\n" .. line
         result, error = load(block, "repl")
-    until(result ~=nil or error:sub(-5) ~= "<eof>")
+    until (result ~= nil or error:sub(-5) ~= "<eof>")
     return result, error
 end
 
-while (true) do
-    local line = cl.readline("> ")
-    quit_if_requested(line)
-    if (line:sub(1,1)=='?') then
-        line ="Pretty_print('" .. line:sub(2) .."', ".. line:sub(2).. ")"
-    end
-
-    local result, error = load("return "..line, "repl")
-    if result == nil then 
-        result, error = load(line, "repl")
-        if result == nil and error:sub(-5) == "<eof>" then
-            result, error = get_multi_line(line)
+local function execute()
+    while (true) do
+        local line = cl.readline("> ")
+        quit_if_requested(line)
+        if (line:sub(1, 1) == '?') then
+            line = "Pretty_print('" .. line:sub(2) .. "', " .. line:sub(2) .. ")"
         end
-    end
 
-    if (result) then
-        local success, value = pcall(result)
-        if (success) then
-            if (value) then
-                print(value)
+        local result, error = load("return " .. line, "repl")
+        if result == nil then
+            result, error = load(line, "repl")
+            if result == nil and error:sub(-5) == "<eof>" then
+                result, error = get_multi_line(line)
+            end
+        end
+
+        if (result) then
+            local success, value = pcall(result)
+            if (success) then
+                if (value) then
+                    print(value)
+                end
+            else
+                printError("eval", value)
             end
         else
-            printError("eval", value)
+            printError("compile", error)
         end
-    else
-        printError("compile", error)
     end
 end
 
-
-
+return {
+    execute = execute
+}
