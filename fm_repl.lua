@@ -18,7 +18,7 @@ print([[
 
     A Fullmoon Read Print Eval Loop
     Type a command and hit enter to execute it
-    the results will be printed and you can enter hte next command
+    the results will be printed and you can enter the next command
 
     To exit the loop enter quit on a new line
     Hit F1 to see help on editing commands
