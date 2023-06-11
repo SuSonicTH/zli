@@ -235,9 +235,9 @@ fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
         "fm_aux.c",
         "fm_csv.c",
         "fm_crossline.c",
-        "fm_sb.c",
+        "fm_sbuilder.c",
         "lx_value.c",
-    }, &[_][]const u8{"-std=gnu99"});
+    }, &[_][]const u8{ "-std=gnu99", "-DFM_SBUILDER_LUA" });
     lib.linkLibC();
     return lib;
 }

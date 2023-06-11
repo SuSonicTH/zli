@@ -9,7 +9,6 @@
 * automatic UPX download and build option
 
 # additional functionality
-* add commandline option to execute buildin tools (ie fullmoon @repl executes buildin tool fm_repl.lua)
 * add option to extend lua-c-libraries with extra functionality with lua scripts? (without changing the c-library)
 * add functionality to add payload (scripts, modules and resources) to end of exe
 ** builtin tool to "compile" exe

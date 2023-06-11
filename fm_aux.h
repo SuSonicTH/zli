@@ -5,8 +5,7 @@
 #include <lx_value.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fm_sb.h>
-
+#include <fm_sbuilder.h>
 
 int luaopen_fmaux(lua_State *L);
 

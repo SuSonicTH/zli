@@ -615,7 +615,7 @@ int fm_aux_tabletostring(lua_State *L) {
     const char *le = lua_tostring(L, 3);
     const char *ind = lua_tostring(L, 4);
     int lvl = 0;
-    unsigned int retlen;
+    size_t retlen;
 
     if (le == NULL)
         le = "\n";
@@ -636,7 +636,7 @@ int fm_aux_tabletostring(lua_State *L) {
         fm_sb_add_constant(buffer, "}");
     }
 
-    char *ret = fm_sb_concat(buffer, &retlen);
+    char *ret = fm_sb_get(buffer, &retlen);
     lua_pushlstring(L, ret, retlen);
     fm_sb_free(buffer);
 
