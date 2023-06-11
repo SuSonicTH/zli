@@ -2,11 +2,9 @@
 
 # fixes
 
-# improvements of compilation
-* add goals for release build (for all platforms)
-
 # possible improvements of compilation
 * automatic UPX download and build option
+* add goals for release build (for all platforms)
 
 # additional functionality
 * add option to extend lua-c-libraries with extra functionality with lua scripts? (without changing the c-library)
@@ -15,11 +13,11 @@
 ** module can load payload files
 ** io.open io.read,... can load payload files
 ** fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
-* add commandline option to execute payload scripts (also @script.lua ??)
+* add commandline option to execute payload scripts (@script.lua ??)
 
 # additional libraries
-* https://github.com/daurnimator/lpeg_patterns ?
 * cleanup & include zip/unzip
+* https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket
 * http server/client (based on luasocket)
 * xml library
