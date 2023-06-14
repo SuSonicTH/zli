@@ -162,6 +162,9 @@ void luax_regtable_create_list(lua_State *L, const char **name);
 #define luax_settable_number(L, tblidx, name, cvar) \
     luax_settable_type(L, tblidx, name, lua_pushnumber, (lua_Number)cvar);
 
+#define luax_settable_integer(L, tblidx, name, cvar) \
+    luax_settable_type(L, tblidx, name, lua_pushinteger, cvar);
+
 #define luax_settable_lstring(L, tblidx, name, cvar, slen) \
     lua_pushstring(L, name);                               \
     lua_pushlstring(L, cvar, slen);                        \

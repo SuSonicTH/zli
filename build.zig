@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaZlib(b, target, optimize));
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
+    exe.linkLibrary(fmZip(b, target, optimize));
     exe.linkLibrary(fullmoon(b, target, optimize));
     exe.strip = true;
 
@@ -186,6 +187,24 @@ fn luaZlib(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mod
     lib.addIncludePath(luaPath);
     lib.addIncludePath("zlib/");
     lib.addCSourceFile("lua-zlib/lua_zlib.c", &[_][]const u8{ "-std=gnu99", "-DLZLIB_COMPAT" });
+    lib.linkLibC();
+    return lib;
+}
+
+fn fmZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+    const lib = b.addStaticLibrary(.{
+        .name = "fmZip",
+        .target = target,
+        .optimize = optimize,
+    });
+    lib.addIncludePath("./");
+    lib.addIncludePath(luaPath);
+    lib.addIncludePath("zlib/");
+    lib.addIncludePath("zlib/contrib/minizip/");
+    lib.addCSourceFiles(&[_][]const u8{ "zlib/contrib/minizip/zip.c", "zlib/contrib/minizip/unzip.c", "zlib/contrib/minizip/ioapi.c", "fm_zip.c", switch (target.getOsTag()) {
+        .windows => "zlib/contrib/minizip/iowin32.c",
+        else => "",
+    } }, &.{"-std=c99"});
     lib.linkLibC();
     return lib;
 }
