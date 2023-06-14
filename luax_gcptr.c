@@ -1,6 +1,6 @@
-#include "lx_gcptr.h"
+#include "luax_gcptr.h"
 
-void lx_register_mt(lua_State *L, const luaL_Reg *list) {
+void luax_register_mt(lua_State *L, const luaL_Reg *list) {
     while (list->name) {
         if (luaL_newmetatable(L, list->name)) {
             lua_pushstring(L, "__gc");
@@ -12,25 +12,25 @@ void lx_register_mt(lua_State *L, const luaL_Reg *list) {
     }
 }
 
-void lx_createudata(lua_State *L, void *udata, const char *mtname) {
-    lx_udbox *ud;
-    ud = lua_newuserdatauv(L, sizeof(lx_udbox), 0);
+void luax_createudata(lua_State *L, void *udata, const char *mtname) {
+    luax_udbox *ud;
+    ud = lua_newuserdatauv(L, sizeof(luax_udbox), 0);
     ud->ptr = udata;
     luaL_getmetatable(L, mtname);
     lua_setmetatable(L, -2);
 }
 
-void lx_createudata_set_table(lua_State *L, void *udata, const char *mtname, int pos) {
+void luax_createudata_set_table(lua_State *L, void *udata, const char *mtname, int pos) {
     lua_pushstring(L, mtname);
-    lx_createudata(L, udata, mtname);
+    luax_createudata(L, udata, mtname);
     lua_settable(L, pos);
 }
 
-int lx_createudata_table(lua_State *L, void *udata, const char *mtname) {
+int luax_createudata_table(lua_State *L, void *udata, const char *mtname) {
     lua_newtable(L);
     int n = lua_gettop(L);
     lua_pushstring(L, mtname);
-    lx_createudata(L, udata, mtname);
+    luax_createudata(L, udata, mtname);
     lua_settable(L, n);
     return n;
 }

@@ -1,4 +1,4 @@
-#include "lx_value.h"
+#include "luax_value.h"
 
 void luax_settable_constant_list(lua_State *L, int n, const luax_const *list) {
     while (list->name != NULL) {

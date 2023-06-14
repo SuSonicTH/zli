@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <lauxlib.h>
-#include <lx_value.h>
+#include <luax_value.h>
 
 int luaopen_fmzip(lua_State *L);
 

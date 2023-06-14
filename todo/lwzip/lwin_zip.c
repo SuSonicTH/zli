@@ -1,7 +1,7 @@
 #include <lauxlib.h>
 #include <lx_gcptr.h>
 #include <lx_error.h>
-#include <lx_value.h>
+#include <luax_value.h>
 
 #include "lwin_zip.h"
 //#include "resource.h"

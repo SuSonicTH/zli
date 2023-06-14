@@ -29,8 +29,8 @@ void fm_sb_free(fm_sb *sb);
 
 #ifdef FM_SBUILDER_LUA
 #include <lauxlib.h>
-#include <lx_value.h>
-#include <lx_gcptr.h>
+#include <luax_value.h>
+#include <luax_gcptr.h>
 
 int luaopen_fmsbuilder(lua_State *L);
 

@@ -1,5 +1,5 @@
 #include "lwin_xml.h"
-#include "lx_value.h"
+#include "luax_value.h"
 
 //TODO: implement reading of CDATA
 //TODO: implement Open Function to read from filestream

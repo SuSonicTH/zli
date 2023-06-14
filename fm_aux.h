@@ -2,7 +2,7 @@
 #define FM_AUX_INCLUDED
 
 #include <lauxlib.h>
-#include <lx_value.h>
+#include <luax_value.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fm_sbuilder.h>

@@ -2,7 +2,7 @@
 #define FM_CSV_INCLUDED
 
 #include <lauxlib.h>
-#include <lx_value.h>
+#include <luax_value.h>
 #include <string.h>
 
 #define FM_CSV_MAXCOL 512

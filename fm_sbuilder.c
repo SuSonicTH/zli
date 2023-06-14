@@ -71,14 +71,14 @@ void fm_sb_free(fm_sb *sb) {
 #ifdef FM_SBUILDER_LUA
 int luaopen_fmsbuilder(lua_State *L) {
     luaL_newlib(L, fm_sbuilder_reg);
-    lx_register_mt(L, fm_sbuilder_udatamt);
+    luax_register_mt(L, fm_sbuilder_udatamt);
     return 1;
 }
 
 int fm_sbuilder_gc(lua_State *L) {
     fm_sb *sb;
     luaL_checkudata(L, 1, FM_SB_UDATA_NAME);
-    lx_to_cgudata(L, 1, fm_sb*, sb);
+    luax_to_cgudata(L, 1, fm_sb *, sb);
     if (sb)
         fm_sb_free(sb);
     return 0;
@@ -86,7 +86,7 @@ int fm_sbuilder_gc(lua_State *L) {
 
 int fm_sbuilder_new(lua_State *L) {
     int size = luaL_optinteger(L, 2, 0);
-    int n = lx_createudata_table(L, fm_sb_alloc(size), FM_SB_UDATA_NAME);
+    int n = luax_createudata_table(L, fm_sb_alloc(size), FM_SB_UDATA_NAME);
 
     // set functions
     luaL_Reg *function = (luaL_Reg *)fm_sbuilder_functions;
@@ -103,7 +103,7 @@ int fm_sbuilder_new(lua_State *L) {
 int fm_sbuilder_add(lua_State *L) {
     int top = lua_gettop(L);
     fm_sb *sb;
-    lx_getarg_objh(L,1,FM_SB_UDATA_NAME,fm_sb*,sb, "not a valid string_builder object");
+    luax_getarg_objh(L, 1, FM_SB_UDATA_NAME, fm_sb *, sb, "not a valid string_builder object");
 
     size_t len;
     const char *str;
@@ -112,7 +112,7 @@ int fm_sbuilder_add(lua_State *L) {
         int type = lua_type(L, i);
         if (type == LUA_TTABLE) {
             fm_sb *sbarg;
-            lx_getarg_objh(L,i,FM_SB_UDATA_NAME,fm_sb*,sbarg, "not a valid string_builder object");
+            luax_getarg_objh(L, i, FM_SB_UDATA_NAME, fm_sb *, sbarg, "not a valid string_builder object");
             str = fm_sb_get(sbarg, &len);
             fm_sb_add(sb, str, len);
         } else if (type == LUA_TSTRING || type == LUA_TNUMBER) {
@@ -134,14 +134,14 @@ int fm_sbuilder_add(lua_State *L) {
 
 int fm_sbuilder_len(lua_State *L) {
     fm_sb *sb;
-    lx_getarg_objh(L,1,FM_SB_UDATA_NAME,fm_sb*,sb, "not a valid string_builder object");
+    luax_getarg_objh(L, 1, FM_SB_UDATA_NAME, fm_sb *, sb, "not a valid string_builder object");
     lua_pushinteger(L, fm_sb_size(sb));
     return 1;
 }
 
 int fm_sbuilder_tostring(lua_State *L) {
     fm_sb *sb;
-    lx_getarg_objh(L,1,FM_SB_UDATA_NAME,fm_sb*,sb, "not a valid string_builder object");
+    luax_getarg_objh(L, 1, FM_SB_UDATA_NAME, fm_sb *, sb, "not a valid string_builder object");
     size_t len;
     char *str = fm_sb_get(sb, &len);
     lua_pushlstring(L, str, len);
@@ -150,7 +150,7 @@ int fm_sbuilder_tostring(lua_State *L) {
 
 int fm_sbuilder_reset(lua_State *L) {
     fm_sb *sb;
-    lx_getarg_objh(L,1,FM_SB_UDATA_NAME,fm_sb*,sb, "not a valid string_builder object");
+    luax_getarg_objh(L, 1, FM_SB_UDATA_NAME, fm_sb *, sb, "not a valid string_builder object");
     fm_sb_reset(sb);
     lua_settop(L, 1);
     return 1;
@@ -158,7 +158,7 @@ int fm_sbuilder_reset(lua_State *L) {
 
 int fm_sbuilder_reserve(lua_State *L) {
     fm_sb *sb;
-    lx_getarg_objh(L,1,FM_SB_UDATA_NAME,fm_sb*,sb, "not a valid string_builder object");
+    luax_getarg_objh(L, 1, FM_SB_UDATA_NAME, fm_sb *, sb, "not a valid string_builder object");
     int len = luaL_checkinteger(L, 2);
     fm_sb_reserve(sb, len);
     lua_settop(L, 1);

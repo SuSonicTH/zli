@@ -3,7 +3,7 @@
 
 #include <crossline.h>
 #include <lauxlib.h>
-#include <lx_value.h>
+#include <luax_value.h>
 #include <string.h>
 
 #define FM_CROSSLINE_BUFFER_SIZE 4096
