@@ -74,6 +74,7 @@ int fm_zip_open(lua_State *L) {
         luax_settable_boolean(L, 3, "crypted", (file_info.flag & 1));
         luax_settable_string(L, 3, "method", fm_zip_get_compression_method_name(file_info));
         luax_settable_string(L, 3, "time", fm_zip_get_time_string(file_info));
+        luax_settable_string(L, 3, "directory", filename_inzip[strlen(filename_inzip)=='/');
 
         lua_rawseti(L, 2, i + 1);
         if ((i + 1) < gi.number_entry) {
