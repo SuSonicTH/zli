@@ -16,7 +16,7 @@ typedef struct fm_sb {
 
 void fm_sb_reset(fm_sb *sb);
 void fm_sb_init(fm_sb *sb, size_t size);
-fm_sb *fm_sb_alloc();
+fm_sb *fm_sb_alloc(size_t size);
 void fm_sb_reserve(fm_sb *sb, size_t len);
 void fm_sb_add(fm_sb *sb, const char *str, size_t len);
 void fm_sb_add_string(fm_sb *sb, const char *str);
@@ -30,9 +30,9 @@ void fm_sb_free(fm_sb *sb);
 #ifdef FM_SBUILDER_LUA
 #include <lauxlib.h>
 #include <lx_value.h>
+#include <lx_gcptr.h>
 
 int luaopen_fmsbuilder(lua_State *L);
-
 
 int fm_sbuilder_new(lua_State *L);
 int fm_sbuilder_add(lua_State *L);
@@ -41,8 +41,15 @@ int fm_sbuilder_tostring(lua_State *L);
 int fm_sbuilder_reset(lua_State *L);
 int fm_sbuilder_reserve(lua_State *L);
 
+int fm_sbuilder_gc(lua_State *L);
+
 static const luaL_Reg fm_sbuilder_reg[] = {
     {"new", fm_sbuilder_new},
+    {NULL, NULL}};
+
+#define FM_SB_UDATA_NAME "_fm_sbuilder_fm_sb"
+static const luaL_Reg fm_sbuilder_udatamt[] = {
+    {FM_SB_UDATA_NAME, fm_sbuilder_gc},
     {NULL, NULL}};
 
 static const luaL_Reg fm_sbuilder_functions[] = {

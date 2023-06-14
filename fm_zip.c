@@ -66,15 +66,35 @@ int fm_zip_open(lua_State *L) {
             return 2;
         }
 
+        int filename_len = strlen(filename_inzip);
+        int lastchar = filename_inzip[filename_len - 1] == '/';
+        int isdirectory = 0;
+        if (lastchar == '/' || lastchar == '\\') {
+            isdirectory = 1;
+        }
+
+        char *filename = filename_inzip + filename_len;
+        while (*(filename-1) != '/' && *(filename-1) != '\\' && filename > filename_inzip) {
+            filename--;
+        }
+        
+        int filename_pos = filename - filename_inzip;
+        char file_path[512];
+        memcpy(file_path, filename_inzip, filename_pos);
+        file_path[filename_pos] = 0;
+
         lua_newtable(L);
-        luax_settable_string(L, 3, "name", filename_inzip);
+        luax_settable_string(L, 3, "fullname", filename_inzip);
+        luax_settable_string(L, 3, "name", filename);
+        luax_settable_string(L, 3, "path", file_path);
         luax_settable_integer(L, 3, "size", file_info.uncompressed_size);
         luax_settable_integer(L, 3, "compressed", file_info.compressed_size);
         luax_settable_number(L, 3, "ratio", ((file_info.compressed_size * 100.0) / file_info.uncompressed_size));
         luax_settable_boolean(L, 3, "crypted", (file_info.flag & 1));
         luax_settable_string(L, 3, "method", fm_zip_get_compression_method_name(file_info));
         luax_settable_string(L, 3, "time", fm_zip_get_time_string(file_info));
-        luax_settable_string(L, 3, "directory", filename_inzip[strlen(filename_inzip)=='/');
+        luax_settable_boolean(L, 3, "isdirectory", isdirectory);
+        luax_settable_boolean(L, 3, "isfile", !isdirectory);
 
         lua_rawseti(L, 2, i + 1);
         if ((i + 1) < gi.number_entry) {

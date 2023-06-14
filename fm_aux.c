@@ -610,7 +610,7 @@ int fm_aux_writelines(lua_State *L) {
 }
 
 int fm_aux_tabletostring(lua_State *L) {
-    fm_sb *buffer = fm_sb_alloc();
+    fm_sb *buffer = fm_sb_alloc(0);
     const char *name = lua_tostring(L, 2);
     const char *le = lua_tostring(L, 3);
     const char *ind = lua_tostring(L, 4);

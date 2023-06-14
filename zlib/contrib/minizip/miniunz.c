@@ -264,7 +264,7 @@ static int do_list(uf)
         /* display a '*' if the file is crypted */
         if ((file_info.flag & 1) != 0)
             charCrypt='*';
-
+ 
         if (file_info.compression_method==0)
             string_method="Stored";
         else
