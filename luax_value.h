@@ -170,14 +170,16 @@ void luax_regtable_create_list(lua_State *L, const char **name);
     lua_pushlstring(L, cvar, slen);                        \
     lua_settable(L, tblidx);
 
-#define luax_tostring_copy(L, idx, cvar)                            \
-    cvar = (char *)malloc(sizeof(char) * (lua_strlen(L, idx) + 1)); \
+#define luax_tostring_copy(L, idx, cvar)                              \
+    lua_len(L, idx);                                                  \
+    cvar = (char *)malloc(sizeof(char) * (lua_tointeger(L, -1) + 1)); \
+    lua_pop(L, 1);                                                    \
     strcpy(cvar, lua_tostring(L, idx));
 
 #define luax_tolstring_copy(L, idx, cvar, slen) \
-    slen = lua_strlen(L, idx);                  \
+    slen = lua_len(L, idx);                     \
     cvar = (char *)malloc(sizeof(char) * slen); \
-        strcpy(cvar,lua_tolstring(L,idx,NULL);
+    strcpy(cvar,lua_tolstring(L,idx,NULL);
 
 #define luax_regtable_create(name) \
     lua_pushstring(L, name);       \
