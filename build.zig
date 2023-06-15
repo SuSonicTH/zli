@@ -201,10 +201,18 @@ fn fmZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode)
     lib.addIncludePath(luaPath);
     lib.addIncludePath("zlib/");
     lib.addIncludePath("zlib/contrib/minizip/");
-    lib.addCSourceFiles(&[_][]const u8{ "zlib/contrib/minizip/zip.c", "zlib/contrib/minizip/unzip.c", "zlib/contrib/minizip/ioapi.c", "fm_zip.c", switch (target.getOsTag()) {
-        .windows => "zlib/contrib/minizip/iowin32.c",
-        else => "",
-    } }, &.{"-std=c99"});
+    lib.addCSourceFiles(&[_][]const u8{
+        "zlib/contrib/minizip/zip.c",
+        "zlib/contrib/minizip/unzip.c",
+        "zlib/contrib/minizip/ioapi.c",
+        "fm_zip.c",
+    }, &.{"-std=c99"});
+    switch (target.getOsTag()) {
+        .windows => {
+            lib.addCSourceFile("zlib/contrib/minizip/iowin32.c", &.{"-std=c99"});
+        },
+        else => {},
+    }
     lib.linkLibC();
     return lib;
 }
