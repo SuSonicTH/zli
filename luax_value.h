@@ -190,4 +190,14 @@ void luax_regtable_create_list(lua_State *L, const char **name);
     lua_pushstring(L, name);    \
     lua_gettable(L, LUA_REGISTRYINDEX);
 
+#define luax_gsub(L, dest, src, replace, with) \
+    luaL_gsub(L, src, replace, with);          \
+    dest = lua_tostring(L, -1);                \
+    lua_pop(L, 2);
+
+#define luax_fstring(L, dest, fmt, ...)   \
+    lua_pushfstring(L, fmt, __VA_ARGS__); \
+    dest = lua_tostring(L, -1);           \
+    lua_pop(L, 1);
+
 #endif  // LUAX_VALUE
