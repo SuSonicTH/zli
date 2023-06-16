@@ -27,23 +27,34 @@ typedef struct {
         and saves the boxed pointer in cvar of type ctype
 */
 #define luax_gettable_gcudata(L, tblidx, utype, ctype, cvar) \
-    cvar = NULL;                                           \
-    lua_pushstring(L, utype);                              \
-    lua_gettable(L, tblidx);                               \
-    if (!lua_isnil(L, -1) && lua_getmetatable(L, -1)) {    \
-        lua_getfield(L, LUA_REGISTRYINDEX, utype);         \
-        if (lua_rawequal(L, -1, -2))                       \
-            luax_to_cgudata(L, -3, ctype, cvar);              \
-        lua_pop(L, 2);                                     \
-    }                                                      \
+    cvar = NULL;                                             \
+    lua_pushstring(L, utype);                                \
+    lua_gettable(L, tblidx);                                 \
+    if (!lua_isnil(L, -1) && lua_getmetatable(L, -1)) {      \
+        lua_getfield(L, LUA_REGISTRYINDEX, utype);           \
+        if (lua_rawequal(L, -1, -2))                         \
+            luax_to_cgudata(L, -3, ctype, cvar);             \
+        lua_pop(L, 2);                                       \
+    }                                                        \
     lua_pop(L, 1);
 
 /*
         Checks if the argument idx is a table that has a userdata at index name of type utype
         and sets the boxed pointer in cvar of type ctype or raises the error err
 */
-#define luax_getarg_objh(L, idx, utype, ctype, cvar, err) \
-    luax_gettable_gcudata(L, idx, utype, ctype, cvar);    \
+#define luax_getarg_gcudata(L, idx, utype, ctype, cvar, err) \
+    luax_gettable_gcudata(L, idx, utype, ctype, cvar);       \
     luaL_argcheck(L, cvar != NULL, idx, err);
+
+#define luax_set_gcudata(L, tblidx, utype, newptr)                        \
+    lua_pushstring(L, utype);                                             \
+    lua_gettable(L, tblidx);                                              \
+    if (!lua_isnil(L, -1) && lua_getmetatable(L, -1)) {                   \
+        lua_getfield(L, LUA_REGISTRYINDEX, utype);                        \
+        if (lua_rawequal(L, -1, -2))                                      \
+            ((luax_udbox *)lua_touserdata(L, -3))->ptr = (void *)newptr; \
+        lua_pop(L, 2);                                                    \
+    }                                                                     \
+    lua_pop(L, 1);
 
 #endif  // LUAX_GCPTG_INCLUDED
