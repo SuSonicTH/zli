@@ -10,6 +10,8 @@ local json = require "cjson"
 local argparse = require "argparse"
 local log = require "log"
 local string_builder = require "string_builder"
+local zip = require "zip"
+
 aux.extendlibs()
 
 TestLibraries = {}
@@ -224,4 +226,21 @@ function TestLibraries:test_string_builder()
     
     sb:reset():add("A", string_builder.new():add("B","C"),"D")
     lu.assertEquals(sb:tostring(), "ABCD")
+end
+
+function TestLibraries:test_zip()
+    local testfile = "test.zip"
+    local inputfile = "README.md"
+    os.remove(testfile)
+
+    local testzip = zip.create(testfile)
+    testzip:addfile(inputfile,inputfile)
+    testzip:close()
+
+    local file = zip.open(testfile)
+    lu.assertEquals(file.files[inputfile].name, inputfile)
+    lu.assertEquals(file.files[inputfile].uncompressed_size, lfs.attributes(inputfile).size)
+    file:close()
+    
+    print(os.remove(testfile))
 end

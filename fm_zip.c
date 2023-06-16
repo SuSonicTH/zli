@@ -1,4 +1,3 @@
-
 #include "fm_zip.h"
 
 int luaopen_fmzip(lua_State *L) {
@@ -7,45 +6,114 @@ int luaopen_fmzip(lua_State *L) {
     return 1;
 }
 
+#ifdef _WIN32
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
-void SystemTimeToZipTime(tm_zip *sts)
-{
-	/*TODO: aimplemnt platform agnostic
-        SYSTEMTIME st;
-        GetSystemTime(&st);
-        sts->tm_year=st.wYear;
-        sts->tm_mon=st.wMonth;
-        sts->tm_mon--;
-        sts->tm_mday=st.wDay;
-        sts->tm_hour=st.wHour;
-        sts->tm_min=st.wMinute;
-        sts->tm_sec=st.wSecond;
-	*/
-}
+#define create_directory(dir) CreateDirectory(dir, NULL)
 
-int FileTimeToZipTime(const char *filename,tm_zip *sts)
-{	/*TODO: implement platform agnostic
-        WIN32_FIND_DATA ffd;
-        HANDLE ffh=NULL;
-        SYSTEMTIME st;
-
-        if ((ffh=FindFirstFile(filename,&ffd))==INVALID_HANDLE_VALUE){
-                return 0;
-        }
-        FileTimeToSystemTime(&ffd.ftLastWriteTime,&st);
+int directory_exists(const char *directory) {
+    WIN32_FIND_DATA ffd;
+    HANDLE ffh = NULL;
+    if ((ffh = FindFirstFile(directory, &ffd)) == INVALID_HANDLE_VALUE) {
         FindClose(ffh);
-
-        sts->tm_year=st.wYear;
-        sts->tm_mon=st.wMonth;
-        sts->tm_mon--;
-        sts->tm_mday=st.wDay;
-        sts->tm_hour=st.wHour;
-        sts->tm_min=st.wMinute;
-        sts->tm_sec=st.wSecond;
-*/		
-        return 1;
+        return 0;
+    }
+    FindClose(ffh);
+    return 1;
 }
 
+int filetime_to_ziptime(const char *filename, tm_zip *tmz) {
+    WIN32_FIND_DATA ffd;
+    HANDLE ffh = NULL;
+    SYSTEMTIME st;
+
+    if ((ffh = FindFirstFile(filename, &ffd)) == INVALID_HANDLE_VALUE) {
+        FindClose(ffh);
+        return 0;
+    }
+    FileTimeToSystemTime(&ffd.ftLastWriteTime, &st);
+    FindClose(ffh);
+
+    tmz->tm_year = st.wYear;
+    tmz->tm_mon = st.wMonth;
+    tmz->tm_mon--;
+    tmz->tm_mday = st.wDay;
+    tmz->tm_hour = st.wHour;
+    tmz->tm_min = st.wMinute;
+    tmz->tm_sec = st.wSecond;
+    return 1;
+}
+
+#else  // not _WIN32
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define create_directory(dir) mkdir(dir, 0775)
+
+char *directory_wo_slash(const char *file) {
+    static char name[_MAX_PATH + 1];
+    size_t len = strlen(directory);
+    if (len > _MAX_PATH) {
+        len = _MAX_PATH;
+    }
+
+    strncpy(name, file, _MAX_PATH - 1);
+    name[MAXFILENAME] = 0;
+
+    if (name[len - 1] == '/') {
+        name[len - 1] = 0;
+    }
+
+    return name;
+}
+
+int directory_exists(char *directory) {
+    struct stat st = {0};
+    if (stat(directory_wo_slash(directory), &st) == -1) {
+        return 0;
+    }
+    return 1;
+}
+
+void filetime_to_ziptime(const char *filename, tm_zip *tmz) {
+    struct stat s;
+    struct tm *filedate;
+    time_t tm_t = 0;
+    char *name = directory_wo_slash(filename);
+
+    if (stat(name, &s) != 0) {
+        return 0;
+    }
+
+    tm_t = s.st_mtime;
+    filedate = localtime(&tm_t);
+
+    tmz->tm_sec = filedate->tm_sec;
+    tmz->tm_min = filedate->tm_min;
+    tmz->tm_hour = filedate->tm_hour;
+    tmz->tm_mday = filedate->tm_mday;
+    tmz->tm_mon = filedate->tm_mon;
+    tmz->tm_year = filedate->tm_year;
+    return 1;
+}
+
+#endif  //_WIN32
+
+void systemTimeToZipTime(tm_zip *tmz) {
+    time_t tm_t = 0;
+    struct tm *systemTime;
+    time(&tm_t);
+    systemTime = localtime(&tm_t);
+    tmz->tm_sec = systemTime->tm_sec;
+    tmz->tm_min = systemTime->tm_min;
+    tmz->tm_hour = systemTime->tm_hour;
+    tmz->tm_mday = systemTime->tm_mday;
+    tmz->tm_mon = systemTime->tm_mon;
+    tmz->tm_year = systemTime->tm_year;
+}
 
 int fm_zip_open(lua_State *L) {
     const char *fname;
@@ -64,7 +132,7 @@ int fm_zip_open(lua_State *L) {
     luaL_checkstring(L, 1);
     fname = lua_tostring(L, 1);
 
-    luax_return_with_error_if((uzfh = unzOpen(fname)) == NULL, "Could not open file");
+    luax_return_with_error_if(L, (uzfh = unzOpen(fname)) == NULL, "Could not open file '%s'", fname);
     unzGetGlobalInfo(uzfh, &uzgi);
 
     luax_createudata(L, uzfh, FM_ZIP_UZ_FILE);
@@ -84,11 +152,7 @@ int fm_zip_open(lua_State *L) {
         lua_pushstring(L, "");
     }
     lua_settable(L, -3);
-    luax_settable_cfunction(L, -3, "extract", fm_zip_extract_file);
-    luax_settable_cfunction(L, -3, "get", fm_zip_extract_file_tostring);
-    luax_settable_cfunction(L, -3, "extract_all", fm_zip_extract_all);
-    luax_settable_cfunction(L, -3, "open", fm_zip_open_uzfile);
-    luax_settable_cfunction(L, -3, "lines", fm_zip_lines);
+    luax_settable_function_list(L, -3, fm_zip_open_reg);
     lua_pushstring(L, "files");
     lua_newtable(L);
     unzGoToFirstFile(uzfh);
@@ -128,10 +192,7 @@ int fm_zip_open(lua_State *L) {
         sprintf(time, "%d/%02d/%02d %02d:%02d:%02d", uzfi.tmu_date.tm_year, uzfi.tmu_date.tm_mon, uzfi.tmu_date.tm_mday, uzfi.tmu_date.tm_hour, uzfi.tmu_date.tm_min, uzfi.tmu_date.tm_sec);
         luax_settable_string(L, -3, "timestamp", time);
         // push functions
-        luax_settable_cfunction(L, -3, "extract", fm_zip_extract_to);
-        luax_settable_cfunction(L, -3, "open", fm_zip_open_uzfile_mt);
-        luax_settable_cfunction(L, -3, "lines", fm_zip_lines_mt);
-        luax_settable_cfunction(L, -3, "get", fm_zip_extract_tostring);
+        luax_settable_function_list(L, -3, fm_zip_open_file_reg);
         lua_settable(L, -5);
         lua_settable(L, -3);
     } while (unzGoToNextFile(uzfh) == UNZ_OK);
@@ -155,12 +216,12 @@ int fm_zip_lines_mt(lua_State *L) {
 int fm_zip_lines(lua_State *L) {
     unzFile uzfh;
     const char *fname;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luaL_checkstring(L, 2);
     fname = lua_tostring(L, 2);
 
-    luax_return_with_error_if(unzLocateFile(uzfh, fname, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not open file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fname, 0) != UNZ_OK, "File '%s' not found", fname);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not open file '%s'", fname);
 
     lua_pushcfunction(L, fm_zip_file_uzread);
     lua_newtable(L);
@@ -181,13 +242,13 @@ int fm_zip_open_uzfile_mt(lua_State *L) {
 int fm_zip_open_uzfile(lua_State *L) {
     unzFile uzfh;
     const char *fname;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luaL_checkstring(L, 2);
     fname = lua_tostring(L, 2);
 
     unzCloseCurrentFile(uzfh);
-    luax_return_with_error_if(unzLocateFile(uzfh, fname, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not open file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fname, 0) != UNZ_OK, "File '%s' not found", fname);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not open file '%s'", fname);
 
     lua_newtable(L);
     lua_pushstring(L, FM_ZIP_UZ_FILE);
@@ -195,7 +256,7 @@ int fm_zip_open_uzfile(lua_State *L) {
     lua_gettable(L, 1);
     lua_settable(L, -3);
     luax_settable_cfunction(L, -3, "read", fm_zip_file_uzread);
-    luax_settable_cfunction(L, -3, "close", fm_zip_file_uzclose);
+    luax_settable_cfunction(L, -3, "close", fm_zip_file_uzclose_current);
     luax_settable_cfunction(L, -3, "eof", fm_zip_file_uzeof);
     luax_settable_cfunction(L, -3, "tell", fm_zip_file_uztell);
     return 1;
@@ -213,7 +274,7 @@ int fm_zip_file_uzread(lua_State *L) {
     int read;
     int iterator = 0;
 
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luax_gettable_bool(L, 1, "iterator", iterator, 0);
     if (lua_isnil(L, 2) || iterator) {
         lua_pushstring(L, "*l");
@@ -279,21 +340,30 @@ int fm_zip_file_uzread(lua_State *L) {
 
 int fm_zip_file_uzclose(lua_State *L) {
     unzFile uzfh;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    unzCloseCurrentFile(uzfh);
+    unzClose(uzfh);
+    luax_set_gcudata(L, 1, FM_ZIP_UZ_FILE, NULL);
+    return 0;
+}
+
+int fm_zip_file_uzclose_current(lua_State *L) {
+    unzFile uzfh;
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     unzCloseCurrentFile(uzfh);
     return 0;
 }
 
 int fm_zip_file_uzeof(lua_State *L) {
     unzFile uzfh;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     lua_pushboolean(L, unzeof(uzfh));
     return 1;
 }
 
 int fm_zip_file_uztell(lua_State *L) {
     unzFile uzfh;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     lua_pushnumber(L, unztell(uzfh));
     return 1;
 }
@@ -305,16 +375,16 @@ int fm_zip_extract_file(lua_State *L) {
     char *buff[LW_ZIP_BUFFERSIZE];
     int cr;
     FILE *fp;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luaL_checkstring(L, 2);
     luaL_checkstring(L, 3);
 
     fnamein = lua_tostring(L, 2);
     fnameout = lua_tostring(L, 3);
 
-    luax_return_with_error_if(unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file");
-    luax_return_with_error_if((fp = fopen(fnameout, "wb")) == NULL, "Could not open output file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File '%s' not found", fnamein);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file '%s'", fnamein);
+    luax_return_with_error_if(L, (fp = fopen(fnameout, "wb")) == NULL, "Could not open output file '%s'", fnameout);
 
     while ((cr = unzReadCurrentFile(uzfh, &buff, LW_ZIP_BUFFERSIZE)) > 0) {
         fwrite(buff, sizeof(char), cr, fp);
@@ -329,18 +399,17 @@ int fm_zip_extract_file(lua_State *L) {
 int fm_zip_extract_file_tostring(lua_State *L) {
     unzFile uzfh;
     const char *fnamein;
-    const char *fnameout;
     char *buff[LW_ZIP_BUFFERSIZE];
     luaL_Buffer lbuff;
     int cr;
 
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luaL_checkstring(L, 2);
 
     fnamein = lua_tostring(L, 2);
 
-    luax_return_with_error_if(unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File '%s' not found", fnamein);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file '%s'", fnamein);
 
     luaL_buffinit(L, &lbuff);
     while ((cr = unzReadCurrentFile(uzfh, &buff, LW_ZIP_BUFFERSIZE)) > 0) {
@@ -357,16 +426,15 @@ int fm_zip_extract_file_tostring(lua_State *L) {
 int fm_zip_extract_tostring(lua_State *L) {
     unzFile uzfh;
     const char *fnamein;
-    const char *fnameout;
     char *buff[LW_ZIP_BUFFERSIZE];
     luaL_Buffer lbuff;
     int cr;
 
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     luax_gettable_string(L, 1, "name", fnamein, NULL);
 
-    luax_return_with_error_if(unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File '%s' not found", fnamein);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file '%s'", fnamein);
 
     luaL_buffinit(L, &lbuff);
     while ((cr = unzReadCurrentFile(uzfh, &buff, LW_ZIP_BUFFERSIZE)) > 0) {
@@ -386,15 +454,15 @@ int fm_zip_extract_to(lua_State *L) {
     char *buff[LW_ZIP_BUFFERSIZE];
     int cr;
     FILE *fp;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     fnameout = lua_tostring(L, 2);
     luax_gettable_string(L, 1, "name", fnamein, NULL);
     if (fnameout == NULL)
         fnameout = fnamein;
 
-    luax_return_with_error_if(unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File not found");
-    luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file");
-    luax_return_with_error_if((fp = fopen(fnameout, "wb")) == NULL, "Could not open output file");
+    luax_return_with_error_if(L, unzLocateFile(uzfh, fnamein, 0) != UNZ_OK, "File '%s' not found", fnamein);
+    luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file '%s'", fnamein);
+    luax_return_with_error_if(L, (fp = fopen(fnameout, "wb")) == NULL, "Could not open output file '%s'", fnameout);
 
     while ((cr = unzReadCurrentFile(uzfh, &buff, LW_ZIP_BUFFERSIZE)) > 0) {
         fwrite(buff, sizeof(char), cr, fp);
@@ -415,21 +483,20 @@ int fm_zip_extract_all(lua_State *L) {
     int cr;
     FILE *fp;
 
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     dest = lua_tostring(L, 2);
     if (dest) {
-        luaL_gsub(L, dest, "\\", "/");
-        dest = lua_tostring(L, -1);
-        lua_pop(L, 1);
-        if (dest[strlen(dest) - 1] != '/' && dest[strlen(dest) - 1] != '\\') {
-            lua_pushfstring(L, "%s/", dest);
-            dest = lua_tostring(L, -1);
-            lua_pop(L, 1);
-        }
-        if (!fm_zip_createtree(dest)) {
-            lua_pushnil(L);
-            lua_pushfstring(L, "Could not create output path:'%s'", dest);
-            return 2;
+        luax_gsub(L, dest, dest, "\\", "/");
+        luax_gsub(L, dest, dest, "./", "");
+        if (strlen(dest)) {
+            if (dest[strlen(dest) - 1] != '/') {
+                luax_fstring(L, dest, "%s/", dest);
+            }
+            if (!fm_zip_createtree(dest)) {
+                lua_pushnil(L);
+                lua_pushfstring(L, "Could not create output path:'%s'", dest);
+                return 2;
+            }
         }
     }
 
@@ -454,7 +521,7 @@ int fm_zip_extract_all(lua_State *L) {
                 }
             }
         } else {
-            luax_return_with_error_if(unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file");
+            luax_return_with_error_if(L, unzOpenCurrentFile(uzfh) != UNZ_OK, "Could not read file '%s'", zfname);
             if (dest) {
                 lua_pushfstring(L, "%s%s", dest, zfname);
                 path = lua_tostring(L, -1);
@@ -481,35 +548,31 @@ int fm_zip_extract_all(lua_State *L) {
     return 1;
 }
 
-int fm_zip_createtree(const char *path) { /*TODO: implement platfor agnostic
-                                                 WIN32_FIND_DATA ffd;
-                                                 HANDLE ffh=NULL;
-                                                 char npath[_MAX_PATH];
-                                                 char *cpos;
+int fm_zip_createtree(const char *path) {
+    char npath[_MAX_PATH];
+    char *cpos;
 
-                                                 if (path[strlen(path)-1]=='/'){
-                                                                 strcpy(npath,path);
-                                                                 cpos=npath+strlen(npath)-1;
-                                                                 *cpos=0;
-                                                                 return (fm_zip_createtree(npath));
-                                                 }else{
-                                                         if ((ffh=FindFirstFile(path,&ffd))==INVALID_HANDLE_VALUE){
-                                                                 strcpy(npath,path);
-                                                                 cpos=npath+strlen(npath)-1;
-                                                                 while (*cpos!='/' && cpos!=npath){
-                                                                         cpos--;
-                                                                 }
-                                                                 *cpos=0;
-                                                                 if (*npath!=0)
-                                                                         if (!fm_zip_createtree(npath))
-                                                                                 return 0;
-                                                                 return CreateDirectory(path,NULL);
-                                                         }else{
-                                                                 FindClose(ffh);
-                                                                 return 1;
-                                                         }
-                                                 }
-                                                 */
+    if (path[strlen(path) - 1] == '/') {
+        strcpy(npath, path);
+        cpos = npath + strlen(npath) - 1;
+        *cpos = 0;
+        return fm_zip_createtree(npath);
+    } else if (directory_exists(path)) {
+        return 1;
+    } else {
+        strcpy(npath, path);
+        cpos = npath + strlen(npath) - 1;
+        while (*cpos != '/' && cpos != npath) {
+            cpos--;
+        }
+        *cpos = 0;
+        if (*npath != 0) {
+            if (!fm_zip_createtree(npath)) {
+                return 0;
+            }
+        }
+        return create_directory(path);
+    }
     return 0;
 }
 
@@ -524,9 +587,9 @@ int fm_zip_uzfile_gc(lua_State *L) {
 
 int fm_zip_uzfile_close(lua_State *L) {
     unzFile uzfh;
-    luax_getarg_objh(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh, "Zip object expected");
     unzClose(uzfh);
-    luax_gettable_gcudata(L, 1, FM_ZIP_UZ_FILE, unzFile, uzfh);
+    luax_set_gcudata(L, 1, FM_ZIP_UZ_FILE, NULL);
     return 0;
 }
 
@@ -558,7 +621,7 @@ int fm_zip_create(lua_State *L) {
         }
         free(sappend);
     }
-    luax_return_with_error_if((zfh = zipOpen(fname, append)) == NULL, "Could not open Zip file");
+    luax_return_with_error_if(L, (zfh = zipOpen(fname, append)) == NULL, "Could not open Zip file '%s'", fname);
 
     lua_newtable(L);
     lua_pushstring(L, FM_ZIP_ZIP_FILE);
@@ -584,14 +647,11 @@ int fm_zip_zipfile_gc(lua_State *L) {
 int fm_zip_zipfile_close(lua_State *L) {
     zipFile zfh;
     const char *comment;
-    luax_getarg_objh(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
     comment = lua_tostring(L, 2);
     zipCloseFileInZip(zfh);
     zipClose(zfh, comment);
-	//todo: common case? make macro (again)
-	lua_pushstring(L,FM_ZIP_ZIP_FILE);
-	lua_pushlightuserdata(L,NULL);
-	lua_settable(L,1);
+    luax_set_gcudata(L, 1, FM_ZIP_ZIP_FILE, NULL);
     return 0;
 }
 
@@ -605,10 +665,10 @@ int fm_zip_zip_fill_filedate(lua_State *L, zip_fileinfo *zfi, const char *filena
 
     if (lua_type(L, n) == LUA_TNIL || lua_type(L, n) == LUA_TNONE) {
         if (filename == NULL) {
-            SystemTimeToZipTime(&zfi->tmz_date);
+            systemTimeToZipTime(&zfi->tmz_date);
             return 1;
         } else {
-            if (FileTimeToZipTime(filename, &zfi->tmz_date)) {
+            if (filetime_to_ziptime(filename, &zfi->tmz_date)) {
                 return 1;
             } else {
                 lua_pushfstring(L, "Could not find file '%s'!", filename);
@@ -622,7 +682,7 @@ int fm_zip_zip_fill_filedate(lua_State *L, zip_fileinfo *zfi, const char *filena
         luax_tostring_copy(L, n, stime);
         strupr(stime);
         if (strcmp(stime, "FILETIME") == 0) {
-            if (FileTimeToZipTime(filename, &zfi->tmz_date)) {
+            if (filetime_to_ziptime(filename, &zfi->tmz_date)) {
                 return 1;
             } else {
                 lua_pushfstring(L, "Could not find file '%s'!", filename);
@@ -634,7 +694,7 @@ int fm_zip_zip_fill_filedate(lua_State *L, zip_fileinfo *zfi, const char *filena
             }
         } else if (strcmp(stime, "LOCALTIME") == 0 || strcmp(stime, "SYSTEMTIME") == 0) {
             free(stime);
-            SystemTimeToZipTime(&zfi->tmz_date);
+            systemTimeToZipTime(&zfi->tmz_date);
             return 1;
         } else {
             free(stime);
@@ -642,13 +702,14 @@ int fm_zip_zip_fill_filedate(lua_State *L, zip_fileinfo *zfi, const char *filena
             return 0;
         }
     } else if (lua_type(L, n) == LUA_TTABLE) {
-        luax_gettable_int(L, n, "year", zfi->tmz_date.tm_year, 0)
-            luax_gettable_int(L, n, "month", zfi->tmz_date.tm_mon, 0)
-                zfi->tmz_date.tm_mon--;
-        luax_gettable_int(L, n, "day", zfi->tmz_date.tm_mday, 0)
-            luax_gettable_int(L, n, "hour", zfi->tmz_date.tm_hour, 0)
-                luax_gettable_int(L, n, "minute", zfi->tmz_date.tm_min, 0)
-                    luax_gettable_int(L, n, "second", zfi->tmz_date.tm_sec, 0) return 1;
+        luax_gettable_int(L, n, "year", zfi->tmz_date.tm_year, 0);
+        luax_gettable_int(L, n, "month", zfi->tmz_date.tm_mon, 0);
+        zfi->tmz_date.tm_mon--;
+        luax_gettable_int(L, n, "day", zfi->tmz_date.tm_mday, 0);
+        luax_gettable_int(L, n, "hour", zfi->tmz_date.tm_hour, 0);
+        luax_gettable_int(L, n, "minute", zfi->tmz_date.tm_min, 0);
+        luax_gettable_int(L, n, "second", zfi->tmz_date.tm_sec, 0);
+        return 1;
     } else {
         luaL_argerror(L, n, "Timeformat unknown!");
         return 0;
@@ -666,11 +727,10 @@ int fm_zip_addfile(lua_State *L) {
     size_t cr;
     int compression;
 
-    luax_getarg_objh(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
-    luaL_checkstring(L, 2);
-    infname = lua_tostring(L, 2);
-    luaL_checkstring(L, 3);
-    outfname = lua_tostring(L, 3);
+    luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
+    
+    infname = luaL_checkstring(L, 2);
+    outfname = luaL_checkstring(L, 3);
 
     if (!fm_zip_zip_fill_filedate(L, &zfi, infname, 4))
         return 2;
@@ -679,8 +739,8 @@ int fm_zip_addfile(lua_State *L) {
     comment = luaL_optstring(L, 6, NULL);
 
     zipCloseFileInZip(zfh);
-    luax_return_with_error_if(zipOpenNewFileInZip(zfh, outfname, &zfi, NULL, 0, NULL, 0, comment, Z_DEFLATED, compression), "Could not add file to zip");
-    luax_return_with_error_if((fh = fopen(infname, "rb")) == NULL, "Could not open input file!");
+    luax_return_with_error_if(L, zipOpenNewFileInZip(zfh, outfname, &zfi, NULL, 0, NULL, 0, comment, Z_DEFLATED, compression), "Could not add file '%s' to zip", outfname);
+    luax_return_with_error_if(L, (fh = fopen(infname, "rb")) == NULL, "Could not open input file '%s'", infname);
 
     while ((cr = fread(buffer, 1, LW_ZIP_BUFFERSIZE, fh)) > 0) {
         zipWriteInFileInZip(zfh, buffer, (unsigned int)cr);
@@ -699,7 +759,7 @@ int fm_zip_open_zipfile(lua_State *L) {
     const char *comment;
     int compression;
 
-    luax_getarg_objh(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
     luaL_checkstring(L, 2);
     fname = lua_tostring(L, 2);
     if (!fm_zip_zip_fill_filedate(L, &zfi, NULL, 3))
@@ -709,7 +769,7 @@ int fm_zip_open_zipfile(lua_State *L) {
     comment = luaL_optstring(L, 5, NULL);
 
     zipCloseFileInZip(zfh);
-    luax_return_with_error_if(zipOpenNewFileInZip(zfh, fname, &zfi, NULL, 0, NULL, 0, comment, Z_DEFLATED, compression), "Could not add file to zip");
+    luax_return_with_error_if(L, zipOpenNewFileInZip(zfh, fname, &zfi, NULL, 0, NULL, 0, comment, Z_DEFLATED, compression), "Could not add file '%s' to zip", fname);
 
     lua_newtable(L);
     lua_pushstring(L, FM_ZIP_ZIP_FILE);
@@ -728,7 +788,7 @@ int fm_zip_file_zipwrite(lua_State *L) {
     size_t datalen;
     int maxarg = lua_gettop(L);
     int n;
-    luax_getarg_objh(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
     for (n = 2; n <= maxarg; n++) {
         luaL_checkstring(L, n);
         data = lua_tolstring(L, n, &datalen);
@@ -741,7 +801,7 @@ int fm_zip_file_zipwrite(lua_State *L) {
 
 int fm_zip_file_zipclose(lua_State *L) {
     zipFile zfh;
-    luax_getarg_objh(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
+    luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
     zipCloseFileInZip(zfh);
     return 0;
 }
