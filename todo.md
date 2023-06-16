@@ -16,7 +16,6 @@
 * add commandline option to execute payload scripts (@script.lua ??)
 
 # additional libraries
-* cleanup & include zip/unzip
 * https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket
 * http server/client (based on luasocket)
