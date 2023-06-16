@@ -9,11 +9,11 @@
 # additional functionality
 * add option to extend lua-c-libraries with extra functionality with lua scripts? (without changing the c-library)
 * add functionality to add payload (scripts, modules and resources) to end of exe
-** builtin tool to "compile" exe
-** module can load payload files
-** io.open io.read,... can load payload files
-** fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
-* add commandline option to execute payload scripts (@script.lua ??)
+    * builtin tool to "compile" exe
+    * module can load payload files
+    * io.open io.read,... can load payload files
+    * DONE fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
+    * DONE add commandline option to execute payload scripts (@script.lua ??)
 
 # additional libraries
 * https://github.com/daurnimator/lpeg_patterns ?
