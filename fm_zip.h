@@ -6,6 +6,7 @@
 #include <luax_gcptr.h>
 #include <luax_value.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <unzip.h>
 #include <zip.h>

@@ -55,13 +55,13 @@ int filetime_to_ziptime(const char *filename, tm_zip *tmz) {
 
 char *directory_wo_slash(const char *file) {
     static char name[_MAX_PATH + 1];
-    size_t len = strlen(directory);
+    size_t len = strlen(file);
     if (len > _MAX_PATH) {
         len = _MAX_PATH;
     }
 
     strncpy(name, file, _MAX_PATH - 1);
-    name[MAXFILENAME] = 0;
+    name[_MAX_PATH] = 0;
 
     if (name[len - 1] == '/') {
         name[len - 1] = 0;
@@ -70,7 +70,7 @@ char *directory_wo_slash(const char *file) {
     return name;
 }
 
-int directory_exists(char *directory) {
+int directory_exists(const char *directory) {
     struct stat st = {0};
     if (stat(directory_wo_slash(directory), &st) == -1) {
         return 0;
@@ -78,7 +78,7 @@ int directory_exists(char *directory) {
     return 1;
 }
 
-void filetime_to_ziptime(const char *filename, tm_zip *tmz) {
+int filetime_to_ziptime(const char *filename, tm_zip *tmz) {
     struct stat s;
     struct tm *filedate;
     time_t tm_t = 0;
@@ -113,6 +113,16 @@ void systemTimeToZipTime(tm_zip *tmz) {
     tmz->tm_mday = systemTime->tm_mday;
     tmz->tm_mon = systemTime->tm_mon;
     tmz->tm_year = systemTime->tm_year;
+}
+
+char *strlwr(char *s) {
+    char *tmp = s;
+
+    for (; *tmp; ++tmp) {
+        *tmp = tolower((unsigned char)*tmp);
+    }
+
+    return s;
 }
 
 int fm_zip_open(lua_State *L) {
@@ -606,7 +616,7 @@ int fm_zip_create(lua_State *L) {
         append = APPEND_STATUS_CREATE;
     } else {
         luax_tostring_copy(L, 2, sappend);
-        strupr(sappend);
+        strlwr(sappend);
         if (strcmp(sappend, "CREATE") == 0) {
             append = APPEND_STATUS_CREATE;
         } else if (strcmp(sappend, "ADD") == 0) {
@@ -680,7 +690,7 @@ int fm_zip_zip_fill_filedate(lua_State *L, zip_fileinfo *zfi, const char *filena
         }
     } else if (lua_type(L, n) == LUA_TSTRING) {
         luax_tostring_copy(L, n, stime);
-        strupr(stime);
+        strlwr(stime);
         if (strcmp(stime, "FILETIME") == 0) {
             if (filetime_to_ziptime(filename, &zfi->tmz_date)) {
                 return 1;
@@ -728,7 +738,7 @@ int fm_zip_addfile(lua_State *L) {
     int compression;
 
     luax_getarg_gcudata(L, 1, FM_ZIP_ZIP_FILE, zipFile, zfh, "Zip object expected");
-    
+
     infname = luaL_checkstring(L, 2);
     outfname = luaL_checkstring(L, 3);
 
