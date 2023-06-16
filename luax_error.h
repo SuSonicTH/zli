@@ -3,31 +3,34 @@
 
 #include <lauxlib.h>
 
-#define luax_exit_with_error_if(condition, message) \
-    if (condition) {                                \
-        lua_pushstring(L, message);                 \
-        lua_error(L);                               \
+#define luax_return_with_error(L, fmt, ...) \
+    lua_pushnil(L);                         \
+    lua_pushfstring(L, fmt, __VA_ARGS__);   \
+    return 2;
+
+#define lua_exit_error(L, fmt, ...)       \
+    lua_pushfstring(L, fmt, __VA_ARGS__); \
+    lua_error(L);
+
+#define luax_exit_with_error_if(L, condition, fmt, ...) \
+    if (condition) {                                    \
+        lua_pushfstring(L, fmt, __VA_ARGS__);           \
+        lua_error(L);                                   \
     }
 
-#define luax_return_with_error_if(condition, message) \
-    if (condition) {                                  \
-        lua_pushnil(L);                               \
-        lua_pushstring(L, message);                   \
-        return 2;                                     \
+#define luax_return_with_error_if(L, condition, fmt, ...) \
+    if (condition) {                                      \
+        lua_pushnil(L);                                   \
+        lua_pushfstring(L, fmt, __VA_ARGS__);             \
+        return 2;                                         \
     }
 
-#define luax_return_with_error_if_clean(condition, message, clean) \
-    if (condition) {                                               \
-        clean                                                      \
-            lua_pushnil(L);                                        \
-        lua_pushstring(L, message);                                \
-        return 2;                                                  \
-    }
-
-#define lua_exit_error(s)     \
-    {                         \
-        lua_pushstring(L, s); \
-        lua_error(L);         \
+#define luax_return_with_error_if_clean(L, condition, clean, fmt, ...) \
+    if (condition) {                                                   \
+        clean;                                                         \
+        lua_pushnil(L);                                                \
+        lua_pushfstring(L, fmt, __VA_ARGS__);                          \
+        return 2;                                                      \
     }
 
 #endif  // LUAX_ERROR_INCLUDED
