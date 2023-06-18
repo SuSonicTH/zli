@@ -7,6 +7,7 @@
 #include "lprefix.h"
 #include "lua.h"
 #include "lualib.h"
+#include "fm_payload.h"
 
 #define PROGRAMM_NAME "FullMoon"
 
@@ -72,7 +73,7 @@ static int msghandler(lua_State *L) {
 
 static int docall(lua_State *L) {
     int status;
-    int base = lua_gettop(L);  /* function index */
+    int base = lua_gettop(L);         /* function index */
     lua_pushcfunction(L, msghandler); /* push message handler */
     lua_insert(L, base);              /* put it under function and args */
     globalL = L;                      /* to be available to 'laction' */
@@ -125,9 +126,10 @@ static int pmain(lua_State *L) {
 
     if (argv[0] && argv[0][0]) progname = argv[0];
 
-    luaL_openlibs(L);                      /* open standard libraries */
+    luaL_openlibs(L); /* open standard libraries */
+    create_payload_searcher(L, argv[0]);
     createargtable(L, argv, argc); /* create table 'arg' */
-    lua_gc(L, LUA_GCGEN, 0, 0);            /* GC in generational mode */
+    lua_gc(L, LUA_GCGEN, 0, 0);    /* GC in generational mode */
 
     if (argc >= 2 && argv[1][0] == '-' && argv[1][1] == 0) {
         return dochunk(L, luaL_loadfile(L, NULL));

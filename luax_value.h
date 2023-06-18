@@ -200,4 +200,9 @@ void luax_regtable_create_list(lua_State *L, const char **name);
     dest = lua_tostring(L, -1);           \
     lua_pop(L, 1);
 
+#define luax_len(L,var,idx) \
+    lua_len(L, idx); \
+    var = lua_tointeger(L, -1); \
+    lua_pop(L, 1);
+
 #endif  // LUAX_VALUE
