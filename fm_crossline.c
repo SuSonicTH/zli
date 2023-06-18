@@ -93,7 +93,7 @@ int fm_crossline_cursor_get(lua_State* L) {
     int x, y;
     crossline_cursor_get(&y, &x);
     fm_create_pos_table(L, x, y);
-    return 0;
+    return 1;
 }
 
 int fm_crossline_cursor_set(lua_State* L) {

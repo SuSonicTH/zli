@@ -7,7 +7,6 @@
 * add goals for release build (for all platforms)
 
 # additional functionality
-* add option to extend lua-c-libraries with extra functionality with lua scripts? (without changing the c-library)
 * add functionality to add payload (scripts, modules and resources) to end of exe
     * builtin tool to "compile" exe
     * DONE module can load payload files

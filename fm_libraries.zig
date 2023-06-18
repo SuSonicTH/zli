@@ -99,10 +99,6 @@ const fullmoon_preload = [_]c.luaL_Reg{
         .func = &luaopen_luascript,
     },
     c.luaL_Reg{
-        .name = "crossline",
-        .func = &luaopen_fmcrossline,
-    },
-    c.luaL_Reg{
         .name = "string_builder",
         .func = &luaopen_fmsbuilder,
     },
@@ -110,6 +106,16 @@ const fullmoon_preload = [_]c.luaL_Reg{
         .name = "zip",
         .func = &luaopen_fmzip,
     },
+};
+
+const luaL_RegExt = extern struct {
+    name: [*c]const u8,
+    func: c.lua_CFunction,
+    extend: [*c]const u8,
+};
+
+const fullmoon_preload_extended = [_]luaL_RegExt{
+    luaL_RegExt{ .name = "crossline", .func = &luaopen_fmcrossline, .extend = @embedFile("fm_crossline.lua") },
 };
 
 const luascript = struct {
@@ -133,21 +139,24 @@ pub export fn luaL_openlibs(arg_L: ?*c.lua_State) callconv(.C) void {
 
     for (loadedlibs) |lib| {
         c.luaL_requiref(L, lib.name, lib.func, 1);
-        c.lua_settop(L, -1 - 1);
+        c.lua_pop(L, 1);
     }
 
     _ = c.luaL_getsubtable(L, c.LUA_REGISTRYINDEX, c.LUA_PRELOAD_TABLE);
     for (fullmoon_preload) |fm_lib| {
-        c.lua_pushcclosure(L, fm_lib.func, 0);
+        c.lua_pushcfunction(L, fm_lib.func);
         c.lua_setfield(L, -2, fm_lib.name);
+    }
+
+    for (fullmoon_preload_extended) |fm_lib_ex| {
+        c.lua_pushcclosure(L, luaopen_extended, 0);
+        c.lua_setfield(L, -2, fm_lib_ex.name);
     }
 
     for (luascripts) |lua| {
         c.lua_pushcclosure(L, luaopen_luascript, 0);
         c.lua_setfield(L, -2, lua.name);
     }
-
-    c.lua_settop(L, -1 - 1);
 }
 
 fn luaopen_luascript(L: ?*c.lua_State) callconv(.C) c_int {
@@ -160,6 +169,31 @@ fn luaopen_luascript(L: ?*c.lua_State) callconv(.C) c_int {
                 return c.lua_error(L);
             }
             c.lua_callk(L, 0, 1, 0, null);
+            return 1;
+        }
+    }
+    return c.luaL_error(L, "unknown module \"%s\"", modname);
+}
+
+fn luaopen_extended(L: ?*c.lua_State) callconv(.C) c_int {
+    const modname = c.lua_tolstring(L, 1, null);
+
+    for (fullmoon_preload_extended) |lib| {
+        if (strcmp(modname, lib.name) == 0) {
+            c.lua_pushcfunction(L, lib.func);
+            c.lua_callk(L, 0, 1, 0, null);
+            if (c.lua_isnil(L, -1)) {
+                return 1;
+            }
+
+            var result: c_int = c.luaL_loadbufferx(L, lib.extend, strlen(lib.extend), modname, "t");
+            if (result != 0) {
+                return c.lua_error(L);
+            }
+            c.lua_callk(L, 0, 1, 0, null);
+            c.luaL_checktype(L, -1, c.LUA_TFUNCTION);
+            c.lua_pushvalue(L, -2);
+            c.lua_callk(L, 1, 0, 0, null);
             return 1;
         }
     }
