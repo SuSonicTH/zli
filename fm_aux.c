@@ -406,22 +406,6 @@ int fm_aux_next(lua_State *L) {
     return 1;
 }
 
-/*
-local function binary_insert(array, value, compeareator)
-    local start, len, mid, state = 1, #array, 1, 0
-    while start <= len do
-        mid = math.floor((start + len) / 2)
-        if compeareator(value, array[mid]) then
-            len, state = mid - 1, 0
-        else
-            start, state = mid + 1, 1
-        end
-    end
-    table.insert(array, (mid + state), value)
-end
-
-*/
-
 int fm_aux_comparator(lua_State *L) {
     lua_pushboolean(L, lua_compare(L, 1, 2, LUA_OPLT));
     return 1;
