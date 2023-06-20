@@ -130,6 +130,7 @@ const luascripts = [_]luascript{
     luascript{ .name = "log", .script = @embedFile("fm_log.lua") },
     luascript{ .name = "repl", .script = @embedFile("fm_repl.lua") },
     luascript{ .name = "sqlite_cli", .script = @embedFile("fm_sqlite_cli.lua") },
+    luascript{ .name = "stream", .script = @embedFile("fm_stream.lua") },
 };
 
 export const fullmoon_main: [*c]const u8 = @embedFile("fullmoon.lua");

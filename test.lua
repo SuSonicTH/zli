@@ -11,6 +11,7 @@ local argparse = require "argparse"
 local log = require "log"
 local string_builder = require "string_builder"
 local zip = require "zip"
+local stream = require "stream"
 
 TestLibraries = {}
 
@@ -125,6 +126,33 @@ function TestAuxLib:test_table_to_String()
     lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl = {\n  1,\n  2,\n  3,\n  key = "value",\n}')
 end
 
+function TestAuxLib:test_insertsorted()
+    local tbl = {}
+    for _, value in ipairs({ 9, 1, 5, 3, 6, 2, 7, 8, 4 }) do
+        table.insertsorted(tbl, value)
+    end
+    lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
+end
+
+function TestAuxLib:test_table_next()
+    local tbl = {}
+    local next = table.next({ 1, 2, 3, 4, 5, 6, 7, 8, 9 })
+    local value = next()
+    while (value) do
+        tbl[#tbl + 1] = value
+        value = next()
+    end
+    lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
+end
+
+function TestAuxLib:test_table_iter()
+    local tbl = {}
+    for value in table.iter({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }) do
+        tbl[#tbl + 1] = value
+    end
+    lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
+end
+
 function TestLibraries:test_csv_create_and_read()
     aux.writefile("test.csv", [[
 A,B,C
@@ -216,13 +244,13 @@ function TestLibraries:test_string_builder()
     lu.assertEquals(sb:len(), 0)
     lu.assertEquals(sb:tostring(), "")
 
-    sb:add("Hello"," ","World","!")
+    sb:add("Hello", " ", "World", "!")
     lu.assertEquals(sb:tostring(), "Hello World!")
-    
-    sb:reset():add(1,',',true,',',23.56,',',false)
+
+    sb:reset():add(1, ',', true, ',', 23.56, ',', false)
     lu.assertEquals(sb:tostring(), "1,true,23.56,false")
-    
-    sb:reset():add("A", string_builder.new():add("B","C"),"D")
+
+    sb:reset():add("A", string_builder.new():add("B", "C"), "D")
     lu.assertEquals(sb:tostring(), "ABCD")
 end
 
@@ -232,13 +260,172 @@ function TestLibraries:test_zip()
     os.remove(testfile)
 
     local testzip = zip.create(testfile)
-    testzip:addfile(inputfile,inputfile)
+    testzip:addfile(inputfile, inputfile)
     testzip:close()
 
     local file = zip.open(testfile)
     lu.assertEquals(file.files[inputfile].name, inputfile)
     lu.assertEquals(file.files[inputfile].uncompressed_size, lfs.attributes(inputfile).size)
     file:close()
-    
-    print(os.remove(testfile))
+
+    os.remove(testfile)
 end
+
+TestStreamLib = {}
+
+function TestStreamLib:test_concat()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):concat(","), "1,2,3,4,5")
+end
+
+function TestStreamLib:test_toarray()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):toarray(), { 1, 2, 3, 4, 5 })
+end
+
+function TestStreamLib:test_map()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):map(function(v) return v + 1 end):toarray(), { 2, 3, 4, 5, 6 })
+end
+
+function TestStreamLib:test_filter()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):filter(function(v) return v % 2 == 1 end):toarray(), { 1, 3, 5 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):filter(function(v) return v % 2 == 0 end):toarray(), { 2, 4 })
+end
+
+function TestStreamLib:test_skip()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):skip(0):toarray(), { 1, 2, 3, 4, 5 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):skip(1):toarray(), { 2, 3, 4, 5 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):skip(4):toarray(), { 5 })
+end
+
+function TestStreamLib:test_limit()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):limit(10):toarray(), { 1, 2, 3, 4, 5 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):limit(5):toarray(), { 1, 2, 3, 4, 5 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):limit(1):toarray(), { 1 })
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):limit(3):toarray(), { 1, 2, 3 })
+end
+
+function TestStreamLib:test_reverse()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):reverse():toarray(), { 5, 4, 3, 2, 1 })
+end
+
+function TestStreamLib:test_sort()
+    lu.assertEquals(stream({ 4, 5, 1, 3, 2 }):sort():toarray(), { 1, 2, 3, 4, 5 })
+end
+
+function TestStreamLib:test_maptonumber()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):maptonumber():toarray(), { 1, 2, 3, 4, 5 })
+    lu.assertEquals(stream({ '1', '2', '3', '4', '5' }):maptonumber():toarray(), { 1, 2, 3, 4, 5 })
+end
+
+function TestStreamLib:test_distinct()
+    lu.assertEquals(stream({ 1, 1, 5, 2, 3, 2, 3, 4, 1, 5, 1, 4, 5 }):distinct():sort():toarray(), { 1, 2, 3, 4, 5 })
+end
+
+function TestStreamLib:test_split()
+    local odd, even = stream({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }):split(function(num) return num % 2 == 1 end)
+    lu.assertEquals(stream(odd):concat(","), "1,3,5,7,9")
+    lu.assertEquals(stream(even):concat(","), "2,4,6,8")
+
+    odd, even = stream({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }):split(function(num) return num % 2 == 1 end)
+    lu.assertEquals(stream(even):concat(","), "2,4,6,8")
+    lu.assertEquals(stream(odd):concat(","), "1,3,5,7,9")
+end
+
+function TestStreamLib:test_join()
+    lu.assertEquals(
+        stream().join(stream({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }):split(function(num) return num % 2 == 1 end)):concat(","),
+        "1,3,5,7,9,2,4,6,8"
+    )
+
+    lu.assertEquals(
+        stream({ 1, 2, 3, 4 }):join(stream({ 5, 6, 7, 8, 9 }), stream({ 10 })):concat(","),
+        "1,2,3,4,5,6,7,8,9,10"
+    )
+end
+
+function TestStreamLib:test_tosortedarray()
+    lu.assertEquals(stream({ 4, 5, 1, 3, 2 }):tosortedarray(), { 1, 2, 3, 4, 5 })
+end
+
+function TestStreamLib:test_allmatch()
+    lu.assertEquals(stream({ 1, 3, 5, 7, 9 }):allmatch(function(val) return val % 2 == 1 end), true)
+    lu.assertEquals(stream({ 1, 3, 5, 2, 7, 9 }):allmatch(function(val) return val % 2 == 1 end), false)
+end
+
+function TestStreamLib:test_firstmatch()
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5 }):firstmatch(function(val) return val > 3 end), 4)
+end
+
+function TestStreamLib:test_anymatch()
+    lu.assertEquals(stream({ 1, 3, 5, 7, 8, 9 }):anymatch(function(val) return val % 2 == 0 end), true)
+    lu.assertEquals(stream({ 1, 3, 5, 7, 9 }):anymatch(function(val) return val % 2 == 0 end), false)
+end
+
+function TestStreamLib:test_first()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):first(), 3)
+end
+
+function TestStreamLib:test_last()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):last(), 9)
+end
+
+function TestStreamLib:test_count()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):count(), 5)
+    lu.assertEquals(stream({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }):count(), 9)
+end
+
+function TestStreamLib:test_sum()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):sum(), 32)
+    lu.assertEquals(stream({ 3 }):sum(), 3)
+    lu.assertEquals(stream({}):sum(), 0)
+end
+
+function TestStreamLib:test_average()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):average(), 6.4)
+    lu.assertEquals(stream({ 3 }):average(), 3)
+    lu.assertEquals(stream({}):average(), 0)
+end
+
+function TestStreamLib:test_median()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):median(), 7)
+    lu.assertEquals(stream({ 8, 9, 3, 5, 7, 10, 1 }):median(), 7)
+    lu.assertEquals(stream({ 3 }):median(), 3)
+    lu.assertEquals(stream({}):median(), 0)
+end
+
+function TestStreamLib:test_reduce()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):reduce(0, function(sum, value) return sum + value end), 32)
+end
+
+function TestStreamLib:test_min()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):min(), 3)
+    lu.assertEquals(stream({ 5, 7, 8, 9, 3 }):min(), 3)
+end
+
+function TestStreamLib:test_max()
+    lu.assertEquals(stream({ 3, 5, 7, 8, 9 }):max(), 9)
+    lu.assertEquals(stream({ 10, 3, 5, 7, 8, 9 }):max(), 10)
+end
+
+function TestStreamLib:test_groupby()
+    local map = stream({
+        { name = 'test', id = 1 },
+        { name = 'test', id = 2 },
+        { name = 'other', id = 3 },
+        { name = 'other', id = 4 },
+        { name = 'single', id = 5 }
+    }):groupby(function(tbl) return tbl.name end)
+
+    lu.assertEquals(#map.test,2)
+    lu.assertEquals(#map.other,2)
+    lu.assertEquals(#map.single,1)
+
+    lu.assertEquals(map.test[1],{ name = 'test', id = 1 })
+    lu.assertEquals(map.test[2],{ name = 'test', id = 2 })
+
+    lu.assertEquals(map.other[1].id,3)
+    lu.assertEquals(map.other[2].id,4)
+
+    lu.assertEquals(map.single[1],{ name = 'single', id = 5 })
+
+end
+
