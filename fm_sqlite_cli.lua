@@ -2,7 +2,6 @@ local cl = require "crossline"
 local sqlite = require "sqlite3"
 local aux = require "aux"
 local json = require "cjson"
-aux.extendlibs()
 
 --[[ Init screen ]]
 cl.screen.clear()

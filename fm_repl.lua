@@ -1,6 +1,5 @@
 local cl = require "crossline"
 local aux = require "aux"
-aux.extendlibs()
 
 --[[ Init screen ]]
 cl.screen.clear()
