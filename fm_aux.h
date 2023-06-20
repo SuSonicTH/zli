@@ -9,7 +9,7 @@
 
 int luaopen_fmaux(lua_State *L);
 
-int fm_aux_extend_libs(lua_State *L);
+void fm_aux_extend_libs(lua_State *L);
 int fm_aux_split(lua_State *L);
 int fm_aux_trim(lua_State *L);
 int fm_aux_ltrim(lua_State *L);
@@ -29,6 +29,8 @@ int fm_aux_concats(lua_State *L);
 int fm_aux_tabletostring(lua_State *L);
 void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind);
 void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind, int seq);
+int fm_aux_iter(lua_State *L);
+int fm_aux_next(lua_State *L);
 
 int fm_aux_readlines(lua_State *L);
 int fm_aux_readfile(lua_State *L);
@@ -46,13 +48,14 @@ static const luaL_Reg fm_auxlib[] = {
     {"copytable", fm_aux_copy_table},
     {"concats", fm_aux_concats},
     {"tabletostring", fm_aux_tabletostring},
+    {"tableiter", fm_aux_iter},
+    {"tablenext", fm_aux_next},
 
     {"readfile", fm_aux_readfile},
     {"readlines", fm_aux_readlines},
     {"writefile", fm_aux_writefile},
     {"writelines", fm_aux_writelines},
 
-    {"extendlibs", fm_aux_extend_libs},
     {NULL, NULL}};
 
 #endif  // FM_AUX_INCLUDED

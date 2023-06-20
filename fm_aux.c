@@ -2,41 +2,47 @@
 
 int luaopen_fmaux(lua_State *L) {
     luaL_newlib(L, fm_auxlib);
+    fm_aux_extend_libs(L);
     return 1;
 }
 
-int fm_aux_extend_libs(lua_State *L) {
-    lua_settop(L, 0);
-
+void fm_aux_extend_libs(lua_State *L) {
     lua_getglobal(L, "string");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 1, "split", fm_aux_split);
-        luax_settable_cfunction(L, 1, "trim", fm_aux_trim);
-        luax_settable_cfunction(L, 1, "ltrim", fm_aux_ltrim);
-        luax_settable_cfunction(L, 1, "rtrim", fm_aux_rtrim);
+        luax_settable_cfunction(L, 4, "split", fm_aux_split);
+        luax_settable_cfunction(L, 4, "trim", fm_aux_trim);
+        luax_settable_cfunction(L, 4, "ltrim", fm_aux_ltrim);
+        luax_settable_cfunction(L, 4, "rtrim", fm_aux_rtrim);
     }
     lua_pop(L, 1);
 
     lua_getglobal(L, "table");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 1, "mergesort", fm_aux_mergesort_ext);
-        luax_settable_cfunction(L, 1, "kpairs", fm_aux_kpairs);
-        luax_settable_cfunction(L, 1, "copy", fm_aux_copy_table);
-        luax_settable_cfunction(L, 1, "concats", fm_aux_concats);
-        luax_settable_cfunction(L, 1, "tostring", fm_aux_tabletostring);
+        luax_settable_cfunction(L, 4, "mergesort", fm_aux_mergesort_ext);
+        luax_settable_cfunction(L, 4, "kpairs", fm_aux_kpairs);
+        luax_settable_cfunction(L, 4, "copy", fm_aux_copy_table);
+        luax_settable_cfunction(L, 4, "concats", fm_aux_concats);
+        luax_settable_cfunction(L, 4, "tostring", fm_aux_tabletostring);
+        luax_settable_cfunction(L, 4, "iter", fm_aux_iter);
+        luax_settable_cfunction(L, 4, "next", fm_aux_next);
     }
     lua_pop(L, 1);
 
     lua_getglobal(L, "io");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 1, "readlines", fm_aux_readlines);
-        luax_settable_cfunction(L, 1, "readfile", fm_aux_readfile);
-        luax_settable_cfunction(L, 1, "writelines", fm_aux_writelines);
-        luax_settable_cfunction(L, 1, "writefile", fm_aux_writefile);
+        luax_settable_cfunction(L, 4, "readlines", fm_aux_readlines);
+        luax_settable_cfunction(L, 4, "readfile", fm_aux_readfile);
+        luax_settable_cfunction(L, 4, "writelines", fm_aux_writelines);
+        luax_settable_cfunction(L, 4, "writefile", fm_aux_writefile);
     }
     lua_pop(L, 1);
 
-    return 0;
+    lua_getglobal(L, "math");
+    if (!lua_isnil(L, -1)) {
+        luax_settable_number(L,4,"maxdouble",1.7976931348623158e+308)
+        luax_settable_number(L,4,"mindouble",2.2250738585072014e-308)
+    }
+    lua_pop(L, 1);
 }
 
 int fm_aux_split(lua_State *L) {
@@ -363,6 +369,41 @@ int fm_aux_mergesort_ext(lua_State *L) {
     return 1;
 }
 
+int fm_aux_iter_next(lua_State *L) {
+    int i = lua_tointeger(L, lua_upvalueindex(1));
+    lua_rawgeti(L, 1, i);
+    lua_pushinteger(L, i + 1);
+    lua_replace(L, lua_upvalueindex(1));
+    return 1;
+}
+
+int fm_aux_iter(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_pushinteger(L, 1);                     // upvalue 1: current index
+    lua_pushcclosure(L, fm_aux_iter_next, 1);  // iterator
+    lua_pushvalue(L, 1);                       // state
+    lua_pushinteger(L, 0);                     // control
+    lua_pushnil(L);                            // closable
+    return 4;
+}
+
+int fm_aux_next_next(lua_State *L) {
+    int i = lua_tointeger(L, lua_upvalueindex(2));
+    lua_rawgeti(L, lua_upvalueindex(1), i);
+    lua_pushinteger(L, i + 1);
+    lua_replace(L, lua_upvalueindex(2));
+    return 1;
+}
+
+int fm_aux_next(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua_pushvalue(L, 1);                       // upvalue 1: table
+    lua_pushinteger(L, 1);                     // upvalue 2: current index
+    lua_pushcclosure(L, fm_aux_next_next, 2);  // iterator
+    return 1;
+}
+
 int fm_aux_kpairs(lua_State *L) {
     int i = 1;
     int func = lua_isfunction(L, 2);
@@ -440,7 +481,7 @@ int fm_aux_concats(lua_State *L) {
     luaL_buffinit(L, &buffer);
     for (i = 1; i <= len; i++) {
         lua_rawgeti(L, 1, i);
-        //todo: handle boolean, function and table?
+        // todo: handle boolean, function and table?
         itm = lua_tolstring(L, -1, &itmlen);
         lua_pop(L, 1);
 
@@ -688,7 +729,7 @@ void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const ch
     int quoutekey = 0;
 
     value = lua_tostring(L, -1);
-    if (value == NULL && !lua_istable(L, -1) && !lua_type(L,-1)) {
+    if (value == NULL && !lua_istable(L, -1) && !lua_type(L, -1)) {
         return;
     }
 
@@ -736,9 +777,9 @@ void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const ch
         fm_sb_add_constant(buffer, ",");
         fm_sb_add_string(buffer, le);
     } else if (lua_isboolean(L, -1)) {
-        if (lua_toboolean(L,-1)){
+        if (lua_toboolean(L, -1)) {
             fm_sb_add_constant(buffer, "true");
-        }else {
+        } else {
             fm_sb_add_constant(buffer, "false");
         }
         fm_sb_add_constant(buffer, ",");
