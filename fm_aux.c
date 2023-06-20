@@ -25,6 +25,8 @@ void fm_aux_extend_libs(lua_State *L) {
         luax_settable_cfunction(L, 4, "tostring", fm_aux_tabletostring);
         luax_settable_cfunction(L, 4, "iter", fm_aux_iter);
         luax_settable_cfunction(L, 4, "next", fm_aux_next);
+        luax_settable_cfunction(L, 4, "insertsorted", fm_aux_insert_sorted);
+        luax_settable_cfunction(L, 4, "comparator", fm_aux_comparator);
     }
     lua_pop(L, 1);
 
@@ -39,8 +41,8 @@ void fm_aux_extend_libs(lua_State *L) {
 
     lua_getglobal(L, "math");
     if (!lua_isnil(L, -1)) {
-        luax_settable_number(L,4,"maxdouble",1.7976931348623158e+308)
-        luax_settable_number(L,4,"mindouble",2.2250738585072014e-308)
+        luax_settable_number(L, 4, "maxdouble", 1.7976931348623158e+308)
+            luax_settable_number(L, 4, "mindouble", 2.2250738585072014e-308)
     }
     lua_pop(L, 1);
 }
@@ -402,6 +404,61 @@ int fm_aux_next(lua_State *L) {
     lua_pushinteger(L, 1);                     // upvalue 2: current index
     lua_pushcclosure(L, fm_aux_next_next, 2);  // iterator
     return 1;
+}
+
+/*
+local function binary_insert(array, value, compeareator)
+    local start, len, mid, state = 1, #array, 1, 0
+    while start <= len do
+        mid = math.floor((start + len) / 2)
+        if compeareator(value, array[mid]) then
+            len, state = mid - 1, 0
+        else
+            start, state = mid + 1, 1
+        end
+    end
+    table.insert(array, (mid + state), value)
+end
+
+*/
+
+int fm_aux_comparator(lua_State *L) {
+    lua_pushboolean(L, lua_compare(L, 1, 2, LUA_OPLT));
+    return 1;
+}
+
+int fm_aux_insert_sorted(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    luaL_argcheck(L, !lua_isnil(L, 2), 2, "item to insert may not be nil");
+    if (lua_type(L, 3) == LUA_TNONE) {
+        lua_pushcfunction(L, fm_aux_comparator);
+    }
+    luaL_checktype(L, 3, LUA_TFUNCTION);
+
+    lua_Integer start = 1;
+    lua_Integer len = lua_rawlen(L, 1);
+    lua_Integer mid = 1;
+    lua_Integer state = 0;
+
+    while (start <= len) {
+        mid = (start + len) / 2;
+        lua_pushvalue(L, 3);     // comparator
+        lua_pushvalue(L, 2);     // value
+        lua_rawgeti(L, 1, mid);  // table[mid]
+        lua_call(L, 2, 1);
+        fflush(stdout);
+        if (lua_toboolean(L, -1)) {
+            len = mid - 1;
+            state = 0;
+        } else {
+            start = mid + 1;
+            state = 1;
+        }
+        lua_pop(L, 1);
+    }
+    lua_pushvalue(L, 2);
+    luax_tableinsert(L, 1, mid + state);
+    return 0;
 }
 
 int fm_aux_kpairs(lua_State *L) {

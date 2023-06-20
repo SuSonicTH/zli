@@ -31,6 +31,8 @@ void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const c
 void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind, int seq);
 int fm_aux_iter(lua_State *L);
 int fm_aux_next(lua_State *L);
+int fm_aux_insert_sorted(lua_State *L);
+int fm_aux_comparator(lua_State *L);
 
 int fm_aux_readlines(lua_State *L);
 int fm_aux_readfile(lua_State *L);
@@ -50,7 +52,9 @@ static const luaL_Reg fm_auxlib[] = {
     {"tabletostring", fm_aux_tabletostring},
     {"tableiter", fm_aux_iter},
     {"tablenext", fm_aux_next},
-
+    {"insertsorted", fm_aux_insert_sorted},
+    {"comparator", fm_aux_comparator},
+    
     {"readfile", fm_aux_readfile},
     {"readlines", fm_aux_readlines},
     {"writefile", fm_aux_writefile},
