@@ -12,8 +12,6 @@ local log = require "log"
 local string_builder = require "string_builder"
 local zip = require "zip"
 
-aux.extendlibs()
-
 TestLibraries = {}
 
 function TestLibraries:test_zlib()
