@@ -20,7 +20,6 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(fmZip(b, target, optimize));
-    //exe.addModule("ziglua", ziglua.compileAndCreateModule(b, exe, .{}));
     exe.linkLibrary(fullmoon(b, target, optimize));
     exe.strip = true;
 
