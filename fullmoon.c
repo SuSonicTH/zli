@@ -119,14 +119,15 @@ static int pushargs(lua_State *L) {
 }
 
 extern const char *fullmoon_main;
+extern int fullmoon_openlibs(lua_State *L);
 
 static int pmain(lua_State *L) {
     int argc = (int)lua_tointeger(L, 1);
     char **argv = (char **)lua_touserdata(L, 2);
 
     if (argv[0] && argv[0][0]) progname = argv[0];
+    fullmoon_openlibs(L); /* open standard libraries & preload fullmoon libraries*/
 
-    luaL_openlibs(L); /* open standard libraries */
     create_payload_searcher(L, argv[0]);
     createargtable(L, argv, argc); /* create table 'arg' */
     lua_gc(L, LUA_GCGEN, 0, 0);    /* GC in generational mode */
