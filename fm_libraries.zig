@@ -126,7 +126,8 @@ fn luaopen_luascript(lua: *Lua) i32 {
             return 1;
         }
     }
-    const modname1 = lua.toString(1) catch unreachable;
+
+    const modname1 = lua.toString(1) catch unreachable; //todo: fix: is there a way to not get the string twice, once with toBytes and once with toString
     return lua.raiseErrorStr("unknown module \"%s\"", .{modname1});
 }
 
@@ -150,6 +151,6 @@ fn luaopen_extended(lua: *Lua) i32 {
         }
     }
 
-    const modname1 = lua.toString(1) catch unreachable;
+    const modname1 = lua.toString(1) catch unreachable; //todo: fix: is there a way to not get the string twice, once with toBytes and once with toString
     return lua.raiseErrorStr("unknown module \"%s\"", .{modname1});
 }
