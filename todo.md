@@ -1,5 +1,8 @@
 # FullMoon todo
 
+# refactorings
+* convert fullmoon.c to zig
+
 # fixes
 
 # possible improvements of compilation

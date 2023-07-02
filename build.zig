@@ -21,7 +21,9 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(fmZip(b, target, optimize));
     exe.linkLibrary(fullmoon(b, target, optimize));
-    //exe.strip = true;
+    if (optimize != .Debug) {
+        exe.strip = true;
+    }
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
