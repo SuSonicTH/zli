@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(fmZip(b, target, optimize));
     exe.linkLibrary(fullmoon(b, target, optimize));
-    exe.strip = true;
+    //exe.strip = true;
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -209,7 +209,6 @@ fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
         "fullmoon.c",
         "fm_aux.c",
         "fm_csv.c",
-        "fm_crossline.c",
         "fm_sbuilder.c",
         "fm_payload.c",
         "luax_value.c",

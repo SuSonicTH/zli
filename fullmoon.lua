@@ -62,6 +62,7 @@ if (args.test) then
     assert(load(source, args.test))()
 elseif (args.script) then
     assert(loadfile(args.script))()
+    return 0;
 elseif (args.sqlite) then
     require("sqlite_cli").execute()
 elseif (args.repl) then
