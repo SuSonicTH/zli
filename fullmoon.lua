@@ -3,12 +3,15 @@ local aux = require "aux"
 local zip = require "zip"
 
 if arg[1] == "@" then
+    --single @ without name fowards the arguments without @ to handler below
     table.remove(arg, 1)
 else
     local payload = zip.open(arg[0])
     if (payload) then
+        --we have a zip attached to the exe
         local script
         if arg[1] and arg[1]:sub(1, 1) == "@" then
+            --scriptname given wiht @scriptname
             local name = table.remove(arg, 1):sub(2, -1);
             if payload.files[name] then
                 script = name
@@ -21,6 +24,7 @@ else
                 script = name
             end
         else
+            --no scriptname given with @ search for main, init or exename lua scripts in payload
             local exePath = { string.gsub(arg[0], "\\", "/"):split("/") };
             local exe = exePath[#exePath]
             if (exe:lower():sub(-4) == ".exe") then
@@ -61,7 +65,11 @@ if (args.test) then
     ]]
     assert(load(source, args.test))()
 elseif (args.script) then
-    assert(loadfile(args.script))()
+    if (args.script == '-') then
+        assert(loadfile())()
+    else
+        assert(loadfile(args.script))()
+    end
     return 0;
 elseif (args.sqlite) then
     require("sqlite_cli").execute()

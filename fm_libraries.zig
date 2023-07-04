@@ -82,11 +82,7 @@ const luascripts = [_]luascript{
     .{ .name = "stream", .source = @embedFile("fm_stream.lua") },
 };
 
-export const fullmoon_main: [*c]const u8 = @embedFile("fullmoon.lua");
-
-pub export fn fullmoon_openlibs(state: ?*ziglua.LuaState) callconv(.C) c_int {
-    var lua: Lua = .{ .state = state.? };
-
+pub fn fullmoon_openlibs(lua: *Lua) i32 {
     lua.openLibs();
 
     lua.getSubtable(ziglua.registry_index, "_PRELOAD") catch unreachable; //todo: fix: no LUA_PRELOAD_TABLE in ziglua
@@ -107,6 +103,7 @@ pub export fn fullmoon_openlibs(state: ?*ziglua.LuaState) callconv(.C) c_int {
         lua.setField(-2, script.name);
     }
 
+    lua.setTop(0);
     return 0;
 }
 
