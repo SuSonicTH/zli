@@ -3,7 +3,6 @@
 # refactorings
 * convert fullmoon.c to zig
     * missing paylod loader
-    * missing signal
 
 # fixes
 
