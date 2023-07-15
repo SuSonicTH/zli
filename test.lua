@@ -38,11 +38,11 @@ end
 
 function TestLibraries:test_lfs()
     local actual = {}
-    for file in lfs.dir("./lua/") do
+    for file in lfs.dir("./ziglua/lib/lua-5.4") do
         actual[#actual + 1] = file
     end
     table.sort(actual)
-    lu.assertEquals(actual, { ".", "..", "Makefile", "README", "doc", "src" })
+    lu.assertEquals(actual, { ".", "..", "Makefile", "README", "license", "src" })
 end
 
 function TestLibraries:test_sqlite()

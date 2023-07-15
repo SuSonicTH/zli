@@ -1,4 +1,5 @@
 const std = @import("std");
+const ziglua = @import("ziglua/build.zig");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -10,7 +11,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    exe.linkLibrary(lua(b, target, optimize));
+
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lfs(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
@@ -20,7 +21,9 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(fmZip(b, target, optimize));
     exe.linkLibrary(fullmoon(b, target, optimize));
-    exe.strip = true;
+    if (optimize != .Debug) {
+        exe.strip = true;
+    }
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -45,62 +48,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&test_cmd.step);
 }
 
-const luaPath: []const u8 = "lua/src/";
-
-const luaSources = [_][]const u8{
-    luaPath ++ "lapi.c",
-    luaPath ++ "lauxlib.c",
-    luaPath ++ "lbaselib.c",
-    luaPath ++ "lcode.c",
-    luaPath ++ "lcorolib.c",
-    luaPath ++ "lctype.c",
-    luaPath ++ "ldblib.c",
-    luaPath ++ "ldebug.c",
-    luaPath ++ "ldo.c",
-    luaPath ++ "ldump.c",
-    luaPath ++ "lfunc.c",
-    luaPath ++ "lgc.c",
-    luaPath ++ "liolib.c",
-    luaPath ++ "llex.c",
-    luaPath ++ "lmathlib.c",
-    luaPath ++ "lmem.c",
-    luaPath ++ "loadlib.c",
-    luaPath ++ "lobject.c",
-    luaPath ++ "lopcodes.c",
-    luaPath ++ "loslib.c",
-    luaPath ++ "lparser.c",
-    luaPath ++ "lstate.c",
-    luaPath ++ "lstring.c",
-    luaPath ++ "lstrlib.c",
-    luaPath ++ "ltable.c",
-    luaPath ++ "ltablib.c",
-    luaPath ++ "ltm.c",
-    luaPath ++ "lundump.c",
-    luaPath ++ "lutf8lib.c",
-    luaPath ++ "lvm.c",
-    luaPath ++ "lzio.c",
-};
-
-fn lua(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
-    const lib = b.addStaticLibrary(.{
-        .name = "lua",
-        .target = target,
-        .optimize = optimize,
-    });
-
-    lib.addIncludePath(luaPath);
-    lib.addCSourceFiles(&luaSources, &[_][]const u8{
-        "-std=gnu99",
-        switch (target.getOsTag()) {
-            .linux => "-DLUA_USE_LINUX",
-            .macos => "-DLUA_USE_MACOSX",
-            .windows => "-DLUA_USE_WINDOWS",
-            else => "-DLUA_USE_POSIX",
-        },
-    });
-    lib.linkLibC();
-    return lib;
-}
+const luaPath: []const u8 = "ziglua/lib/lua-5.4/src/";
 
 fn lsqlite3(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
     const lib = b.addStaticLibrary(.{
@@ -250,7 +198,7 @@ fn crossline(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.M
 fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
     const lib = b.addStaticLibrary(.{
         .name = "fullmoonLib",
-        .root_source_file = .{ .path = "fm_libraries.zig" },
+        .root_source_file = .{ .path = "fullmoon.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -260,15 +208,13 @@ fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
     lib.addIncludePath("zlib/contrib/minizip/");
     lib.addIncludePath("zlib/");
     lib.addCSourceFiles(&[_][]const u8{
-        "fullmoon.c",
         "fm_aux.c",
         "fm_csv.c",
-        "fm_crossline.c",
         "fm_sbuilder.c",
-        "fm_payload.c",
         "luax_value.c",
         "luax_gcptr.c",
     }, &[_][]const u8{ "-std=gnu99", "-DFM_SBUILDER_LUA" });
     lib.linkLibC();
+    lib.addModule("ziglua", ziglua.compileAndCreateModule(b, lib, .{}));
     return lib;
 }

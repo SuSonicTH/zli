@@ -16,3 +16,6 @@
 [submodule "Crossline"]
 	path = Crossline
 	url = https://github.com/SuSonicTH/Crossline.git
+[submodule "ziglua"]
+	path = ziglua
+	url = https://github.com/natecraddock/ziglua.git
