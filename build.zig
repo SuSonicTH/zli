@@ -208,11 +208,9 @@ fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
     lib.addIncludePath("zlib/contrib/minizip/");
     lib.addIncludePath("zlib/");
     lib.addCSourceFiles(&[_][]const u8{
-        //"fullmoon.c",
         "fm_aux.c",
         "fm_csv.c",
         "fm_sbuilder.c",
-        "fm_payload.c",
         "luax_value.c",
         "luax_gcptr.c",
     }, &[_][]const u8{ "-std=gnu99", "-DFM_SBUILDER_LUA" });

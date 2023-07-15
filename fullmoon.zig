@@ -6,6 +6,7 @@ const c = @cImport({
 });
 
 const Lua = ziglua.Lua;
+const debug = std.log.debug;
 
 const fullmoon_main: [:0]const u8 = @embedFile("fullmoon.lua");
 var prog_name: [:0]u8 = undefined;
@@ -20,8 +21,7 @@ pub fn main() !void {
     try createArgTable(&lua, allocator);
     _ = lua.gcSetGenerational(0, 0);
     _ = libraries.fullmoon_openlibs(&lua);
-
-    std.log.debug("prog_name {s}", .{prog_name});
+    try create_payload_searcher(&lua);
 
     lua.pushFunction(ziglua.wrap(messageHandler));
     try lua.loadBuffer(fullmoon_main, prog_name, .binary_text);
@@ -66,14 +66,14 @@ fn create_payload_searcher(lua: *Lua) !void {
     }
     const top = lua.getTop();
 
-    try lua.getGlobal("package");
+    _ = try lua.getGlobal("package");
     const package = lua.getTop();
 
     _ = lua.pushString("searchers");
     _ = lua.getTable(package);
     const len = lua.rawLen(-1);
     lua.pushFunction(ziglua.wrap(payload_searcher));
-    lua.rawSetIndex(-2, len + 1);
+    lua.rawSetIndex(-2, @intCast(ziglua.Integer, len) + 1);
     lua.setTop(top);
 }
 
@@ -81,16 +81,18 @@ const extention_lua = ".lua";
 const extention_init = "/init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
-    const module = lua.toString(1);
-    var filename: u8[260] = undefined;
+    const arg = lua.checkString(1);
+    const module = arg[0..std.mem.len(arg) :0];
+    var filename: [260:0]u8 = undefined;
 
-    std.mem.copy(filename, module, module.len);
-    std.mem.copy(filename[filename.len..], extention_lua, extention_lua.len);
-    if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
-        std.mem.copy(filename, module, module.len);
-        std.mem.copy(filename[filename.len..], extention_init, extention_init.len);
-        if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
-            lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ module, module, prog_name });
+    std.mem.copy(u8, &filename, module);
+    std.mem.copy(u8, filename[module.len..], extention_lua);
+    filename[module.len + extention_lua.len] = 0;
+    if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
+        std.mem.copy(u8, filename[module.len..], extention_init);
+        filename[module.len + extention_init.len] = 0;
+        if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
+            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ module.ptr, module.ptr, prog_name.ptr });
             return 1;
         }
     }
@@ -101,22 +103,23 @@ fn payload_searcher(lua: *Lua) i32 {
     }
 
     lua.pushFunction(ziglua.wrap(payload_loader));
-    lua.pushstring(filename);
+    _ = lua.pushString(filename[0..]);
     return 2;
 }
 
-const BUFFER_SIZE = 4096;
-fn payload_reder(state: ?*ziglua.LuaState, buf: ?*const anyopaque, size: usize, data: ?*anyopaque) callconv(.C) c_int {
+const BUFFER_SIZE: usize = 4096;
+var buffer: [BUFFER_SIZE]u8 = undefined;
+
+fn payload_reder(state: ?*ziglua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
     _ = data;
-    _ = buf;
     _ = state;
-    var buffer: u8[BUFFER_SIZE] = undefined;
-    size = c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE);
-    return buffer;
+    size.* = @intCast(usize, c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));
+    return &buffer;
 }
 
 fn payload_loader(lua: *Lua) i32 {
-    lua.load(payload_reder, null, lua.toString(2), "rt") orelse lua.raiseError();
-    lua.call(0, -1, 0) orelse lua.raiseError();
+    const name: [*:0]const u8 = lua.toString(2) catch unreachable;
+    lua.load(payload_reder, undefined, name[0..std.mem.len(name) :0], .binary_text) catch lua.raiseError();
+    lua.call(0, -1);
     return 1;
 }
