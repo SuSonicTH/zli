@@ -1,8 +1,6 @@
 # FullMoon todo
 
 # refactorings
-* convert fullmoon.c to zig
-    * missing paylod loader
 
 # fixes
 
@@ -18,7 +16,7 @@
     * DONE fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
     * DONE add commandline option to execute payload scripts (@script.lua ??)
 
-# additional libraries
+# additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket
 * http server/client (based on luasocket)

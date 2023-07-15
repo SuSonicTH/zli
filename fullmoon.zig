@@ -1,4 +1,5 @@
 const std = @import("std");
+//const ziglua = @import("ziglua");
 const ziglua = @import("ziglua/src/ziglua-5.4/lib.zig");
 const libraries = @import("fm_libraries.zig");
 const c = @cImport({
@@ -88,9 +89,11 @@ fn payload_searcher(lua: *Lua) i32 {
     std.mem.copy(u8, &filename, module);
     std.mem.copy(u8, filename[module.len..], extention_lua);
     filename[module.len + extention_lua.len] = 0;
+
     if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
         std.mem.copy(u8, filename[module.len..], extention_init);
         filename[module.len + extention_init.len] = 0;
+
         if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
             _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ module.ptr, module.ptr, prog_name.ptr });
             return 1;
