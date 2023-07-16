@@ -80,7 +80,7 @@ NATIVE_SUFFIX=""
 if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     NATIVE_SUFFIX=".exe"
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-windows-x86_64-0.11.0-dev.3777+64f0059cd"
+        ZIG_NAME="zig-windows-x86_64-0.11.0-dev.4003+c6aa29b6f"
         echo downloading $ZIG_NAME
         curl -s https://ziglang.org/builds/${ZIG_NAME}.zip --output zig.zip || exit_on_error
         echo "unzipping..."
@@ -100,7 +100,7 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     fi
 else
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-linux-x86_64-0.11.0-dev.3777+64f0059cd"
+        ZIG_NAME="zig-linux-x86_64-0.11.0-dev.4003+c6aa29b6f"
         echo downloading $ZIG_NAME
         curl -s https://ziglang.org/builds/${ZIG_NAME}.tar.xz | tar -xJ || exit_on_error
         mv $ZIG_NAME zig || exit_on_error
