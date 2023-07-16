@@ -1,5 +1,6 @@
 const std = @import("std");
 const ziglua = @import("src/lib/ziglua/build.zig");
+const flags_c99 = &.{"-std=c99"};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -8,9 +9,14 @@ pub fn build(b: *std.Build) void {
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
+    exe.addIncludePath("src/lib/Crossline/");
+    exe.addIncludePath("src/lib/zlib/contrib/minizip/");
+    exe.addIncludePath("src/lib/zlib/");
+    exe.addModule("ziglua", ziglua.compileAndCreateModule(b, exe, .{}));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lfs(b, target, optimize));
@@ -19,8 +25,9 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaZlib(b, target, optimize));
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
+    exe.linkLibrary(miniZip(b, target, optimize));
     exe.linkLibrary(luaZip(b, target, optimize));
-    exe.linkLibrary(zli(b, target, optimize));
+    exe.linkLibrary(zliLibraries(b, target, optimize));
     if (optimize != .Debug) {
         exe.strip = true;
     }
@@ -61,7 +68,7 @@ fn lsqlite3(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
     lib.addCSourceFiles(&[_][]const u8{
         "src/lib/lsqlite3/sqlite3.c",
         "src/lib/lsqlite3/lsqlite3.c",
-    }, &[_][]const u8{"-std=gnu99"});
+    }, flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -74,7 +81,7 @@ fn lfs(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *
     });
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/lib/luafilesystem/src/");
-    lib.addCSourceFile("src/lib/luafilesystem/src/lfs.c", &[_][]const u8{"-std=gnu99"});
+    lib.addCSourceFile("src/lib/luafilesystem/src/lfs.c", flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -93,7 +100,7 @@ fn lpeg(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) 
         "src/lib/lpeg/lpprint.c",
         "src/lib/lpeg/lptree.c",
         "src/lib/lpeg/lpvm.c",
-    }, &[_][]const u8{"-std=gnu99"});
+    }, flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -121,7 +128,7 @@ fn zlib(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) 
         "src/lib/zlib/inffast.c",
         "src/lib/zlib/inftrees.c",
         "src/lib/zlib/uncompr.c",
-    }, &.{"-std=c89"});
+    }, flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -134,7 +141,31 @@ fn luaZlib(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mod
     });
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/lib/zlib/");
-    lib.addCSourceFile("src/lib/lua-zlib/lua_zlib.c", &[_][]const u8{ "-std=gnu99", "-DLZLIB_COMPAT" });
+    lib.addCSourceFile("src/lib/lua-zlib/lua_zlib.c", &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" });
+    lib.linkLibC();
+    return lib;
+}
+
+fn miniZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+    const lib = b.addStaticLibrary(.{
+        .name = "miniZip",
+        .target = target,
+        .optimize = optimize,
+    });
+    lib.addIncludePath("src/");
+    lib.addIncludePath("src/lib/zlib/");
+    lib.addIncludePath("src/lib/zlib/contrib/minizip/");
+    lib.addCSourceFiles(&[_][]const u8{
+        "src/lib/zlib/contrib/minizip/zip.c",
+        "src/lib/zlib/contrib/minizip/unzip.c",
+        "src/lib/zlib/contrib/minizip/ioapi.c",
+    }, flags_c99);
+    switch (target.getOsTag()) {
+        .windows => {
+            lib.addCSourceFile("src/lib/zlib/contrib/minizip/iowin32.c", flags_c99);
+        },
+        else => {},
+    }
     lib.linkLibC();
     return lib;
 }
@@ -150,18 +181,7 @@ fn luaZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/lib/zlib/");
     lib.addIncludePath("src/lib/zlib/contrib/minizip/");
-    lib.addCSourceFiles(&[_][]const u8{
-        "src/lib/zlib/contrib/minizip/zip.c",
-        "src/lib/zlib/contrib/minizip/unzip.c",
-        "src/lib/zlib/contrib/minizip/ioapi.c",
-        "src/lua_zip.c",
-    }, &.{"-std=c99"});
-    switch (target.getOsTag()) {
-        .windows => {
-            lib.addCSourceFile("src/lib/zlib/contrib/minizip/iowin32.c", &.{"-std=c99"});
-        },
-        else => {},
-    }
+    lib.addCSourceFile("src/lua_zip.c", flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -179,7 +199,7 @@ fn luaCJson(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
         "src/lib/lua-cjson/g_fmt.c",
         "src/lib/lua-cjson/lua_cjson.c",
         "src/lib/lua-cjson/strbuf.c",
-    }, &[_][]const u8{"-std=gnu99"});
+    }, flags_c99);
     lib.linkLibC();
     return lib;
 }
@@ -191,32 +211,28 @@ fn crossline(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.M
         .optimize = optimize,
     });
     lib.addIncludePath("src/lib/Crossline/");
-    lib.addCSourceFile("src/lib/Crossline/crossline.c", &[_][]const u8{"-std=gnu99"});
+    lib.addCSourceFile("src/lib/Crossline/crossline.c", flags_c99);
     lib.linkLibC();
     return lib;
 }
 
-fn zli(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+fn zliLibraries(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
     const lib = b.addStaticLibrary(.{
-        .name = "zliLib",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .name = "zliLibraries",
         .target = target,
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/");
     lib.addIncludePath("src/luax");
-    lib.addIncludePath("src/lib/Crossline/");
-    lib.addIncludePath("src/lib/zlib/contrib/minizip/");
-    lib.addIncludePath("src/lib/zlib/");
     lib.addCSourceFiles(&[_][]const u8{
         "src/auxiliary.c",
         "src/csv.c",
         "src/sbuilder.c",
         "src/luax/luax_value.c",
         "src/luax/luax_gcptr.c",
-    }, &[_][]const u8{ "-std=gnu99", "-DSBUILDER_LUA" });
+    }, &[_][]const u8{ "-std=c99", "-DSBUILDER_LUA" });
     lib.linkLibC();
-    lib.addModule("ziglua", ziglua.compileAndCreateModule(b, lib, .{}));
+
     return lib;
 }
