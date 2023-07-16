@@ -47,7 +47,7 @@ else
     end
 end
 
-local parser = argparse("ZLI - Zig Lua Interpreter", "A cross platform interpreter with batteries included")
+local parser = argparse("zli", "Zig Lua Interpreter - A cross platform interpreter with batteries included")
 parser:argument("script", "script to execute"):args("?")
 parser:option("--test", "run unit tests in file <test>")
 parser:option("--repl", "run Read Print Eval Loop."):args("0")
