@@ -9,6 +9,7 @@ There are many libraries included in the ZIL binary. Some 3rd party lua librarie
 * [3rd party libraries](https://github.com/SuSonicTH/zli/blob/master/src/lib/README.md)
 * [ZIL libraries](https://github.com/SuSonicTH/zli/blob/master/src/README.md)
 
+In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
 ## Compilation
 The build requires you to have git and zig installed
 Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
