@@ -16,9 +16,9 @@ Well known lua libraries included in ZLI
 | lua-cjson     | https://github.com/openresty/lua-cjson        | MIT     | Fast JSON encoding/parsing                                                                                                                   |
 
 ## 3rd party libraries for custom ZIL bindings
-there are some custom lua bindings for 3rd party libraries
+there are some custom ZLI bindings for 3rd party libraries
 
-| library   | link                                  | licence                                                    | description                                                                                                        |
-| --------- | ------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Crossline | https://github.com/jcwangxp/Crossline | MIT                                                        | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
-| zlib      | https://zlib.net/                     | The minizip library included in zlib for zip file handling |
+| library   | link                                  | licence | description                                                                                                        |
+| --------- | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| Crossline | https://github.com/jcwangxp/Crossline | MIT     | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
+| zlib      | https://zlib.net/                     | MIT     | The minizip library included in zlib for zip file handling                                                         |
