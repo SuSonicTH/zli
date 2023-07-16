@@ -1,41 +1,41 @@
-#include "fm_aux.h"
+#include "auxiliary.h"
 
-int luaopen_fmaux(lua_State *L) {
-    luaL_newlib(L, fm_auxlib);
-    fm_aux_extend_libs(L);
+int luaopen_aux(lua_State *L) {
+    luaL_newlib(L, zli_auxlib);
+    zli_aux_extend_libs(L);
     return 1;
 }
 
-void fm_aux_extend_libs(lua_State *L) {
+void zli_aux_extend_libs(lua_State *L) {
     lua_getglobal(L, "string");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 4, "split", fm_aux_split);
-        luax_settable_cfunction(L, 4, "trim", fm_aux_trim);
-        luax_settable_cfunction(L, 4, "ltrim", fm_aux_ltrim);
-        luax_settable_cfunction(L, 4, "rtrim", fm_aux_rtrim);
+        luax_settable_cfunction(L, 4, "split", zli_aux_split);
+        luax_settable_cfunction(L, 4, "trim", zli_aux_trim);
+        luax_settable_cfunction(L, 4, "ltrim", zli_aux_ltrim);
+        luax_settable_cfunction(L, 4, "rtrim", zli_aux_rtrim);
     }
     lua_pop(L, 1);
 
     lua_getglobal(L, "table");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 4, "mergesort", fm_aux_mergesort_ext);
-        luax_settable_cfunction(L, 4, "kpairs", fm_aux_kpairs);
-        luax_settable_cfunction(L, 4, "copy", fm_aux_copy_table);
-        luax_settable_cfunction(L, 4, "concats", fm_aux_concats);
-        luax_settable_cfunction(L, 4, "tostring", fm_aux_tabletostring);
-        luax_settable_cfunction(L, 4, "iter", fm_aux_iter);
-        luax_settable_cfunction(L, 4, "next", fm_aux_next);
-        luax_settable_cfunction(L, 4, "insertsorted", fm_aux_insert_sorted);
-        luax_settable_cfunction(L, 4, "comparator", fm_aux_comparator);
+        luax_settable_cfunction(L, 4, "mergesort", zli_aux_mergesort_ext);
+        luax_settable_cfunction(L, 4, "kpairs", zli_aux_kpairs);
+        luax_settable_cfunction(L, 4, "copy", zli_aux_copy_table);
+        luax_settable_cfunction(L, 4, "concats", zli_aux_concats);
+        luax_settable_cfunction(L, 4, "tostring", zli_aux_tabletostring);
+        luax_settable_cfunction(L, 4, "iter", zli_aux_iter);
+        luax_settable_cfunction(L, 4, "next", zli_aux_next);
+        luax_settable_cfunction(L, 4, "insertsorted", zli_aux_insert_sorted);
+        luax_settable_cfunction(L, 4, "comparator", zli_aux_comparator);
     }
     lua_pop(L, 1);
 
     lua_getglobal(L, "io");
     if (!lua_isnil(L, -1)) {
-        luax_settable_cfunction(L, 4, "readlines", fm_aux_readlines);
-        luax_settable_cfunction(L, 4, "readfile", fm_aux_readfile);
-        luax_settable_cfunction(L, 4, "writelines", fm_aux_writelines);
-        luax_settable_cfunction(L, 4, "writefile", fm_aux_writefile);
+        luax_settable_cfunction(L, 4, "readlines", zli_aux_readlines);
+        luax_settable_cfunction(L, 4, "readfile", zli_aux_readfile);
+        luax_settable_cfunction(L, 4, "writelines", zli_aux_writelines);
+        luax_settable_cfunction(L, 4, "writefile", zli_aux_writefile);
     }
     lua_pop(L, 1);
 
@@ -47,7 +47,7 @@ void fm_aux_extend_libs(lua_State *L) {
     lua_pop(L, 1);
 }
 
-int fm_aux_split(lua_State *L) {
+int zli_aux_split(lua_State *L) {
     const char *seperator;
     char sep = ',';
     const char *string;
@@ -96,7 +96,7 @@ int fm_aux_split(lua_State *L) {
     return cnt;
 }
 
-int fm_aux_trim(lua_State *L) {
+int zli_aux_trim(lua_State *L) {
     const char *spos;
     const char *epos;
     size_t len;
@@ -125,7 +125,7 @@ int fm_aux_trim(lua_State *L) {
     return 1;
 }
 
-int fm_aux_ltrim(lua_State *L) {
+int zli_aux_ltrim(lua_State *L) {
     const char *spos;
     const char *epos;
     size_t len;
@@ -141,7 +141,7 @@ int fm_aux_ltrim(lua_State *L) {
     return 1;
 }
 
-int fm_aux_rtrim(lua_State *L) {
+int zli_aux_rtrim(lua_State *L) {
     const char *spos;
     const char *epos;
     size_t len;
@@ -158,7 +158,7 @@ int fm_aux_rtrim(lua_State *L) {
 }
 
 /* Mergesort */
-int fm_aux_chek_lte(lua_State *L, int *al, int *bl, int a, int b, int idx, int func) {
+int zli_aux_chek_lte(lua_State *L, int *al, int *bl, int a, int b, int idx, int func) {
     int ret;
 
     if (func) {
@@ -177,16 +177,16 @@ int fm_aux_chek_lte(lua_State *L, int *al, int *bl, int a, int b, int idx, int f
     return ret;
 }
 
-int *fm_aux_mergesort_sublist(lua_State *L, int *in, int *tmp, int len, int idx, int func) {
+int *zli_aux_mergesort_sublist(lua_State *L, int *in, int *tmp, int len, int idx, int func) {
     switch (len) {
         case 3:
-            if (fm_aux_chek_lte(L, in, in, 0, 1, idx, func)) {
-                if (fm_aux_chek_lte(L, in, in, 1, 2, idx, func)) {
+            if (zli_aux_chek_lte(L, in, in, 0, 1, idx, func)) {
+                if (zli_aux_chek_lte(L, in, in, 1, 2, idx, func)) {
                     tmp[0] = in[0];
                     tmp[1] = in[1];
                     tmp[2] = in[2];
                 } else {
-                    if (fm_aux_chek_lte(L, in, in, 0, 2, idx, func)) {
+                    if (zli_aux_chek_lte(L, in, in, 0, 2, idx, func)) {
                         tmp[0] = in[0];
                         tmp[1] = in[2];
                         tmp[2] = in[1];
@@ -197,8 +197,8 @@ int *fm_aux_mergesort_sublist(lua_State *L, int *in, int *tmp, int len, int idx,
                     }
                 }
             } else {
-                if (fm_aux_chek_lte(L, in, in, 1, 2, idx, func)) {
-                    if (fm_aux_chek_lte(L, in, in, 0, 2, idx, func)) {
+                if (zli_aux_chek_lte(L, in, in, 1, 2, idx, func)) {
+                    if (zli_aux_chek_lte(L, in, in, 0, 2, idx, func)) {
                         tmp[0] = in[1];
                         tmp[1] = in[0];
                         tmp[2] = in[2];
@@ -216,7 +216,7 @@ int *fm_aux_mergesort_sublist(lua_State *L, int *in, int *tmp, int len, int idx,
             return tmp;
             break;
         case 2:
-            if (fm_aux_chek_lte(L, in, in, 0, 1, idx, func)) {
+            if (zli_aux_chek_lte(L, in, in, 0, 1, idx, func)) {
                 tmp[0] = in[0];
                 tmp[1] = in[1];
             } else {
@@ -226,12 +226,12 @@ int *fm_aux_mergesort_sublist(lua_State *L, int *in, int *tmp, int len, int idx,
             return tmp;
             break;
         default:
-            return fm_aux_mergesort_impl(L, in, tmp, len, idx, func);
+            return zli_aux_mergesort_impl(L, in, tmp, len, idx, func);
             break;
     }
 }
 
-int *fm_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, int func) {
+int *zli_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, int func) {
     int *lt, *rt;
     int lp = 0, rp = 0;
     int ls, rs;
@@ -240,11 +240,11 @@ int *fm_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, in
 
     // sort left sublist
     ls = len / 2;
-    lt = fm_aux_mergesort_sublist(L, in, tmp, ls, idx, func);
+    lt = zli_aux_mergesort_sublist(L, in, tmp, ls, idx, func);
 
     // sort right sublist
     rs = len - ls;
-    rt = fm_aux_mergesort_sublist(L, in + ls, tmp + ls, rs, idx, func);
+    rt = zli_aux_mergesort_sublist(L, in + ls, tmp + ls, rs, idx, func);
 
     // allocate output list
     out = malloc(sizeof(int) * len);
@@ -296,7 +296,7 @@ int *fm_aux_mergesort_impl(lua_State *L, int *in, int *tmp, int len, int idx, in
     return out;
 }
 
-int *fm_aux_mergesort_arr(lua_State *L, int idx, int func, unsigned int *tlen) {
+int *zli_aux_mergesort_arr(lua_State *L, int idx, int func, unsigned int *tlen) {
     int *in, *out, *tmp;
     unsigned int i;
     unsigned int len = (unsigned int)lua_rawlen(L, idx);
@@ -324,22 +324,22 @@ int *fm_aux_mergesort_arr(lua_State *L, int idx, int func, unsigned int *tlen) {
 
     if (len <= 3) {
         // the array has only 2 or 3 elements -> sort them by fixed sorting
-        out = fm_aux_mergesort_sublist(L, in, tmp, len, idx, func);
+        out = zli_aux_mergesort_sublist(L, in, tmp, len, idx, func);
     } else {
         // sort in array with merge sort and get sorted data back in out
-        out = fm_aux_mergesort_impl(L, in, tmp, len, idx, func);
+        out = zli_aux_mergesort_impl(L, in, tmp, len, idx, func);
         free(tmp);
     }
     free(in);
     return out;
 }
 
-int fm_aux_mergesort_int(lua_State *L, int idx, int func, int copy) {
+int zli_aux_mergesort_int(lua_State *L, int idx, int func, int copy) {
     int *out;
     unsigned int len;
     int i, n;
 
-    out = fm_aux_mergesort_arr(L, idx, func, &len);
+    out = zli_aux_mergesort_arr(L, idx, func, &len);
 
     // write sorted table entries in return table
     lua_newtable(L);
@@ -361,17 +361,17 @@ int fm_aux_mergesort_int(lua_State *L, int idx, int func, int copy) {
     return 1;
 }
 
-int fm_aux_mergesort_ext(lua_State *L) {
+int zli_aux_mergesort_ext(lua_State *L) {
     unsigned int len = (unsigned int)lua_rawlen(L, 1);
     int func = lua_isfunction(L, 2);
     int copy = lua_toboolean(L, 3);
 
-    fm_aux_mergesort_int(L, 1, func ? 2 : 0, copy);
+    zli_aux_mergesort_int(L, 1, func ? 2 : 0, copy);
 
     return 1;
 }
 
-int fm_aux_iter_next(lua_State *L) {
+int zli_aux_iter_next(lua_State *L) {
     int i = lua_tointeger(L, lua_upvalueindex(1));
     lua_rawgeti(L, 1, i);
     lua_pushinteger(L, i + 1);
@@ -379,18 +379,18 @@ int fm_aux_iter_next(lua_State *L) {
     return 1;
 }
 
-int fm_aux_iter(lua_State *L) {
+int zli_aux_iter(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
-    lua_pushinteger(L, 1);                     // upvalue 1: current index
-    lua_pushcclosure(L, fm_aux_iter_next, 1);  // iterator
-    lua_pushvalue(L, 1);                       // state
-    lua_pushinteger(L, 0);                     // control
-    lua_pushnil(L);                            // closable
+    lua_pushinteger(L, 1);                      // upvalue 1: current index
+    lua_pushcclosure(L, zli_aux_iter_next, 1);  // iterator
+    lua_pushvalue(L, 1);                        // state
+    lua_pushinteger(L, 0);                      // control
+    lua_pushnil(L);                             // closable
     return 4;
 }
 
-int fm_aux_next_next(lua_State *L) {
+int zli_aux_next_next(lua_State *L) {
     int i = lua_tointeger(L, lua_upvalueindex(2));
     lua_rawgeti(L, lua_upvalueindex(1), i);
     lua_pushinteger(L, i + 1);
@@ -398,24 +398,24 @@ int fm_aux_next_next(lua_State *L) {
     return 1;
 }
 
-int fm_aux_next(lua_State *L) {
+int zli_aux_next(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    lua_pushvalue(L, 1);                       // upvalue 1: table
-    lua_pushinteger(L, 1);                     // upvalue 2: current index
-    lua_pushcclosure(L, fm_aux_next_next, 2);  // iterator
+    lua_pushvalue(L, 1);                        // upvalue 1: table
+    lua_pushinteger(L, 1);                      // upvalue 2: current index
+    lua_pushcclosure(L, zli_aux_next_next, 2);  // iterator
     return 1;
 }
 
-int fm_aux_comparator(lua_State *L) {
+int zli_aux_comparator(lua_State *L) {
     lua_pushboolean(L, lua_compare(L, 1, 2, LUA_OPLT));
     return 1;
 }
 
-int fm_aux_insert_sorted(lua_State *L) {
+int zli_aux_insert_sorted(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     luaL_argcheck(L, !lua_isnil(L, 2), 2, "item to insert may not be nil");
     if (lua_type(L, 3) == LUA_TNONE) {
-        lua_pushcfunction(L, fm_aux_comparator);
+        lua_pushcfunction(L, zli_aux_comparator);
     }
     luaL_checktype(L, 3, LUA_TFUNCTION);
 
@@ -445,7 +445,7 @@ int fm_aux_insert_sorted(lua_State *L) {
     return 0;
 }
 
-int fm_aux_kpairs(lua_State *L) {
+int zli_aux_kpairs(lua_State *L) {
     int i = 1;
     int func = lua_isfunction(L, 2);
 
@@ -469,12 +469,12 @@ int fm_aux_kpairs(lua_State *L) {
     // push iterator function
     lua_pushvalue(L, 1);
     lua_pushnumber(L, 1);
-    lua_pushcclosure(L, fm_aux_kpairs_iter, 3);
+    lua_pushcclosure(L, zli_aux_kpairs_iter, 3);
 
     return 1;
 }
 
-int fm_aux_kpairs_iter(lua_State *L) {
+int zli_aux_kpairs_iter(lua_State *L) {
     unsigned int i = (unsigned int)lua_tonumber(L, lua_upvalueindex(3));
     lua_rawgeti(L, lua_upvalueindex(1), i);
     lua_pushvalue(L, -1);
@@ -484,14 +484,14 @@ int fm_aux_kpairs_iter(lua_State *L) {
     return 2;
 }
 
-int fm_aux_copy_table(lua_State *L) {
+int zli_aux_copy_table(lua_State *L) {
     int t = lua_gettop(L);
     int n = t + 1;
     lua_newtable(L);
     lua_pushnil(L);
     while (lua_next(L, t)) {
         if (lua_istable(L, -1)) {
-            fm_aux_copy_table(L);
+            zli_aux_copy_table(L);
             lua_pushvalue(L, -3);  // key
             lua_pushvalue(L, -2);  // value
             lua_rawset(L, n);
@@ -506,7 +506,7 @@ int fm_aux_copy_table(lua_State *L) {
     return 1;
 }
 
-int fm_aux_concats(lua_State *L) {
+int zli_aux_concats(lua_State *L) {
     luaL_Buffer buffer;
     unsigned int len = (unsigned int)lua_rawlen(L, 1);
     const char *sep = NULL;
@@ -535,7 +535,7 @@ int fm_aux_concats(lua_State *L) {
     return 1;
 }
 
-int fm_aux_readfile(lua_State *L) {
+int zli_aux_readfile(lua_State *L) {
     FILE *fh;
     char *buffer;
     size_t len;
@@ -572,7 +572,7 @@ int fm_aux_readfile(lua_State *L) {
     return 1;
 }
 
-int fm_aux_readlines(lua_State *L) {
+int zli_aux_readlines(lua_State *L) {
     FILE *fh;
     char *buffer, *spos, *cpos, *epos;
     unsigned int len, n, i = 0;
@@ -627,7 +627,7 @@ int fm_aux_readlines(lua_State *L) {
     return 1;
 }
 
-int fm_aux_writefile(lua_State *L) {
+int zli_aux_writefile(lua_State *L) {
     size_t len;
     const char *data;
     const char *filename = lua_tostring(L, 1);
@@ -655,7 +655,7 @@ int fm_aux_writefile(lua_State *L) {
     return 1;
 }
 
-int fm_aux_writelines(lua_State *L) {
+int zli_aux_writelines(lua_State *L) {
     unsigned int tlen = (unsigned int)lua_rawlen(L, 2);
     size_t len;
     unsigned int i;
@@ -691,8 +691,8 @@ int fm_aux_writelines(lua_State *L) {
     return 1;
 }
 
-int fm_aux_tabletostring(lua_State *L) {
-    fm_sb *buffer = fm_sb_alloc(0);
+int zli_aux_tabletostring(lua_State *L) {
+    sbuilder *buffer = sb_alloc(0);
     const char *name = lua_tostring(L, 2);
     const char *le = lua_tostring(L, 3);
     const char *ind = lua_tostring(L, 4);
@@ -705,27 +705,27 @@ int fm_aux_tabletostring(lua_State *L) {
         ind = "  ";
 
     if (name != NULL) {
-        fm_sb_add_string(buffer, name);
-        fm_sb_add_constant(buffer, " = {");
-        fm_sb_add_string(buffer, le);
+        sb_add_string(buffer, name);
+        sb_add_constant(buffer, " = {");
+        sb_add_string(buffer, le);
         lvl++;
     }
 
     lua_pushvalue(L, 1);
-    fm_aux_tabletostring_traverse(L, buffer, lvl, le, ind);
+    zli_aux_tabletostring_traverse(L, buffer, lvl, le, ind);
 
     if (name != NULL) {
-        fm_sb_add_constant(buffer, "}");
+        sb_add_constant(buffer, "}");
     }
 
-    char *ret = fm_sb_get(buffer, &retlen);
+    char *ret = sb_get(buffer, &retlen);
     lua_pushlstring(L, ret, retlen);
-    fm_sb_free(buffer);
+    sb_free(buffer);
 
     return 1;
 }
 
-void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind) {
+void zli_aux_tabletostring_traverse(lua_State *L, sbuilder *buffer, int lvl, const char *le, const char *ind) {
     int n = lua_gettop(L);
     unsigned int i = 1;
     unsigned int len = (unsigned int)lua_rawlen(L, n);
@@ -735,7 +735,7 @@ void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const c
     for (i = 1; i <= len; i++) {
         lua_pushnumber(L, i);
         lua_rawgeti(L, n, i);
-        fm_aux_tabletostring_additem(L, buffer, lvl, le, ind, 1);
+        zli_aux_tabletostring_additem(L, buffer, lvl, le, ind, 1);
         lua_pop(L, 2);
     }
 
@@ -746,7 +746,7 @@ void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const c
             if (num < 1 || num > len || num != (int)num) {
                 lua_pushvalue(L, -2);
                 lua_pushvalue(L, -2);
-                fm_aux_tabletostring_additem(L, buffer, lvl, le, ind, 0);
+                zli_aux_tabletostring_additem(L, buffer, lvl, le, ind, 0);
                 lua_pop(L, 3);
             } else {
                 lua_pop(L, 1);
@@ -754,14 +754,14 @@ void fm_aux_tabletostring_traverse(lua_State *L, fm_sb *buffer, int lvl, const c
         } else {
             lua_pushvalue(L, -2);
             lua_pushvalue(L, -2);
-            fm_aux_tabletostring_additem(L, buffer, lvl, le, ind, 0);
+            zli_aux_tabletostring_additem(L, buffer, lvl, le, ind, 0);
             lua_pop(L, 3);
         }
     }
 }
 
-// TODO: fm_aux_tabletostring_additem: Hash Tables used and don't reuse them
-void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const char *le, const char *ind, int seq) {
+// TODO: zli_aux_tabletostring_additem: Hash Tables used and don't reuse them
+void zli_aux_tabletostring_additem(lua_State *L, sbuilder *buffer, int lvl, const char *le, const char *ind, int seq) {
     const char *cpos, *epos;
     const char *key;
     size_t keylen;
@@ -775,7 +775,7 @@ void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const ch
     }
 
     for (l = 1; l <= lvl; l++) {
-        fm_sb_add_string(buffer, ind);
+        sb_add_string(buffer, ind);
     }
 
     if (!seq) {
@@ -794,42 +794,42 @@ void fm_aux_tabletostring_additem(lua_State *L, fm_sb *buffer, int lvl, const ch
         }
 
         if (quoutekey) {
-            fm_sb_add_constant(buffer, "['");
-            // TODO: fm_aux_tabletostring_additem: escape special characters
-            fm_sb_add_string(buffer, key);
-            fm_sb_add_constant(buffer, "'] = ");
+            sb_add_constant(buffer, "['");
+            // TODO: zli_aux_tabletostring_additem: escape special characters
+            sb_add_string(buffer, key);
+            sb_add_constant(buffer, "'] = ");
         } else {
-            fm_sb_add_string(buffer, key);
-            fm_sb_add_constant(buffer, " = ");
+            sb_add_string(buffer, key);
+            sb_add_constant(buffer, " = ");
         }
     }
 
     if (lua_istable(L, -1)) {
-        fm_sb_add_constant(buffer, "{");
-        fm_sb_add_string(buffer, le);
-        fm_aux_tabletostring_traverse(L, buffer, lvl + 1, le, ind);
+        sb_add_constant(buffer, "{");
+        sb_add_string(buffer, le);
+        zli_aux_tabletostring_traverse(L, buffer, lvl + 1, le, ind);
         for (l = 1; l <= lvl; l++) {
-            fm_sb_add_string(buffer, ind);
+            sb_add_string(buffer, ind);
         }
-        fm_sb_add_constant(buffer, "},");
-        fm_sb_add_string(buffer, le);
+        sb_add_constant(buffer, "},");
+        sb_add_string(buffer, le);
     } else if (lua_isnumber(L, -1)) {
-        fm_sb_add_string(buffer, value);
-        fm_sb_add_constant(buffer, ",");
-        fm_sb_add_string(buffer, le);
+        sb_add_string(buffer, value);
+        sb_add_constant(buffer, ",");
+        sb_add_string(buffer, le);
     } else if (lua_isboolean(L, -1)) {
         if (lua_toboolean(L, -1)) {
-            fm_sb_add_constant(buffer, "true");
+            sb_add_constant(buffer, "true");
         } else {
-            fm_sb_add_constant(buffer, "false");
+            sb_add_constant(buffer, "false");
         }
-        fm_sb_add_constant(buffer, ",");
-        fm_sb_add_string(buffer, le);
+        sb_add_constant(buffer, ",");
+        sb_add_string(buffer, le);
     } else {
-        // TODO: fm_aux_tabletostring_additem: Check for Functions
-        fm_sb_add_constant(buffer, "\"");
-        fm_sb_add_string(buffer, value);
-        fm_sb_add_constant(buffer, "\",");
-        fm_sb_add_string(buffer, le);
+        // TODO: zli_aux_tabletostring_additem: Check for Functions
+        sb_add_constant(buffer, "\"");
+        sb_add_string(buffer, value);
+        sb_add_constant(buffer, "\",");
+        sb_add_string(buffer, le);
     }
 }

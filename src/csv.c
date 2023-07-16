@@ -1,11 +1,11 @@
-#include "fm_csv.h"
+#include "csv.h"
 
-int luaopen_fmcsv(lua_State* L) {
-    luaL_newlib(L, fm_csv);
+int luaopen_csv(lua_State* L) {
+    luaL_newlib(L, csv);
     return 1;
 }
 
-int fm_csv_splitstr(char* string, char sep, char quout, char* list[]) {
+int csv_splitstr(char* string, char sep, char quout, char* list[]) {
     int cnt = 0;
     list[0] = string;
     if (quout != 0) {
@@ -21,7 +21,7 @@ int fm_csv_splitstr(char* string, char sep, char quout, char* list[]) {
                 } else {
                     list[++cnt] = string + 1;
                 }
-                if (cnt + 1 == FM_CSV_MAXCOL)
+                if (cnt + 1 == CSV_MAXCOL)
                     break;
             } else if (*string == '\r' || *string == '\n' || *string == 0) {
                 cnt++;
@@ -38,7 +38,7 @@ int fm_csv_splitstr(char* string, char sep, char quout, char* list[]) {
         while (1) {
             if (*string == sep) {
                 list[++cnt] = string + 1;
-                if (cnt + 1 == FM_CSV_MAXCOL)
+                if (cnt + 1 == CSV_MAXCOL)
                     break;
                 *string = 0;
             } else if (*string == '\r' || *string == '\n' || *string == 0) {
@@ -52,7 +52,7 @@ int fm_csv_splitstr(char* string, char sep, char quout, char* list[]) {
     return cnt;
 }
 
-int fm_csv_rowmt_index(lua_State* L) {
+int csv_rowmt_index(lua_State* L) {
     int k = lua_tonumber(L, 2);
     int i;
 
@@ -70,7 +70,7 @@ int fm_csv_rowmt_index(lua_State* L) {
     return 1;
 }
 
-int fm_csv_rowmt_newindex(lua_State* L) {
+int csv_rowmt_newindex(lua_State* L) {
     int k = lua_tonumber(L, 2);
 
     if (lua_type(L, 3) == LUA_TTABLE) {
@@ -85,7 +85,7 @@ int fm_csv_rowmt_newindex(lua_State* L) {
     return 1;
 }
 
-int fm_csv_colmt_index(lua_State* L) {
+int csv_colmt_index(lua_State* L) {
     int i;
     lua_pushstring(L, "header2idx");
     lua_rawget(L, lua_upvalueindex(1));
@@ -105,7 +105,7 @@ int fm_csv_colmt_index(lua_State* L) {
     return 1;
 }
 
-int fm_csv_colmt_newindex(lua_State* L) {
+int csv_colmt_newindex(lua_State* L) {
     if (lua_type(L, 2) == LUA_TNUMBER) {
         lua_rawset(L, 1);
     } else {
@@ -122,7 +122,7 @@ int fm_csv_colmt_newindex(lua_State* L) {
     return 0;
 }
 
-void fm_csv_set_header2idx(lua_State* L, int n) {
+void csv_set_header2idx(lua_State* L, int n) {
     int i;
 
     lua_pushstring(L, "header2idx");
@@ -138,21 +138,21 @@ void fm_csv_set_header2idx(lua_State* L, int n) {
     lua_settable(L, n);
 }
 
-int fm_csv_setheader(lua_State* L) {
+int csv_setheader(lua_State* L) {
     if (lua_type(L, 2) != LUA_TTABLE) {
         luaL_argerror(L, 2, "A header table must be given");
     }
     lua_pushstring(L, "header");
     lua_pushvalue(L, 2);
     lua_settable(L, 1);
-    fm_csv_set_header2idx(L, 1);
+    csv_set_header2idx(L, 1);
     return 0;
 }
 
 // writes the column position of argument n (if given) to pos
 // if argument n is a string it gets resolved by header2idx
 // if no argument n is given pos gets set to number of entries in header +p
-#define fm_csv_getops(L, n, pos, p)                                                                     \
+#define csv_getops(L, n, pos, p)                                                                        \
     if (!lua_isnoneornil(L, n)) {                                                                       \
         if (lua_type(L, n) == LUA_TSTRING) {                                                            \
             lua_pushstring(L, "header2idx");                                                            \
@@ -181,12 +181,12 @@ int fm_csv_setheader(lua_State* L) {
         }                                                                                               \
     }
 
-int fm_csv_set_column(lua_State* L) {
+int csv_set_column(lua_State* L) {
     int pos = 0;
     int rcnt, r;
 
     // get position if given as argument or #header
-    fm_csv_getops(L, 3, pos, 0);
+    csv_getops(L, 3, pos, 0);
 
     // go trough all rows and insert value
     if (lua_isfunction(L, 2)) {
@@ -229,13 +229,13 @@ int fm_csv_set_column(lua_State* L) {
     return 0;
 }
 
-int fm_csv_get_column(lua_State* L) {
+int csv_get_column(lua_State* L) {
     int pos = 0;
     int n;
     int rcnt, r;
 
     // get position if given as argument or #header
-    fm_csv_getops(L, 2, pos, 0);
+    csv_getops(L, 2, pos, 0);
 
     // Create return table
     lua_newtable(L);
@@ -253,12 +253,12 @@ int fm_csv_get_column(lua_State* L) {
     return 1;
 }
 
-int fm_csv_insertcolumn(lua_State* L) {
+int csv_insertcolumn(lua_State* L) {
     int pos = 0;
     int rcnt, r;
 
     // get position if given as argument or #header+1
-    fm_csv_getops(L, 3, pos, 1);
+    csv_getops(L, 3, pos, 1);
 
     // insert column name into header table if table has a header
     lua_pushstring(L, "header");
@@ -269,7 +269,7 @@ int fm_csv_insertcolumn(lua_State* L) {
         }
         lua_pushvalue(L, 3);
         luax_tableinsert(L, -2, pos);
-        fm_csv_set_header2idx(L, 1);
+        csv_set_header2idx(L, 1);
     }
 
     // go trough all rows and insert value
@@ -309,20 +309,20 @@ int fm_csv_insertcolumn(lua_State* L) {
     return 0;
 }
 
-int fm_csv_removecolumn(lua_State* L) {
+int csv_removecolumn(lua_State* L) {
     int pos = 0;
     int rcnt, r;
     int getcopy = 0;
 
     // get position if given as argument or #header
-    fm_csv_getops(L, 3, pos, 0);
+    csv_getops(L, 3, pos, 0);
 
     // remove column name from header table if table has a header
     lua_pushstring(L, "header");
     lua_gettable(L, 1);
     if (!lua_isnil(L, -1)) {
         luax_tableremove(L, -1, pos);
-        fm_csv_set_header2idx(L, 1);
+        csv_set_header2idx(L, 1);
     }
 
     if (getcopy) {
@@ -351,9 +351,9 @@ int fm_csv_removecolumn(lua_State* L) {
     return 0;
 }
 
-int fm_csv_readcsv(lua_State* L) {
-    char str[FM_CSV_MAXLINELEN];
-    char* col[FM_CSV_MAXCOL];
+int csv_readcsv(lua_State* L) {
+    char str[CSV_MAXLINELEN];
+    char* col[CSV_MAXCOL];
     int cnt = 0;
     int row = 1;
     char* filename;
@@ -395,32 +395,32 @@ int fm_csv_readcsv(lua_State* L) {
     n = lua_gettop(L);
 
     if (firstrowheader) {
-        fgets(str, FM_CSV_MAXLINELEN, fh);
-        cnt = fm_csv_splitstr(str, sep, quout, col);
+        fgets(str, CSV_MAXLINELEN, fh);
+        cnt = csv_splitstr(str, sep, quout, col);
         lua_newtable(L);
         for (i = 0; i < cnt; i++) {
             lua_pushstring(L, col[i]);
             lua_rawseti(L, -2, i + 1);
         }
-        fm_csv_new_impl(L, n, n + 1);
+        csv_new_impl(L, n, n + 1);
     } else if (headergiven) {
-        fm_csv_new_impl(L, n, 2);
+        csv_new_impl(L, n, 2);
     } else {
-        fm_csv_new_impl(L, n, 0);
+        csv_new_impl(L, n, 0);
     }
 
     lua_pushstring(L, "_rowmt");
     lua_gettable(L, n);
 
     while (!feof(fh)) {
-        if (fgets(str, FM_CSV_MAXLINELEN, fh)) {
-            if (strlen(str) == FM_CSV_MAXLINELEN && str[strlen(str)] != '\r' && str[strlen(str)] != '\n' && !feof(fh)) {
+        if (fgets(str, CSV_MAXLINELEN, fh)) {
+            if (strlen(str) == CSV_MAXLINELEN && str[strlen(str)] != '\r' && str[strlen(str)] != '\n' && !feof(fh)) {
                 lua_pushnil(L);
                 lua_pushstring(L, "Line longer then maximum allowed length!");
                 return 2;
             }
 
-            cnt = fm_csv_splitstr(str, sep, quout, col);
+            cnt = csv_splitstr(str, sep, quout, col);
             if (cnt > 0 && !(cnt == 1 && col[0][0] == 0)) {
                 lua_newtable(L);
                 for (i = 0; i < cnt; i++) {
@@ -442,7 +442,7 @@ int fm_csv_readcsv(lua_State* L) {
     return 1;
 }
 
-int fm_csv_new(lua_State* L) {
+int csv_new(lua_State* L) {
     int headergiven = 0;
 
     if (lua_type(L, 1) == LUA_TTABLE) {
@@ -451,21 +451,21 @@ int fm_csv_new(lua_State* L) {
 
     // create return table
     lua_newtable(L);
-    fm_csv_new_impl(L, lua_gettop(L), headergiven);
+    csv_new_impl(L, lua_gettop(L), headergiven);
 
     return 1;
 }
 
-void fm_csv_new_impl(lua_State* L, int n, int header) {
+void csv_new_impl(lua_State* L, int n, int header) {
     // set object Methods
-    luax_settable_function_list(L, n, fm_csv_functions);
+    luax_settable_function_list(L, n, csv_functions);
 
     // set header if given
     if (header) {
         lua_pushstring(L, "header");
         lua_pushvalue(L, header);
         lua_settable(L, n);
-        fm_csv_set_header2idx(L, n);
+        csv_set_header2idx(L, n);
     }
 
     // set metatables
@@ -473,29 +473,29 @@ void fm_csv_new_impl(lua_State* L, int n, int header) {
     lua_newtable(L);
     lua_pushstring(L, "__index");
     lua_pushvalue(L, n);
-    lua_pushcclosure(L, fm_csv_colmt_index, 1);
+    lua_pushcclosure(L, csv_colmt_index, 1);
     lua_settable(L, -3);
 
     lua_pushstring(L, "__newindex");
     lua_pushvalue(L, n);
-    lua_pushcclosure(L, fm_csv_colmt_newindex, 1);
+    lua_pushcclosure(L, csv_colmt_newindex, 1);
     lua_settable(L, -3);
 
     lua_settable(L, n);
 
     lua_newtable(L);
     lua_pushstring(L, "__index");
-    lua_pushcfunction(L, fm_csv_rowmt_index);
+    lua_pushcfunction(L, csv_rowmt_index);
     lua_settable(L, -3);
 
     lua_pushstring(L, "__newindex");
-    lua_pushcfunction(L, fm_csv_rowmt_newindex);
+    lua_pushcfunction(L, csv_rowmt_newindex);
     lua_settable(L, -3);
 
     lua_setmetatable(L, n);
 }
 
-int fm_csv_writecsv(lua_State* L) {
+int csv_writecsv(lua_State* L) {
     char sep = ',';
     char quout = 0;
     char* filename;
@@ -608,7 +608,7 @@ int fm_csv_writecsv(lua_State* L) {
     return 0;
 }
 
-int fm_csv_columnhash(lua_State* L) {
+int csv_columnhash(lua_State* L) {
     int unique = 0;
     int i;
     int n;

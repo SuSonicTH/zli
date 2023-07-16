@@ -1,9 +1,7 @@
-# FullMoon todo
+# ZLI todo
 
 # refactorings
-* rename fullmoon
-* move all source under src subdirectory
-    * move libraries under src/lib
+
 # fixes
 
 # possible improvements of compilation
@@ -15,7 +13,7 @@
     * builtin tool to "compile" exe
     * DONE module can load payload files
     * io.open io.read,... can load payload files
-    * DONE fullmoon checks paylod on startup and executes init.lua or main.lua or <exename>.lua
+    * DONE zli checks paylod on startup and executes init.lua or main.lua or <exename>.lua
     * DONE add commandline option to execute payload scripts (@script.lua ??)
 
 # additional libraries brainstorming

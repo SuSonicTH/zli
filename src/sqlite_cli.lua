@@ -6,7 +6,7 @@ local json = require "cjson"
 --[[ Init screen ]]
 cl.screen.clear()
 local dim = cl.screen.dimentions()
-local header = "FullMoon SQLite"
+local header = "ZLI - SQLite"
 
 cl.set_color(cl.color.fg.blue)
 cl.cursor.set(math.floor((dim.x - #header) / 2), 2)
@@ -72,55 +72,55 @@ end
 local function print_result_csv(result, columns, values, column_names)
     if not result.header then
         cl.paging.start()
-        cl.paging.print(table.concat(column_names, ","))    
-        result.header=true
+        cl.paging.print(table.concat(column_names, ","))
+        result.header = true
     end
     return cl.paging.print(table.concat(values, ",")) and 1 or 0;
 end
 
-local function print_result_table_get_line(widths,spaces,values)
-    local line={"| "}
-    for i,value in ipairs(values) do
-        line[#line+1] = (value..spaces[i]):sub(1,widths[i]) .. " | "
-    end    
+local function print_result_table_get_line(widths, spaces, values)
+    local line = { "| " }
+    for i, value in ipairs(values) do
+        line[#line + 1] = (value .. spaces[i]):sub(1, widths[i]) .. " | "
+    end
     return table.concat(line)
 end
 
 local function print_result_table(result)
-    local widths={}
-    for i,name in ipairs(result.column_names) do
-        widths[i]=#name
+    local widths = {}
+    for i, name in ipairs(result.column_names) do
+        widths[i] = #name
     end
-    for _,row in ipairs(result) do
-        for i,name in ipairs(row) do
+    for _, row in ipairs(result) do
+        for i, name in ipairs(row) do
             if #name > widths[i] then
-                widths[i]=#name    
+                widths[i] = #name
             end
         end
     end
-    local spaces={}
-    local line_with =0
-    for i,width in ipairs(widths) do
-        spaces[i]=(" "):rep(width)
-        line_with=line_with+width+3;
+    local spaces = {}
+    local line_with = 0
+    for i, width in ipairs(widths) do
+        spaces[i] = (" "):rep(width)
+        line_with = line_with + width + 3;
     end
-    line_with=line_with+1
+    line_with = line_with + 1
 
-    local output={}
-    output[#output+1]=("-"):rep(line_with)
-    output[#output+1]=print_result_table_get_line(widths, spaces, result.column_names)
-    output[#output+1]=("-"):rep(line_with)
-    for _,row in ipairs(result) do
-        output[#output+1]=print_result_table_get_line(widths, spaces, row)
+    local output = {}
+    output[#output + 1] = ("-"):rep(line_with)
+    output[#output + 1] = print_result_table_get_line(widths, spaces, result.column_names)
+    output[#output + 1] = ("-"):rep(line_with)
+    for _, row in ipairs(result) do
+        output[#output + 1] = print_result_table_get_line(widths, spaces, row)
     end
-    output[#output+1]=("-"):rep(line_with)
+    output[#output + 1] = ("-"):rep(line_with)
 
     cl.paging.start()
     cl.paging.print(output)
 end
 
 local print_mode = "table"
-local print_collector ={
+local print_collector = {
     csv = print_result_csv,
     json = collect_result_table,
     lua = collect_result_table,
@@ -177,7 +177,7 @@ local function execute_command(command)
         execute_file(file)
         file:close()
     elseif lower:find("%s*mode%s*;") then
-        print("current mode: "..print_mode)
+        print("current mode: " .. print_mode)
     elseif lower:find("%s*mode%s+(%w+)%s*;") then
         local mode = command:match("%s*mode%s+(%w+)%s*;")
         local collector = print_collector[mode]
@@ -185,7 +185,7 @@ local function execute_command(command)
             print_mode = mode
             status_ok()
         else
-            status_error("mode "..mode.." unknown")
+            status_error("mode " .. mode .. " unknown")
         end
     else
         local result = {}
@@ -193,7 +193,7 @@ local function execute_command(command)
         if #result > 0 then
             if print_mode == "lua" then
                 cl.paging.start()
-                cl.paging.print{table.tostring(result, "result"):split("\n")}
+                cl.paging.print { table.tostring(result, "result"):split("\n") }
             elseif print_mode == "json" then
                 print(json.encode(result))
             elseif print_mode == "table" then

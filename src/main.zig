@@ -1,7 +1,7 @@
 const std = @import("std");
 //const ziglua = @import("ziglua");
 const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
-const libraries = @import("fm_libraries.zig");
+const libraries = @import("libraries.zig");
 const c = @cImport({
     @cInclude("unzip.h");
 });
@@ -9,7 +9,7 @@ const c = @cImport({
 const Lua = ziglua.Lua;
 const debug = std.log.debug;
 
-const fullmoon_main: [:0]const u8 = @embedFile("fullmoon.lua");
+const main_lua: [:0]const u8 = @embedFile("main.lua");
 var prog_name: [:0]u8 = undefined;
 var uzfh: c.unzFile = undefined;
 
@@ -21,11 +21,11 @@ pub fn main() !void {
 
     try createArgTable(&lua, allocator);
     _ = lua.gcSetGenerational(0, 0);
-    _ = libraries.fullmoon_openlibs(&lua);
+    _ = libraries.openlibs(&lua);
     try create_payload_searcher(&lua);
 
     lua.pushFunction(ziglua.wrap(messageHandler));
-    try lua.loadBuffer(fullmoon_main, prog_name, .binary_text);
+    try lua.loadBuffer(main_lua, prog_name, .binary_text);
     if (lua.protectedCall(0, 0, 1)) {} else |_| {
         const message = lua.toString(-1) catch "Unknown error";
         std.log.err("{s}: {s}", .{ prog_name, message });

@@ -4,7 +4,7 @@ local aux = require "aux"
 --[[ Init screen ]]
 cl.screen.clear()
 local dim = cl.screen.dimentions()
-local header = "FullMoon REPL"
+local header = "ZIL - REPL"
 
 cl.set_color(cl.color.fg.blue)
 cl.cursor.set(math.floor((dim.x - #header) / 2), 2)
@@ -14,8 +14,7 @@ print(header)
 cl.set_color(cl.color.fg.default)
 print([[
 
-
-    A Fullmoon Read Print Eval Loop
+    A Zig Lua Interperter - Read Print Eval Loop
     Type a command and hit enter to execute it
     the results will be printed and you can enter the next command
 

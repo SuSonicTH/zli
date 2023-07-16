@@ -5,9 +5,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    //FullMoon exe
+    //zli exe
     const exe = b.addExecutable(.{
-        .name = "fullmoon",
+        .name = "zli",
         .target = target,
         .optimize = optimize,
     });
@@ -19,8 +19,8 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaZlib(b, target, optimize));
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
-    exe.linkLibrary(fmZip(b, target, optimize));
-    exe.linkLibrary(fullmoon(b, target, optimize));
+    exe.linkLibrary(luaZip(b, target, optimize));
+    exe.linkLibrary(zli(b, target, optimize));
     if (optimize != .Debug) {
         exe.strip = true;
     }
@@ -139,13 +139,14 @@ fn luaZlib(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mod
     return lib;
 }
 
-fn fmZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+fn luaZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
     const lib = b.addStaticLibrary(.{
-        .name = "fmZip",
+        .name = "luaZip",
         .target = target,
         .optimize = optimize,
     });
     lib.addIncludePath("src/");
+    lib.addIncludePath("src/luax");
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/lib/zlib/");
     lib.addIncludePath("src/lib/zlib/contrib/minizip/");
@@ -153,7 +154,7 @@ fn fmZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode)
         "src/lib/zlib/contrib/minizip/zip.c",
         "src/lib/zlib/contrib/minizip/unzip.c",
         "src/lib/zlib/contrib/minizip/ioapi.c",
-        "src/fm_zip.c",
+        "src/lua_zip.c",
     }, &.{"-std=c99"});
     switch (target.getOsTag()) {
         .windows => {
@@ -195,25 +196,26 @@ fn crossline(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.M
     return lib;
 }
 
-fn fullmoon(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+fn zli(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
     const lib = b.addStaticLibrary(.{
-        .name = "fullmoonLib",
-        .root_source_file = .{ .path = "src/fullmoon.zig" },
+        .name = "zliLib",
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
     lib.addIncludePath("src/");
+    lib.addIncludePath("src/luax");
     lib.addIncludePath("src/lib/Crossline/");
     lib.addIncludePath("src/lib/zlib/contrib/minizip/");
     lib.addIncludePath("src/lib/zlib/");
     lib.addCSourceFiles(&[_][]const u8{
-        "src/fm_aux.c",
-        "src/fm_csv.c",
-        "src/fm_sbuilder.c",
-        "src/luax_value.c",
-        "src/luax_gcptr.c",
-    }, &[_][]const u8{ "-std=gnu99", "-DFM_SBUILDER_LUA" });
+        "src/auxiliary.c",
+        "src/csv.c",
+        "src/sbuilder.c",
+        "src/luax/luax_value.c",
+        "src/luax/luax_gcptr.c",
+    }, &[_][]const u8{ "-std=gnu99", "-DSBUILDER_LUA" });
     lib.linkLibC();
     lib.addModule("ziglua", ziglua.compileAndCreateModule(b, lib, .{}));
     return lib;

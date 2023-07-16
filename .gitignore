@@ -1,9 +1,7 @@
 .vscode/
 .idea/
-fullmoon
-fullmoon.pdb
-fullmoon.exe
-lua.lib
+zli
+zli.pdb
+zli.exe
 zig-cache
 zig-out
-upx.exe
