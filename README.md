@@ -13,7 +13,7 @@ In the main binary there are also some commandline tools included. More informat
 ## Compilation
 The build requires you to have git and zig installed
 Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
-For wihdows users I recomend [git for windows](https://gitforwindows.org/) aka **gitbash** or running under [Windows subsystem for Windows](https://learn.microsoft.com/en-us/windows/wsl/install]) aka **WSL**
+For wihdows users I recomend [git for windows](https://gitforwindows.org/) aka **gitbash** or running under [Windows subsystem for Windows](https://learn.microsoft.com/en-us/windows/wsl/install) aka **WSL**
 
 I'm using the master branch of zig which is under heavy development and breaking changes are happening often. 
 Curently I'm on version **0.11.0-dev.3777**.
