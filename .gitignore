@@ -1,7 +1,7 @@
 .vscode/
 .idea/
+zig-cache/
+zig-out/
+zig/
 zli
-zli.pdb
 zli.exe
-zig-cache
-zig-out

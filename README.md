@@ -1,34 +1,35 @@
 # ZLI - Zig Lua Interpreter
 
-ZLI is a portable lua interpreter statically compiled (on non windows with with musl) with additional libraries
+ZLI is a portable lua interpreter statically compiled (on non windows with musl) with additional libraries.
+The binary can be moved from system to system without any dependencies on installed ibraries.
 
-## Included 3rd Libraries
-* [LuaSQLite3](http://lua.sqlite.org/)
-* [luafilesystem](https://github.com/lunarmodules/luafilesystem)
-* [lua-zlib](https://github.com/brimworks/lua-zlib)
-* [LPeg](https://www.inf.puc-rio.br/~roberto/lpeg/) includes re module
-* [luaunit](https://github.com/bluebird75/luaunit)
-* [lua-cjson](https://github.com/openresty/lua-cjson)
-* [argparse](https://github.com/luarocks/argparse)
+## Batteries included
+There are many libraries included in the ZIL binary. Some 3rd party lua libraries and some developed for ZIL.
 
-## Included ZLI libraries
-* crossline lua binding to [crossline](https://github.com/jcwangxp/Crossline
-* zip - a zip file library
-*
+* [3rd party libraries](https://github.com/SuSonicTH/fullmoon/src/lib/README.md)
+* [ZIL libraries](https://github.com/SuSonicTH/fullmoon/src/README.md)
+
 ## Compilation
 The build requires you to have git and zig installed
 Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
+For wihdows users I recomend [git for windows](https://gitforwindows.org/) aka **gitbash** or running under [Windows subsystem for Windows](https://learn.microsoft.com/en-us/windows/wsl/install]) aka **WSL**
+
+I'm using the master branch of zig which is under heavy development and breaking changes are happening often. 
+Curently I'm on version **0.11.0-dev.3777**.
+You can use the `./getzig.sh` script to get that specific version as described below (works for linux, gitbash and WSL)
 
 ## Clone & Build Process:
+This works under linux and windows (under gitbash)
 ```bash
 git clone --recurse-submodules https://github.com/SuSonicTH/zli.git
 cd zli
-zig build test
+sh ./getzig.sh
+./zig/zig build test
 ```
 binaries are saved in zig-out/bin/
 
 ### Release Build
 ```bash
-zig build -Doptimize=ReleaseFast
+./zig/zig build -Doptimize=ReleaseFast
 upx --ultra-brute --lzma zig-out/bin/zli*
 ```

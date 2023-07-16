@@ -76,8 +76,8 @@ const luascripts = [_]luascript{
     .{ .name = "re", .source = @embedFile("lib/lpeg/re.lua") },
     .{ .name = "argparse", .source = @embedFile("lib/argparse/src/argparse.lua") },
     .{ .name = "log", .source = @embedFile("logger.lua") },
-    .{ .name = "repl", .source = @embedFile("repl.lua") },
-    .{ .name = "sqlite_cli", .source = @embedFile("sqlite_cli.lua") },
+    .{ .name = "repl", .source = @embedFile("tools/repl.lua") },
+    .{ .name = "sqlite_cli", .source = @embedFile("tools/sqlite_cli.lua") },
     .{ .name = "stream", .source = @embedFile("stream.lua") },
 };
 
