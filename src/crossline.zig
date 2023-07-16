@@ -1,6 +1,6 @@
 const std = @import("std");
 //const ziglua = @import("ziglua");
-const ziglua = @import("ziglua/src/ziglua-5.4/lib.zig");
+const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
 const Lua = ziglua.Lua;
 
 const c = @cImport({

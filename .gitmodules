@@ -1,21 +1,21 @@
 [submodule "luafilesystem"]
-	path = luafilesystem
+	path = src/lib/luafilesystem
 	url = https://github.com/lunarmodules/luafilesystem.git
 [submodule "luaunit"]
-	path = luaunit
+	path = src/lib/luaunit
 	url = https://github.com/bluebird75/luaunit.git
 [submodule "lua-zlib"]
-	path = lua-zlib
+	path = src/lib/lua-zlib
 	url = https://github.com/brimworks/lua-zlib
 [submodule "lua-cjson"]
-	path = lua-cjson
+	path = src/lib/lua-cjson
 	url = https://github.com/openresty/lua-cjson.git
 [submodule "argparse"]
-	path = argparse
+	path = src/lib/argparse
 	url = https://github.com/luarocks/argparse.git
 [submodule "Crossline"]
-	path = Crossline
+	path = src/lib/Crossline
 	url = https://github.com/SuSonicTH/Crossline.git
 [submodule "ziglua"]
-	path = ziglua
+	path = src/lib/ziglua
 	url = https://github.com/natecraddock/ziglua.git

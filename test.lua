@@ -38,7 +38,7 @@ end
 
 function TestLibraries:test_lfs()
     local actual = {}
-    for file in lfs.dir("./ziglua/lib/lua-5.4") do
+    for file in lfs.dir("./src/lib/ziglua/lib/lua-5.4") do
         actual[#actual + 1] = file
     end
     table.sort(actual)
@@ -408,24 +408,22 @@ end
 
 function TestStreamLib:test_groupby()
     local map = stream({
-        { name = 'test', id = 1 },
-        { name = 'test', id = 2 },
-        { name = 'other', id = 3 },
-        { name = 'other', id = 4 },
+        { name = 'test',   id = 1 },
+        { name = 'test',   id = 2 },
+        { name = 'other',  id = 3 },
+        { name = 'other',  id = 4 },
         { name = 'single', id = 5 }
     }):groupby(function(tbl) return tbl.name end)
 
-    lu.assertEquals(#map.test,2)
-    lu.assertEquals(#map.other,2)
-    lu.assertEquals(#map.single,1)
+    lu.assertEquals(#map.test, 2)
+    lu.assertEquals(#map.other, 2)
+    lu.assertEquals(#map.single, 1)
 
-    lu.assertEquals(map.test[1],{ name = 'test', id = 1 })
-    lu.assertEquals(map.test[2],{ name = 'test', id = 2 })
+    lu.assertEquals(map.test[1], { name = 'test', id = 1 })
+    lu.assertEquals(map.test[2], { name = 'test', id = 2 })
 
-    lu.assertEquals(map.other[1].id,3)
-    lu.assertEquals(map.other[2].id,4)
+    lu.assertEquals(map.other[1].id, 3)
+    lu.assertEquals(map.other[2].id, 4)
 
-    lu.assertEquals(map.single[1],{ name = 'single', id = 5 })
-
+    lu.assertEquals(map.single[1], { name = 'single', id = 5 })
 end
-

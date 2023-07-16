@@ -1,7 +1,9 @@
 # FullMoon todo
 
 # refactorings
-
+* rename fullmoon
+* move all source under src subdirectory
+    * move libraries under src/lib
 # fixes
 
 # possible improvements of compilation

@@ -1,5 +1,5 @@
 //const ziglua = @import("ziglua");
-const ziglua = @import("ziglua/src/ziglua-5.4/lib.zig");
+const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
 const Lua = ziglua.Lua;
 
 const crossline = @import("crossline.zig");
@@ -73,9 +73,9 @@ const luascript = struct {
 };
 
 const luascripts = [_]luascript{
-    .{ .name = "luaunit", .source = @embedFile("luaunit/luaunit.lua") },
-    .{ .name = "re", .source = @embedFile("lpeg/re.lua") },
-    .{ .name = "argparse", .source = @embedFile("argparse/src/argparse.lua") },
+    .{ .name = "luaunit", .source = @embedFile("lib/luaunit/luaunit.lua") },
+    .{ .name = "re", .source = @embedFile("lib/lpeg/re.lua") },
+    .{ .name = "argparse", .source = @embedFile("lib/argparse/src/argparse.lua") },
     .{ .name = "log", .source = @embedFile("fm_log.lua") },
     .{ .name = "repl", .source = @embedFile("fm_repl.lua") },
     .{ .name = "sqlite_cli", .source = @embedFile("fm_sqlite_cli.lua") },
