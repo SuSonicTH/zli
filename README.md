@@ -32,7 +32,7 @@ Zig can be installed trough your package manager or just download from [ziglang.
 For windows users I recomend [git for windows](https://gitforwindows.org/) aka **gitbash** or running under [Windows subsystem for Windows](https://learn.microsoft.com/en-us/windows/wsl/install) aka **WSL**
 
 I'm using the master branch of zig which is under heavy development and breaking changes are happening often. 
-Curently I'm on version **0.11.0-dev.3777**.
+Curently I'm on version **zig-0.11.0-dev.4003+c6aa29b6f**.
 You can use `./build.sh --get-zig` to get that specific version as described below (works for linux, gitbash and WSL) which will donwload zig into the subdirectory zig.
 
 To compile execute `zig build` (or `./zig/zig build` if you are using the local zig installation)
