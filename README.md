@@ -6,8 +6,8 @@ The binary can be moved from system to system without any dependencies on instal
 ## Batteries included
 There are many libraries included in the ZIL binary. Some 3rd party lua libraries and some developed for ZIL.
 
-* [3rd party libraries](https://github.com/SuSonicTH/zli/blob/master/src/lib/README.md)
-* [ZIL libraries](https://github.com/SuSonicTH/zli/blob/master/src/README.md)
+* [3rd party libraries](https://github.com/SuSonicTH/zli/blob/master/src/lib/)
+* [ZIL libraries](https://github.com/SuSonicTH/zli/blob/master/src/)
 
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
 ## Compilation
