@@ -37,10 +37,10 @@ fn createArgTable(lua: *Lua, allocator: std.mem.Allocator) !void {
     const args = try std.process.argsAlloc(allocator);
     prog_name = args[0];
 
-    lua.createTable(@intCast(i32, args.len), 1);
+    lua.createTable(@intCast(args.len), 1);
     for (args, 0..) |arg, i| {
         _ = lua.pushString(arg);
-        lua.rawSetIndex(-2, @intCast(i32, i));
+        lua.rawSetIndex(-2, @intCast(i));
     }
     lua.setGlobal("arg");
 }
@@ -74,7 +74,7 @@ fn create_payload_searcher(lua: *Lua) !void {
     _ = lua.getTable(package);
     const len = lua.rawLen(-1);
     lua.pushFunction(ziglua.wrap(payload_searcher));
-    lua.rawSetIndex(-2, @intCast(ziglua.Integer, len) + 1);
+    lua.rawSetIndex(-2, @intCast(len+1));
     lua.setTop(top);
 }
 
@@ -116,7 +116,7 @@ var buffer: [BUFFER_SIZE]u8 = undefined;
 fn payload_reder(state: ?*ziglua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
     _ = data;
     _ = state;
-    size.* = @intCast(usize, c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));
+    size.* = @intCast(c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));
     return &buffer;
 }
 

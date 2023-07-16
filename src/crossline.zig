@@ -163,14 +163,14 @@ fn crossline_readline(lua: *Lua) i32 {
 fn crossline_prompt_color_set(lua: *Lua) i32 {
     const fg = lua.optInteger(1, 0);
     const bg = lua.optInteger(2, 0);
-    c.crossline_prompt_color_set(@intCast(u32, fg | bg));
+    c.crossline_prompt_color_set(@intCast(fg | bg));
     return 0;
 }
 
 fn crossline_color_set(lua: *Lua) i32 {
     const fg = lua.optInteger(1, 0);
     const bg = lua.optInteger(2, 0);
-    c.crossline_color_set(@intCast(u32, fg | bg));
+    c.crossline_color_set(@intCast(fg | bg));
     return 0;
 }
 
@@ -218,13 +218,13 @@ fn getPosition(lua: *Lua) Position {
     if (lua.typeOf(1) == .table) {
         _ = lua.pushString("x");
         _ = lua.getTable(1);
-        position.x = @truncate(i32, lua.toInteger(-1) catch 0);
+        position.x = @truncate(lua.toInteger(-1) catch 0);
         _ = lua.pushString("y");
         _ = lua.getTable(1);
-        position.y = @truncate(i32, lua.toInteger(-1) catch 0);
+        position.y = @truncate(lua.toInteger(-1) catch 0);
     } else {
-        position.x = @truncate(i32, lua.checkInteger(1));
-        position.y = @truncate(i32, lua.checkInteger(2));
+        position.x = @truncate(lua.checkInteger(1));
+        position.y = @truncate(lua.checkInteger(2));
     }
     return position;
 }
@@ -289,7 +289,7 @@ fn crossline_paging_stop(lua: *Lua) i32 {
 
 fn crossline_paging_check(lua: *Lua) i32 {
     const length = lua.checkInteger(1);
-    const stop = c.crossline_paging_check(@truncate(i32, length));
+    const stop = c.crossline_paging_check(@truncate(length));
     lua.pushBoolean(stop >= 0);
     return 1;
 }
@@ -301,7 +301,7 @@ fn crossline_paging_print_output(lua: *Lua) c_int {
     if (string.len == 0 or string[string.len - 1] != '\n') {
         stdout.writeByte('\n') catch unreachable;
     }
-    return c.crossline_paging_check(@intCast(c_int, string.len));
+    return c.crossline_paging_check(@intCast(string.len));
 }
 
 fn crossline_paging_print(lua: *Lua) i32 {
@@ -309,7 +309,7 @@ fn crossline_paging_print(lua: *Lua) i32 {
     if (lua.typeOf(1) == .table) {
         const len = lua.rawLen(1);
         for (1..len) |i| {
-            _ = lua.rawGetIndex(1, @intCast(ziglua.Integer, i));
+            _ = lua.rawGetIndex(1, @intCast(i));
             stop = crossline_paging_print_output(lua);
             lua.pop(1);
         }
