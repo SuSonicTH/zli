@@ -8,7 +8,8 @@ function print_help() {
     echo "        --help        print this help"
     echo "        --clean       clean directories zig-out zigcache and bin"
     echo "        --clean-all   additionally delete downloaded dependencies"
-    echo "        --all         build for all platforms"
+    echo "        --build       build for current platform (output in bin without suffix)"
+    echo "        --build-all   build for all platforms (output in bin with platform suffix)"
     echo "        --get-zig     download local zig even though it is installed"
     echo "        --get-upx     download local upx even though it is installed"
     echo "        --get-all     download build binaries regardless if they are installed"
@@ -34,16 +35,21 @@ function exit_argument_error() {
 
 CLEAN="false"
 CLEAN_ALL="false"
-BUILD_NATIVE="true"
+BUILD_NATIVE="false"
 BUILD_ALL="false"
 GET_ZIG="false"
+
+if [ "$#" -eq 0 ]; then
+    exit_argument_error "no argument given"
+fi
 
 while (( "$#" )); do
     case "$1" in
         -h | --help )  print_help; exit 0;;
         --clean )      CLEAN="true"; shift;;
         --clean-all )  CLEAN="true"; CLEAN_ALL="true"; shift;;
-        --build-all )  BUILD_NATIVE="false";BUILD_ALL="true"; shift;;
+        --build )      BUILD_NATIVE="true"; shift;;
+        --build-all )  BUILD_ALL="true"; shift;;
         --get-zig )    GET_ZIG="true"; shift;;
         --get-upx )    GET_UPX="true"; shift;;
         --get-all )    GET_ZIG="true";GET_UPX="true"; shift;;
@@ -128,14 +134,30 @@ fi
 
 # native build
 if [ "$BUILD_NATIVE" = "true" ]; then
-    echo building zli
+    echo building zli native
+    rm -f bin/zli${NATIVE_SUFFIX}
+
     $ZIG_BIN build -Doptimize=ReleaseFast || exit_on_error
+
     echo compressing binary with upx
-    rm -f zli${NATIVE_SUFFIX}
-    $UPX_BIN -qq --ultra-brute --lzma -o zli${NATIVE_SUFFIX} zig-out/bin/zli${NATIVE_SUFFIX} 
+    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli${NATIVE_SUFFIX} zig-out/bin/zli${NATIVE_SUFFIX} 
 fi
+
+function build_platform() {
+    PLAT=$1
+    SUFFIX=$2
+
+    echo building ${PLAT}
+    rm -f bin/zli-${PLAT}${SUFFIX}
+
+    zig build -Doptimize=ReleaseFast -Dtarget=${PLAT}
+
+    echo compressing ${PLAT}
+    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli-${PLAT}${SUFFIX} zig-out/bin/zli${SUFFIX}
+}
 
 # build all
 if [ "$BUILD_ALL" = "true" ]; then
-    echo BUILD_ALL NOT IMPLEMENTED
+    build_platform "x86_64-windows" ".exe"
+    build_platform "x86_64-linux-musl"
 fi

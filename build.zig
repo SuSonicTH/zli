@@ -1,6 +1,6 @@
 const std = @import("std");
 const ziglua = @import("src/lib/ziglua/build.zig");
-const flags_c99 = &.{"-std=c99"};
+const flags_c99 = &.{"-std=gnu99"};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -128,7 +128,7 @@ fn zlib(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) 
         "src/lib/zlib/inffast.c",
         "src/lib/zlib/inftrees.c",
         "src/lib/zlib/uncompr.c",
-    }, flags_c99);
+    }, &.{"-std=gnu89"});
     lib.linkLibC();
     return lib;
 }

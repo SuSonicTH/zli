@@ -13,4 +13,4 @@ echo downloading zli repository from https://github.com/SuSonicTH/zli.git
 git clone --quiet --recurse-submodules https://github.com/SuSonicTH/zli.git > /dev/null || exit_on_error
 cd zli || exit_on_error
 chmod +x build.sh
-./build.sh
+./build.sh --build
