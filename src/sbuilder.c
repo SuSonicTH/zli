@@ -12,7 +12,7 @@ void sb_init(sbuilder *sb, size_t size) {
 }
 
 sbuilder *sb_alloc(size_t size) {
-    sbuilder *sb = malloc(sizeof(sb));
+    sbuilder *sb = malloc(sizeof(sbuilder));
     if (size < SBUFFER_MINIMAL_SIZE)
         size = SBUFFER_MINIMAL_SIZE;
     sb_init(sb, size);
