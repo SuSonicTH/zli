@@ -160,4 +160,5 @@ function build_platform() {
 if [ "$BUILD_ALL" = "true" ]; then
     build_platform "x86_64-windows" ".exe"
     build_platform "x86_64-linux-musl"
+    build_platform "aarch64-linux-musl"
 fi
