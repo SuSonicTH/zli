@@ -1,6 +1,8 @@
 const std = @import("std");
 //const ziglua = @import("ziglua");
 const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
+const luax = @import("luax.zig");
+
 const Lua = ziglua.Lua;
 
 const c = @cImport({
@@ -40,12 +42,7 @@ const crossline_paging = [_]ziglua.FnReg{
     .{ .name = "print", .func = ziglua.wrap(crossline_paging_print) },
 };
 
-const NamedConstantInteger = struct {
-    name: [:0]const u8,
-    number: ziglua.Integer,
-};
-
-const fg_colors = [_]NamedConstantInteger{
+const fg_colors = [_]luax.NamedConstantInteger{
     .{ .name = "default", .number = c.CROSSLINE_FGCOLOR_DEFAULT },
     .{ .name = "black", .number = c.CROSSLINE_FGCOLOR_BLACK },
     .{ .name = "red", .number = c.CROSSLINE_FGCOLOR_RED },
@@ -66,7 +63,7 @@ const fg_colors = [_]NamedConstantInteger{
     .{ .name = "bright_white", .number = c.CROSSLINE_FGCOLOR_WHITE | c.CROSSLINE_FGCOLOR_BRIGHT },
 };
 
-const bg_colors = [_]NamedConstantInteger{
+const bg_colors = [_]luax.NamedConstantInteger{
     .{ .name = "default", .number = c.CROSSLINE_BGCOLOR_DEFAULT },
     .{ .name = "black", .number = c.CROSSLINE_BGCOLOR_BLACK },
     .{ .name = "red", .number = c.CROSSLINE_BGCOLOR_RED },
@@ -94,10 +91,10 @@ pub export fn luaopen_crossline(state: ?*ziglua.LuaState) callconv(.C) c_int {
     stdout = std.io.getStdOut().writer();
     lua.newLib(&crossline);
     registerColors(&lua);
-    createFunctionSubTable(&lua, &crossline_screen, "screen");
-    createFunctionSubTable(&lua, &crossline_cursor, "cursor");
-    createFunctionSubTable(&lua, &crossline_history, "history");
-    createFunctionSubTable(&lua, &crossline_paging, "paging");
+    luax.createFunctionSubTable(&lua, &crossline_screen, "screen");
+    luax.createFunctionSubTable(&lua, &crossline_cursor, "cursor");
+    luax.createFunctionSubTable(&lua, &crossline_history, "history");
+    luax.createFunctionSubTable(&lua, &crossline_paging, "paging");
     registerExtended(&lua);
     return 1;
 }
@@ -106,32 +103,9 @@ fn registerColors(lua: *Lua) void {
     const module = lua.getTop();
     _ = lua.pushString("color");
     lua.newTable();
-    createConstantSubTable(lua, &fg_colors, lua.getTop(), "fg");
-    createConstantSubTable(lua, &bg_colors, lua.getTop(), "bg");
+    luax.createConstantSubTable(lua, &fg_colors, lua.getTop(), "fg");
+    luax.createConstantSubTable(lua, &bg_colors, lua.getTop(), "bg");
     lua.setTable(module);
-}
-
-fn createFunctionSubTable(lua: *Lua, functions: []const ziglua.FnReg, table_name: [:0]const u8) void {
-    _ = lua.pushString(table_name);
-    lua.newTable();
-    lua.setFuncs(functions, 0);
-    lua.setTable(-3);
-}
-
-fn createConstantSubTable(lua: *Lua, constants: []const NamedConstantInteger, table_index: i32, table_name: [:0]const u8) void {
-    _ = lua.pushString(table_name);
-    createConstantTable(lua, constants);
-    lua.setTable(table_index);
-}
-
-fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) void {
-    lua.newTable();
-    const table = lua.getTop();
-    for (constants) |constant| {
-        _ = lua.pushString(constant.name);
-        lua.pushInteger(constant.number);
-        lua.setTable(table);
-    }
 }
 
 fn registerExtended(lua: *Lua) void {

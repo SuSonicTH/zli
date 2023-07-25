@@ -6,7 +6,7 @@
 
 # possible improvements of compilation
 * automatic UPX download and build option
-* add goals for release build (for all platforms)
+* add goals for release build (for all platforms) in build.zig
 
 # additional functionality
 * add functionality to add payload (scripts, modules and resources) to end of exe

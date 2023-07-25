@@ -1,5 +1,3 @@
-local aux = require "aux"
-
 local function new_stream(next)
     local stream = {
         next = next,
@@ -147,7 +145,7 @@ local function new_stream(next)
     function stream:tosortedarray(func)
         local func = func or table.comparator
         local array = {}
-        self:foreach(function(value) table.insertsorted(array, value, func) end)
+        self:foreach(function(value) table.insert_sorted(array, value, func) end)
         return array
     end
 
@@ -207,13 +205,13 @@ local function new_stream(next)
             sum = sum + value
             count = count + 1
         end)
-        if (count==0) then return 0 end
+        if (count == 0) then return 0 end
         return sum / count
     end
 
     function stream:median(func)
         local array = self:tosortedarray()
-        if #array==0 then
+        if #array == 0 then
             return 0
         end
         if #array % 2 == 0 then
@@ -240,7 +238,7 @@ local function new_stream(next)
     end
 
     function stream:min(func)
-        local func = func or aux.comparator
+        local func = func or table.comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.maxdouble
@@ -250,7 +248,7 @@ local function new_stream(next)
     end
 
     function stream:max(func)
-        local func = func or aux.comparator
+        local func = func or table.comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.mindouble

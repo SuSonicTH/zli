@@ -19,3 +19,9 @@
 [submodule "ziglua"]
 	path = src/lib/ziglua
 	url = https://github.com/natecraddock/ziglua.git
+[submodule "serpent"]
+	path = serpent
+	url = https://github.com/pkulchenko/serpent.git
+[submodule "src/lib/serpent"]
+	path = src/lib/serpent
+	url = https://github.com/pkulchenko/serpent.git

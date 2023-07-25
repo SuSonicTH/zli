@@ -4,7 +4,6 @@ require "lfs" -- patch lfs to not set a global variable
 local zlib = require "zlib"
 local lu = require "luaunit"
 local re = require "re"
-local aux = require "aux"
 local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
@@ -70,10 +69,11 @@ TestAuxLib = {}
 
 function TestAuxLib:test_string()
     local TEST = "   TEST   "
-    lu.assertEquals(aux.ltrim(TEST), "TEST   ")
-    lu.assertEquals(aux.rtrim(TEST), "   TEST")
-    lu.assertEquals(aux.trim(TEST), "TEST")
-    lu.assertEquals({ aux.split("1,2,3") }, { "1", "2", "3" })
+    lu.assertEquals(string.ltrim("   "), "")
+    lu.assertEquals(string.ltrim(TEST), "TEST   ")
+    lu.assertEquals(string.rtrim(TEST), "   TEST")
+    lu.assertEquals(string.trim(TEST), "TEST")
+    lu.assertEquals({ string.split("1,2,3") }, { "1", "2", "3" })
 end
 
 function TestAuxLib:test_string_extended()
@@ -85,7 +85,7 @@ function TestAuxLib:test_string_extended()
     lu.assertEquals({ list:split() }, { "1", "2", "3" })
 end
 
-function TestAuxLib:test_kpairs()
+function TestAuxLib:test_spairs()
     local tbl = {
         y = "two",
         z = "three",
@@ -93,7 +93,7 @@ function TestAuxLib:test_kpairs()
     }
 
     local actual = ""
-    for k, v in aux.kpairs(tbl) do
+    for k, v in table.spairs(tbl) do
         actual = actual .. k .. ":" .. v .. "\n"
     end
     lu.assertEquals("x:one\ny:two\nz:three\n", actual)
@@ -105,14 +105,13 @@ function TestAuxLib:test_copytyble()
         z = "three",
         x = "one"
     }
-    lu.assertEquals(tbl, aux.copytable(tbl))
     lu.assertEquals(tbl, table.copy(tbl))
 end
 
 function TestAuxLib:test_concats()
     local tbl = { 1, "2", 3 }
-    lu.assertEquals(aux.concats(tbl), "123")
-    lu.assertEquals(aux.concats(tbl, ","), "1,2,3")
+    lu.assertEquals(table.concats(tbl), "123")
+    lu.assertEquals(table.concats(tbl, ","), "1,2,3")
 end
 
 function TestAuxLib:test_table_to_String()
@@ -122,39 +121,19 @@ function TestAuxLib:test_table_to_String()
         3,
         key = "value"
     }
-    lu.assertEquals(aux.tabletostring(tbl, "tbl"), 'tbl = {\n  1,\n  2,\n  3,\n  key = "value",\n}')
-    lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl = {\n  1,\n  2,\n  3,\n  key = "value",\n}')
+    lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl = {\n    1,\n    "2",\n    3,\n    key = "value"\n}')
 end
 
-function TestAuxLib:test_insertsorted()
+function TestAuxLib:test_insert_sorted()
     local tbl = {}
     for _, value in ipairs({ 9, 1, 5, 3, 6, 2, 7, 8, 4 }) do
-        table.insertsorted(tbl, value)
-    end
-    lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
-end
-
-function TestAuxLib:test_table_next()
-    local tbl = {}
-    local next = table.next({ 1, 2, 3, 4, 5, 6, 7, 8, 9 })
-    local value = next()
-    while (value) do
-        tbl[#tbl + 1] = value
-        value = next()
-    end
-    lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
-end
-
-function TestAuxLib:test_table_iter()
-    local tbl = {}
-    for value in table.iter({ 1, 2, 3, 4, 5, 6, 7, 8, 9 }) do
-        tbl[#tbl + 1] = value
+        table.insert_sorted(tbl, value)
     end
     lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
 end
 
 function TestLibraries:test_csv_create_and_read()
-    aux.writefile("test.csv", [[
+    io.write_file("test.csv", [[
 A,B,C
 A1,B1,C1
 A2,B2,C2

@@ -1,5 +1,4 @@
 local argparse = require "argparse"
-local aux = require "aux"
 local zip = require "zip"
 
 if arg[1] == "@" then

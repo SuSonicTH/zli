@@ -13,6 +13,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    exe.addIncludePath("src/");
     exe.addIncludePath("src/lib/Crossline/");
     exe.addIncludePath("src/lib/zlib/contrib/minizip/");
     exe.addIncludePath("src/lib/zlib/");
@@ -226,7 +227,6 @@ fn zliLibraries(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     lib.addIncludePath("src/");
     lib.addIncludePath("src/luax");
     lib.addCSourceFiles(&[_][]const u8{
-        "src/auxiliary.c",
         "src/csv.c",
         "src/sbuilder.c",
         "src/luax/luax_value.c",

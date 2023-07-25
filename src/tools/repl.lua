@@ -1,5 +1,4 @@
 local cl = require "crossline"
-local aux = require "aux"
 
 --[[ Init screen ]]
 cl.screen.clear()

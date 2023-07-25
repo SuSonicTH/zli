@@ -14,6 +14,7 @@ Well known lua libraries included in ZLI
 | lua-zlib      | https://github.com/brimworks/lua-zlib         | MIT     | lua binding to the [zlib](https://zlib.net/) to compress/decompress                                                                          |
 | luaunit       | https://github.com/bluebird75/luaunit         | BSD     | LuaUnit is a popular unit-testing framework for Lua, with an interface typical of xUnit libraries (Python unittest, Junit, NUnit, ...)       |
 | lua-cjson     | https://github.com/openresty/lua-cjson        | MIT     | Fast JSON encoding/parsing                                                                                                                   |
+| Serpent       | https://github.com/pkulchenko/serpent         | MIT     | Lua serializer and pretty printer.                                                                                                           |
 
 ## 3rd party libraries for custom ZIL bindings
 there are some custom ZLI bindings for 3rd party libraries
