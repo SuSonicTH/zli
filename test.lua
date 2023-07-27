@@ -133,20 +133,19 @@ function TestAuxLib:test_insert_sorted()
 end
 
 function TestLibraries:test_csv_create_and_read()
-    io.write_file("test.csv", [[
+    local data = [[
 A,B,C
 A1,B1,C1
 A2,B2,C2
 A3,B3,C3
-]])
+]]
 
     local actual = {}
-    for r, row in ipairs(csv.read("test.csv", true)) do
-        actual[#actual + 1] = r .. ":" .. row[1] .. "-" .. row[2] .. "-" .. row[3]
+    for r, row in ipairs(csv.parse(data, ",", { loadFromString = true })) do
+        actual[#actual + 1] = r .. ":" .. row.A .. "-" .. row.B .. "-" .. row.C
     end
 
     lu.assertEquals(actual, { "1:A1-B1-C1", "2:A2-B2-C2", "3:A3-B3-C3" })
-    os.remove("test.csv")
 end
 
 function TestLibraries:test_cjson_decode_encode()

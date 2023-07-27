@@ -10,7 +10,6 @@ pub extern fn luaopen_lpeg(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lfs(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zlib(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_cjson(state: ?*ziglua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_csv(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_sbuilder(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zip(state: ?*ziglua.LuaState) callconv(.C) c_int;
 
@@ -34,10 +33,6 @@ const preload = [_]ziglua.FnReg{
     .{
         .name = "zlib",
         .func = &luaopen_zlib,
-    },
-    .{
-        .name = "csv",
-        .func = &luaopen_csv,
     },
     .{
         .name = "cjson",
@@ -89,6 +84,7 @@ const luascripts = [_]luascript{
     .{ .name = "sqlite_cli", .source = @embedFile("tools/sqlite_cli.lua") },
     .{ .name = "stream", .source = @embedFile("stream.lua") },
     .{ .name = "serpent", .source = @embedFile("lib/serpent/src/serpent.lua") },
+    .{ .name = "csv", .source = @embedFile("lib/ftcsv/ftcsv.lua") },
 };
 
 pub fn openlibs(lua: *Lua) i32 {

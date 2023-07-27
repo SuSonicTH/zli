@@ -25,3 +25,6 @@
 [submodule "src/lib/serpent"]
 	path = src/lib/serpent
 	url = https://github.com/pkulchenko/serpent.git
+[submodule "src/lib/ftcsv"]
+	path = src/lib/ftcsv
+	url = https://github.com/FourierTransformer/ftcsv.git

@@ -227,7 +227,6 @@ fn zliLibraries(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     lib.addIncludePath("src/");
     lib.addIncludePath("src/luax");
     lib.addCSourceFiles(&[_][]const u8{
-        "src/csv.c",
         "src/sbuilder.c",
         "src/luax/luax_value.c",
         "src/luax/luax_gcptr.c",
