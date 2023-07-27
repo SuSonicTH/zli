@@ -18,4 +18,4 @@ libraries developed specifically for ZLI that don't use any external libraries
 | csv       | a simple csv (character/comma separated values) reading/writing library                                                                                                             |
 | logger    | a very simple logging library                                                                                                                                                       |
 | sbuilder  | a string builder that is faster then the lua way of adding to a table and calling table.concat                                                                                      |
-| stream    | a stream library enspired by the java stream library that brings the functional style progreamming to lua. Stream any table (list) or iterator and execute operations on the stream |
+| stream    | a stream library enspired by the java stream library that brings the functional style programming to lua. Stream any table (list) or iterator and execute operations on the stream |
