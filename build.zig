@@ -33,6 +33,8 @@ pub fn build(b: *std.Build) void {
         exe.strip = true;
     }
 
+    stripLuaSources(b, exe, target, optimize);
+
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
 
@@ -54,6 +56,40 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Test the app");
     test_step.dependOn(&test_cmd.step);
+}
+
+const luastrip_entry = struct {
+    input: [:0]const u8,
+    output: [:0]const u8,
+};
+
+const luastrip_list = [_]luastrip_entry{
+    .{ .input = "src/lib/luaunit/luaunit.lua", .output = "src/stripped/luaunit.lua" },
+    //.{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
+    //.{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },
+    .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
+    .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
+    .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
+    //.{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
+    .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
+    .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
+};
+
+fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep, target: std.zig.CrossTarget, optimize: std.builtin.Mode) void {
+    const strip = b.addExecutable(.{
+        .name = "luastrip",
+        .root_source_file = .{ .path = "src/lib/zigluastrip/src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    b.installArtifact(strip);
+
+    for (luastrip_list) |script| {
+        var step = b.addRunArtifact(strip);
+        step.addArgs(&.{ script.input, script.output });
+        exe.step.dependOn(&step.step);
+    }
 }
 
 const luaPath: []const u8 = "src/lib/ziglua/lib/lua-5.4/src/";

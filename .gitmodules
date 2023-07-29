@@ -28,3 +28,6 @@
 [submodule "src/lib/ftcsv"]
 	path = src/lib/ftcsv
 	url = https://github.com/FourierTransformer/ftcsv.git
+[submodule "src/lib/zigluastrip"]
+	path = src/lib/zigluastrip
+	url = https://github.com/SuSonicTH/zigluastrip.git

@@ -60,31 +60,21 @@ const preload = [_]ziglua.FnReg{
     },
 };
 
-//const FnRegExt = struct {
-//    name: [:0]const u8,
-//    func: ziglua.CFn,
-//    extend: [:0]const u8,
-//};
-
-//const preload_extended = [_]FnRegExt{
-//    .{ .name = "crossline", .func = &luaopen_fmcrossline, .extend = @embedFile("crossline.lua") },
-//};
-
 const luascript = struct {
     name: [:0]const u8,
     source: [:0]const u8,
 };
 
 const luascripts = [_]luascript{
-    .{ .name = "luaunit", .source = @embedFile("lib/luaunit/luaunit.lua") },
-    .{ .name = "re", .source = @embedFile("lib/lpeg/re.lua") },
-    .{ .name = "argparse", .source = @embedFile("lib/argparse/src/argparse.lua") },
-    .{ .name = "log", .source = @embedFile("logger.lua") },
-    .{ .name = "repl", .source = @embedFile("tools/repl.lua") },
-    .{ .name = "sqlite_cli", .source = @embedFile("tools/sqlite_cli.lua") },
-    .{ .name = "stream", .source = @embedFile("stream.lua") },
-    .{ .name = "serpent", .source = @embedFile("lib/serpent/src/serpent.lua") },
-    .{ .name = "csv", .source = @embedFile("lib/ftcsv/ftcsv.lua") },
+    .{ .name = "luaunit", .source = @embedFile("stripped/luaunit.lua") },
+    .{ .name = "re", .source = @embedFile("lib/lpeg/re.lua") }, //todo: fix luastrip
+    .{ .name = "argparse", .source = @embedFile("lib/argparse/src/argparse.lua") }, //todo: fix luastrip
+    .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
+    .{ .name = "repl", .source = @embedFile("stripped/repl.lua") },
+    .{ .name = "sqlite_cli", .source = @embedFile("stripped/sqlite_cli.lua") },
+    .{ .name = "stream", .source = @embedFile("stream.lua") }, //todo: fix luastrip
+    .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
+    .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
 };
 
 pub fn openlibs(lua: *Lua) i32 {
@@ -98,16 +88,10 @@ pub fn openlibs(lua: *Lua) i32 {
         }
     }
 
-    //for (preload_extended) |lib_ex| {
-    //    lua.pushClosure(ziglua.wrap(luaopen_extended), 0);
-    //    lua.setField(-2, lib_ex.name);
-    //}
-
     for (luascripts) |script| {
         lua.pushClosure(ziglua.wrap(luaopen_luascript), 0);
         lua.setField(-2, script.name);
     }
-
     lua.setTop(0);
 
     auxiliary.register(lua);
@@ -116,7 +100,6 @@ pub fn openlibs(lua: *Lua) i32 {
 
 fn luaopen_luascript(lua: *Lua) i32 {
     const modname = lua.toBytes(1) catch unreachable;
-
     for (luascripts) |script| {
         if (strcmp(modname, script.name) == 0) {
             lua.loadBuffer(script.source, modname, ziglua.Mode.text) catch lua.raiseError();
@@ -128,27 +111,3 @@ fn luaopen_luascript(lua: *Lua) i32 {
     const modname1 = lua.toString(1) catch unreachable; //todo: fix: is there a way to not get the string twice, once with toBytes and once with toString
     return lua.raiseErrorStr("unknown module \"%s\"", .{modname1});
 }
-
-//fn luaopen_extended(lua: *Lua) i32 {
-//    const modname = lua.toBytes(1) catch unreachable;
-//
-//    for (preload_extended) |lib| {
-//        if (strcmp(modname, lib.name) == 0) {
-//            lua.pushClosure(lib.func, 0);
-//            lua.callCont(0, 1, 0, null);
-//            if (lua.isNil(-1)) {
-//                return 1;
-//            }
-//
-//            lua.loadBuffer(lib.extend, modname, ziglua.Mode.text) catch lua.raiseError();
-//            lua.callCont(0, 1, 0, null);
-//            lua.checkType(-1, ziglua.LuaType.function);
-//            lua.pushValue(-2);
-//            lua.callCont(1, 0, 0, null);
-//            return 1;
-//        }
-//    }
-//
-//    const modname1 = lua.toString(1) catch unreachable; //todo: fix: is there a way to not get the string twice, once with toBytes and once with toString
-//    return lua.raiseErrorStr("unknown module \"%s\"", .{modname1});
-//}
