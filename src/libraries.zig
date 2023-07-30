@@ -67,12 +67,12 @@ const luascript = struct {
 
 const luascripts = [_]luascript{
     .{ .name = "luaunit", .source = @embedFile("stripped/luaunit.lua") },
-    .{ .name = "re", .source = @embedFile("lib/lpeg/re.lua") }, //todo: fix luastrip
+    .{ .name = "re", .source = @embedFile("stripped/re.lua") }, //todo: fix luastrip
     .{ .name = "argparse", .source = @embedFile("lib/argparse/src/argparse.lua") }, //todo: fix luastrip
     .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
     .{ .name = "repl", .source = @embedFile("stripped/repl.lua") },
     .{ .name = "sqlite_cli", .source = @embedFile("stripped/sqlite_cli.lua") },
-    .{ .name = "stream", .source = @embedFile("stream.lua") }, //todo: fix luastrip
+    .{ .name = "stream", .source = @embedFile("stripped/stream.lua") }, //todo: fix luastrip
     .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
     .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
 };

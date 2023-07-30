@@ -9,7 +9,7 @@ const c = @cImport({
 const Lua = ziglua.Lua;
 const debug = std.log.debug;
 
-const main_lua: [:0]const u8 = @embedFile("main.lua");
+const main_lua: [:0]const u8 = @embedFile("stripped/main.lua");
 var prog_name: [:0]u8 = undefined;
 var uzfh: c.unzFile = undefined;
 
@@ -74,7 +74,7 @@ fn create_payload_searcher(lua: *Lua) !void {
     _ = lua.getTable(package);
     const len = lua.rawLen(-1);
     lua.pushFunction(ziglua.wrap(payload_searcher));
-    lua.rawSetIndex(-2, @intCast(len+1));
+    lua.rawSetIndex(-2, @intCast(len + 1));
     lua.setTop(top);
 }
 
