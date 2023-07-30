@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
         exe.strip = true;
     }
 
-    stripLuaSources(b, exe, target, optimize);
+    stripLuaSources(b, exe);
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -76,12 +76,12 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
 };
 
-fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep, target: std.zig.CrossTarget, optimize: std.builtin.Mode) void {
+fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep) void {
     const strip = b.addExecutable(.{
         .name = "luastrip",
         .root_source_file = .{ .path = "src/lib/zigluastrip/src/main.zig" },
-        .target = target,
-        .optimize = optimize,
+        .target = .{},
+        .optimize = std.builtin.OptimizeMode.Debug,
     });
 
     b.installArtifact(strip);
