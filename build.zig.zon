@@ -1,0 +1,6 @@
+.{ .name = "zli", .version = "0.0.1", .dependencies = .{
+    .ziglua = .{
+        .url = "https://github.com/natecraddock/ziglua/archive/ab111adb06d2d4dc187ee9e1e352617ca8659155.tar.gz",
+        .hash = "12206cf9e90462ee6e14f593ea6e0802b9fe434429ba10992a1451e32900f741005c",
+    },
+} }

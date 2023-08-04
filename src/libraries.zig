@@ -1,5 +1,4 @@
-//const ziglua = @import("ziglua");
-const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
+const ziglua = @import("ziglua");
 const Lua = ziglua.Lua;
 
 const crossline = @import("crossline.zig");

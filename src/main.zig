@@ -1,6 +1,5 @@
 const std = @import("std");
-//const ziglua = @import("ziglua");
-const ziglua = @import("lib/ziglua/src/ziglua-5.4/lib.zig");
+const ziglua = @import("ziglua");
 const libraries = @import("libraries.zig");
 const c = @cImport({
     @cInclude("unzip.h");
