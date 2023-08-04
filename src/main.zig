@@ -85,12 +85,12 @@ fn payload_searcher(lua: *Lua) i32 {
     const module = arg[0..std.mem.len(arg) :0];
     var filename: [260:0]u8 = undefined;
 
-    std.mem.copy(u8, &filename, module);
-    std.mem.copy(u8, filename[module.len..], extention_lua);
+    @memcpy(&filename, module);
+    @memcpy(filename[module.len..], extention_lua);
     filename[module.len + extention_lua.len] = 0;
 
     if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
-        std.mem.copy(u8, filename[module.len..], extention_init);
+        @memcpy(filename[module.len..], extention_init);
         filename[module.len + extention_init.len] = 0;
 
         if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
