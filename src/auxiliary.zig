@@ -27,7 +27,7 @@ const table_functions = [_]ziglua.FnReg{
 pub fn register(lua: *Lua) void {
     register_module(lua, "string", &string_functions);
     register_module(lua, "table", &table_functions);
-    luax.registerUserData(lua, BuilderUdata.userData);
+    luax.registerUserData(lua, BuilderUdata.name, BuilderUdata.gc);
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 0, 0, null);
 }
@@ -46,7 +46,6 @@ const BuilderUdata = struct {
     builder: Builder,
 
     const name = "_BuilderUdata";
-    const userData: luax.UserData = .{ .name = name, .function = ziglua.wrap(garbageCollect) };
     const gc = ziglua.wrap(garbageCollect);
 
     const functions = [_]ziglua.FnReg{

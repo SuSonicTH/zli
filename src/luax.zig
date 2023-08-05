@@ -7,11 +7,6 @@ pub const NamedConstantInteger = struct {
     number: ziglua.Integer,
 };
 
-pub const UserData = struct {
-    name: [:0]const u8,
-    function: ?ziglua.CFn,
-};
-
 pub fn createFunctionSubTable(lua: *Lua, functions: []const ziglua.FnReg, table_name: [:0]const u8) void {
     _ = lua.pushString(table_name);
     lua.newTable();
@@ -51,14 +46,12 @@ pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     lua.raiseError();
 }
 
-pub fn registerUserData(lua: *Lua, userData: UserData) void {
-    if (userData.function) |function| {
-        lua.newMetatable(userData.name) catch raiseError(lua, "could not register userData");
-        _ = lua.pushString("__gc");
-        lua.pushFunction(function);
-        lua.setTable(-3);
-        lua.pop(1);
-    }
+pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: ziglua.CFn) void {
+    lua.newMetatable(name) catch raiseError(lua, "could not register userData");
+    _ = lua.pushString("__gc");
+    lua.pushFunction(function);
+    lua.setTable(-3);
+    lua.pop(1);
 }
 
 pub fn createUserData(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
