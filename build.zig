@@ -10,6 +10,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zigStringUtil = b.dependency("zigStringUtil", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
@@ -21,8 +26,10 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(.{ .path = "src/lib/Crossline/" });
     exe.addIncludePath(.{ .path = "src/lib/zlib/contrib/minizip/" });
     exe.addIncludePath(.{ .path = "src/lib/zlib/" });
+
     exe.addModule("ziglua", ziglua.module("ziglua"));
     exe.linkLibrary(ziglua.artifact("lua"));
+    exe.addModule("zigStringUtil", zigStringUtil.module("zigStringUtil"));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lfs(b, target, optimize));
@@ -269,7 +276,6 @@ fn zliLibraries(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     lib.addIncludePath(.{ .path = "src/" });
     lib.addIncludePath(.{ .path = "src/luax" });
     lib.addCSourceFiles(&[_][]const u8{
-        "src/sbuilder.c",
         "src/luax/luax_value.c",
         "src/luax/luax_gcptr.c",
     }, &[_][]const u8{ "-std=c99", "-DSBUILDER_LUA" });

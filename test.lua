@@ -8,7 +8,6 @@ local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
 local log = require "log"
-local string_builder = require "string_builder"
 local zip = require "zip"
 local stream = require "stream"
 
@@ -209,6 +208,7 @@ function TestLibraries:test_log()
     })
 end
 
+--[[
 function TestLibraries:test_string_builder()
     local sb = string_builder.new()
     lu.assertEquals(sb:len(), 0)
@@ -231,6 +231,7 @@ function TestLibraries:test_string_builder()
     sb:reset():add("A", string_builder.new():add("B", "C"), "D")
     lu.assertEquals(sb:tostring(), "ABCD")
 end
+]]
 
 function TestLibraries:test_zip()
     local testfile = "test.zip"

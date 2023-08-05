@@ -1,11 +1,12 @@
 const std = @import("std");
+
 const ziglua = @import("ziglua");
 const luax = @import("luax.zig");
-const c = @cImport({
-    @cInclude("sbuilder.h");
-});
-
 const Lua = ziglua.Lua;
+
+const zigStringUtil = @import("zigStringUtil");
+const Builder = zigStringUtil.Builder;
+const Joiner = zigStringUtil.Joiner;
 
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
@@ -123,7 +124,7 @@ fn insert_sorted(lua: *Lua) i32 {
         lua.pop(1);
     }
 
-    luax.push_library_function(lua, "table", "insert");
+    luax.pushLibraryFunction(lua, "table", "insert");
     lua.pushValue(1);
     lua.pushInteger(mid + state);
     lua.pushValue(2);
@@ -134,45 +135,42 @@ fn insert_sorted(lua: *Lua) i32 {
 
 fn concats(lua: *Lua) i32 {
     lua.checkType(1, .table);
-    const sb: *c.sbuilder = c.sb_alloc(0);
-    defer c.sb_free(sb);
+    const allocator = std.heap.c_allocator;
+    var builder: Builder = Builder.init(allocator, 0) catch luax.raiseError(lua, "could not allocate memory");
+    defer builder.deinit();
 
     const len: u64 = lua.rawLen(1);
 
     if (lua.isNoneOrNil(2)) {
-        concats_simple(lua, sb, len);
+        concats_simple(lua, &builder, len);
     } else {
-        concats_separator(lua, sb, len);
+        concats_separator(lua, &builder, len);
     }
 
-    var str_len: usize = undefined;
-    const str = c.sb_get(sb, &str_len);
-    const string = str[0..str_len];
-
-    _ = lua.pushBytes(string);
-
+    const str = builder.get();
+    _ = lua.pushBytes(str);
     return 1;
 }
 
-fn concats_simple(lua: *Lua, sb: *c.sbuilder, len: u64) void {
+fn concats_simple(lua: *Lua, builder: *Builder, len: u64) void {
     var i: i64 = 1;
     while (i <= len) : (i += 1) {
         _ = lua.getIndex(1, i);
         var string = lua.toBytesFmt(-1);
-        c.sb_add(sb, string, string.len);
+        builder.add(string) catch luax.raiseError(lua, "could not allocate memory");
         lua.pop(1);
     }
 }
 
-fn concats_separator(lua: *Lua, sb: *c.sbuilder, len: u64) void {
+fn concats_separator(lua: *Lua, builder: *Builder, len: u64) void {
     const separator = lua.toBytesFmt(2);
     var i: i64 = 1;
     while (i <= len) : (i += 1) {
         _ = lua.getIndex(1, i);
         var string = lua.toBytesFmt(-1);
-        c.sb_add(sb, string, string.len);
+        builder.add(string) catch luax.raiseError(lua, "could not allocate memory");
         if (i < len) {
-            c.sb_add(sb, separator, separator.len);
+            builder.add(separator) catch luax.raiseError(lua, "could not allocate memory");
         }
         lua.pop(1);
     }
@@ -188,7 +186,7 @@ fn spairs(lua: *Lua) i32 {
         lua.rawSetIndex(-3, i);
     }
 
-    luax.push_library_function(lua, "table", "sort");
+    luax.pushLibraryFunction(lua, "table", "sort");
     if (lua.isFunction(2)) {
         lua.pushValue(-2);
         lua.pushValue(2);

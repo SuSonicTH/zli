@@ -33,9 +33,14 @@ pub fn slice(str: [*:0]const u8) []const u8 {
     return std.mem.sliceTo(str, 0);
 }
 
-pub fn push_library_function(lua: *ziglua.Lua, module: [:0]const u8, function: [:0]const u8) void {
+pub fn pushLibraryFunction(lua: *ziglua.Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.getGlobal(module) catch undefined;
     _ = lua.pushString(function);
     _ = lua.getTable(-2);
     lua.remove(-2);
+}
+
+pub fn raiseError(lua: *ziglua.Lua, message: [:0]const u8) noreturn {
+    _ = lua.pushString(message);
+    lua.raiseError();
 }

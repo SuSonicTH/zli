@@ -9,7 +9,6 @@ pub extern fn luaopen_lpeg(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lfs(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zlib(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_cjson(state: ?*ziglua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_sbuilder(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zip(state: ?*ziglua.LuaState) callconv(.C) c_int;
 
 const std = @import("std");
@@ -44,10 +43,6 @@ const preload = [_]ziglua.FnReg{
     .{
         .name = "re",
         .func = ziglua.wrap(luaopen_luascript),
-    },
-    .{
-        .name = "string_builder",
-        .func = &luaopen_sbuilder,
     },
     .{
         .name = "zip",
