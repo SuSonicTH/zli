@@ -47,7 +47,6 @@ const BuilderUdata = struct {
 
     const name = "_BuilderUdata";
     const gc = ziglua.wrap(garbageCollect);
-
     const functions = [_]ziglua.FnReg{
         .{ .name = "add", .func = ziglua.wrap(add) },
         .{ .name = "get", .func = ziglua.wrap(get) },
@@ -57,28 +56,28 @@ const BuilderUdata = struct {
         const allocator = std.heap.c_allocator;
         const size = lua.optInteger(1, 0);
 
-        const builderUdata: *BuilderUdata = luax.createUserDataTableSetFunctions(lua, name, BuilderUdata, &functions);
-        builderUdata.builder = Builder.init(allocator, @intCast(size)) catch luax.raiseError(lua, "could not allocate memory");
+        const ud: *BuilderUdata = luax.createUserDataTableSetFunctions(lua, name, BuilderUdata, &functions);
+        ud.builder = Builder.init(allocator, @intCast(size)) catch luax.raiseError(lua, "could not allocate memory");
         return 1;
     }
 
     fn garbageCollect(lua: *Lua) i32 {
-        const builderUdata: *BuilderUdata = luax.getGcUserData(lua, BuilderUdata);
-        builderUdata.builder.deinit();
+        const ud: *BuilderUdata = luax.getGcUserData(lua, BuilderUdata);
+        ud.builder.deinit();
         return 0;
     }
 
     fn add(lua: *Lua) i32 {
         const string = lua.checkString(2);
-        const builderUdata: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        builderUdata.builder.add(string[0..std.mem.len(string)]) catch luax.raiseError(lua, "could not allocate memory");
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        ud.builder.add(string[0..std.mem.len(string)]) catch luax.raiseError(lua, "could not allocate memory");
         lua.pop(1);
         return 1;
     }
 
     fn get(lua: *Lua) i32 {
-        const builderUdata: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        const string = builderUdata.builder.get() catch luax.raiseError(lua, "could not allocate memory");
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        const string = ud.builder.get() catch luax.raiseError(lua, "could not allocate memory");
         _ = lua.pushString(string);
         return 1;
     }
