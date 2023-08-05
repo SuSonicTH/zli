@@ -11,7 +11,7 @@ end
 local function io_write_lines(filename, tbl, eol)
     eol = eol or "\n"
     local fh = assert(io.open(filename, "w"))
-    for _, line in ipairs(table) do
+    for _, line in ipairs(tbl) do
         fh:write(line, eol)
     end
     fh:close()

@@ -1,9 +1,9 @@
 # 3rd party (lua-) libraries
 
-here is a collection of 3rd party libgraries either for lua directly or for a ZLI binding
+here is a collection of 3rd party libgraries either for lua directly or for a zli binding
 
 ## included lua libraries
-Well known lua libraries included in ZLI
+Well known lua libraries included in zli
 
 | library       | link                                          | licence | description                                                                                                                                  |
 | ------------- | --------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -17,7 +17,7 @@ Well known lua libraries included in ZLI
 | Serpent       | https://github.com/pkulchenko/serpent         | MIT     | Lua serializer and pretty printer.                                                                                                           |
 | ftcsv         | https://github.com/FourierTransformer/ftcsv   | MIT     | ftcsv is a fast csv library written in pure Lua                                                                                              |
 
-## 3rd party libraries for custom ZIL bindings
+## 3rd party libraries for custom zli bindings
 there are some custom ZLI bindings for 3rd party libraries
 
 | library   | link                                  | licence | description                                                                                                        |
