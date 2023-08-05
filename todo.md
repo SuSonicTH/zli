@@ -1,7 +1,7 @@
 # ZLI todo
 
 # refactorings
-
+* rewrite lua_zip.c in zig (and get rid of luax/)
 # fixes
 
 # possible improvements of compilation
