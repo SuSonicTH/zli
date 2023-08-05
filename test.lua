@@ -217,17 +217,17 @@ function TestLibraries:test_string_builder()
     lu.assertEquals(sb:len(), 12)
     lu.assertEquals(sb:tostring(), "Hello World!")
 
-    sb:reset()
+    sb:clear()
     lu.assertEquals(sb:len(), 0)
     lu.assertEquals(sb:tostring(), "")
 
     sb:add("Hello", " ", "World", "!")
     lu.assertEquals(sb:tostring(), "Hello World!")
 
-    sb:reset():add(1, ',', true, ',', 23.56, ',', false)
+    sb:clear():add(1, ',', true, ',', 23.56, ',', false)
     lu.assertEquals(sb:tostring(), "1,true,23.56,false")
 
-    sb:reset():add("A", string.builder():add("B", "C"), "D")
+    sb:clear():add("A", string.builder():add("B", "C"), "D")
     lu.assertEquals(sb:tostring(), "ABCD")
 end
 

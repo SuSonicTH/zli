@@ -76,8 +76,15 @@ pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T
 }
 
 pub fn getUserData(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
+    return getUserDataIndex(lua, name, T, 1);
+}
+
+pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: i32) *T {
     _ = lua.pushString(name);
-    _ = lua.getTable(1);
+    _ = lua.getTable(index);
+    if (lua.isNil(-1)) {
+        raiseError(lua, "expected userdata got nil");
+    }
     return lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
 }
 

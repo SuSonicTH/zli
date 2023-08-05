@@ -42,67 +42,6 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.Fn
     lua.pop(1);
 }
 
-const BuilderUdata = struct {
-    builder: Builder,
-    const name = "_BuilderUdata";
-    const functions = [_]ziglua.FnReg{
-        .{ .name = "add", .func = ziglua.wrap(add) },
-        .{ .name = "toString", .func = ziglua.wrap(toString) },
-        .{ .name = "clear", .func = ziglua.wrap(clear) },
-        .{ .name = "len", .func = ziglua.wrap(len) },
-    };
-
-    fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
-    }
-
-    fn new(lua: *Lua) i32 {
-        const allocator = std.heap.c_allocator;
-        const size = lua.optInteger(1, 0);
-
-        const ud: *BuilderUdata = luax.createUserDataTableSetFunctions(lua, name, BuilderUdata, &functions);
-        ud.builder = Builder.init(allocator, @intCast(size)) catch memoryError(lua);
-        return 1;
-    }
-
-    fn garbageCollect(lua: *Lua) i32 {
-        const ud: *BuilderUdata = luax.getGcUserData(lua, BuilderUdata);
-        ud.builder.deinit();
-        return 0;
-    }
-
-    fn add(lua: *Lua) i32 {
-        const string = lua.checkString(2);
-        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        ud.builder.add(string[0..std.mem.len(string)]) catch memoryError(lua);
-        lua.pop(1);
-        return 1;
-    }
-
-    fn toString(lua: *Lua) i32 {
-        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        const string = ud.builder.get() catch memoryError(lua);
-        _ = lua.pushString(string);
-        return 1;
-    }
-
-    fn clear(lua: *Lua) i32 {
-        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        ud.builder.clear();
-        return 1;
-    }
-
-    fn len(lua: *Lua) i32 {
-        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        lua.pushInteger(@intCast(ud.builder.len));
-        return 1;
-    }
-};
-
-fn memoryError(lua: *Lua) noreturn {
-    luax.raiseError(lua, "could not allocate memory");
-}
-
 fn split(lua: *Lua) i32 {
     const str = luax.slice(lua.checkString(1));
     const delim = luax.slice(lua.optString(2, ","));
@@ -274,4 +213,89 @@ fn spairs_iter(lua: *Lua) i32 {
     lua.pushInteger(i + 1);
     lua.replace(Lua.upvalueIndex(3));
     return 2;
+}
+
+const BuilderUdata = struct {
+    builder: Builder,
+    const name = "_BuilderUdata";
+    const functions = [_]ziglua.FnReg{
+        .{ .name = "add", .func = ziglua.wrap(add) },
+        .{ .name = "tostring", .func = ziglua.wrap(toString) },
+        .{ .name = "clear", .func = ziglua.wrap(clear) },
+        .{ .name = "len", .func = ziglua.wrap(len) },
+    };
+
+    fn register(lua: *Lua) void {
+        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+    }
+
+    fn new(lua: *Lua) i32 {
+        const allocator = std.heap.c_allocator;
+        const size = lua.optInteger(1, 0);
+
+        const ud: *BuilderUdata = luax.createUserDataTableSetFunctions(lua, name, BuilderUdata, &functions);
+        ud.builder = Builder.init(allocator, @intCast(size)) catch memoryError(lua);
+        return 1;
+    }
+
+    fn garbageCollect(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getGcUserData(lua, BuilderUdata);
+        ud.builder.deinit();
+        return 0;
+    }
+
+    fn add(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        const top = lua.getTop();
+        var index: i32 = 2;
+        while (index < top) : (index += 1) {
+            switch (lua.typeOf(index)) {
+                .string, .number => {
+                    const string = lua.toString(index) catch unreachable;
+                    ud.builder.add(string[0..std.mem.len(string)]) catch memoryError(lua);
+                },
+                .boolean => {
+                    if (lua.toBoolean(index)) {
+                        ud.builder.add("true") catch memoryError(lua);
+                    } else {
+                        ud.builder.add("false") catch memoryError(lua);
+                    }
+                },
+                .table => {
+                    const udArg: *BuilderUdata = luax.getUserDataIndex(lua, name, BuilderUdata, index);
+                    const string = udArg.builder.get() catch memoryError(lua);
+                    ud.builder.add(string) catch memoryError(lua);
+                },
+                else => {
+                    lua.argError(index, "expected string, number, boolean or string.builder");
+                },
+            }
+        }
+        lua.setTop(1);
+        return 1;
+    }
+
+    fn toString(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        const string = ud.builder.get() catch memoryError(lua);
+        _ = lua.pushString(string);
+        return 1;
+    }
+
+    fn clear(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        ud.builder.clear();
+        lua.setTop(1);
+        return 1;
+    }
+
+    fn len(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        lua.pushInteger(@intCast(ud.builder.len));
+        return 1;
+    }
+};
+
+fn memoryError(lua: *Lua) noreturn {
+    luax.raiseError(lua, "could not allocate memory");
 }
