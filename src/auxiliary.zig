@@ -223,6 +223,7 @@ const BuilderUdata = struct {
         .{ .name = "tostring", .func = ziglua.wrap(toString) },
         .{ .name = "clear", .func = ziglua.wrap(clear) },
         .{ .name = "len", .func = ziglua.wrap(len) },
+        .{ .name = "isempty", .func = ziglua.wrap(isEmpty) },
     };
 
     fn register(lua: *Lua) void {
@@ -292,6 +293,12 @@ const BuilderUdata = struct {
     fn len(lua: *Lua) i32 {
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
         lua.pushInteger(@intCast(ud.builder.len));
+        return 1;
+    }
+
+    fn isEmpty(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        lua.pushBoolean(ud.builder.isEmpty());
         return 1;
     }
 };

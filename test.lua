@@ -211,6 +211,7 @@ end
 function TestLibraries:test_string_builder()
     local sb = string.builder()
     lu.assertEquals(sb:len(), 0)
+    lu.assertEquals(sb:isempty(), true)
     lu.assertEquals(sb:tostring(), "")
 
     sb:add("Hello"):add(" "):add("World"):add("!")
