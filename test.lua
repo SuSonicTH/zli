@@ -208,9 +208,8 @@ function TestLibraries:test_log()
     })
 end
 
---[[
 function TestLibraries:test_string_builder()
-    local sb = string_builder.new()
+    local sb = string.builder()
     lu.assertEquals(sb:len(), 0)
     lu.assertEquals(sb:tostring(), "")
 
@@ -228,10 +227,9 @@ function TestLibraries:test_string_builder()
     sb:reset():add(1, ',', true, ',', 23.56, ',', false)
     lu.assertEquals(sb:tostring(), "1,true,23.56,false")
 
-    sb:reset():add("A", string_builder.new():add("B", "C"), "D")
+    sb:reset():add("A", string.builder():add("B", "C"), "D")
     lu.assertEquals(sb:tostring(), "ABCD")
 end
-]]
 
 function TestLibraries:test_zip()
     local testfile = "test.zip"

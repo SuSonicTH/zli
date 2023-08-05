@@ -27,7 +27,7 @@ const table_functions = [_]ziglua.FnReg{
 pub fn register(lua: *Lua) void {
     register_module(lua, "string", &string_functions);
     register_module(lua, "table", &table_functions);
-    luax.registerUserData(lua, BuilderUdata.name, BuilderUdata.gc);
+    BuilderUdata.register(lua);
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 0, 0, null);
 }
@@ -44,20 +44,24 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.Fn
 
 const BuilderUdata = struct {
     builder: Builder,
-
     const name = "_BuilderUdata";
-    const gc = ziglua.wrap(garbageCollect);
     const functions = [_]ziglua.FnReg{
         .{ .name = "add", .func = ziglua.wrap(add) },
-        .{ .name = "get", .func = ziglua.wrap(get) },
+        .{ .name = "toString", .func = ziglua.wrap(toString) },
+        .{ .name = "clear", .func = ziglua.wrap(clear) },
+        .{ .name = "len", .func = ziglua.wrap(len) },
     };
+
+    fn register(lua: *Lua) void {
+        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+    }
 
     fn new(lua: *Lua) i32 {
         const allocator = std.heap.c_allocator;
         const size = lua.optInteger(1, 0);
 
         const ud: *BuilderUdata = luax.createUserDataTableSetFunctions(lua, name, BuilderUdata, &functions);
-        ud.builder = Builder.init(allocator, @intCast(size)) catch luax.raiseError(lua, "could not allocate memory");
+        ud.builder = Builder.init(allocator, @intCast(size)) catch memoryError(lua);
         return 1;
     }
 
@@ -70,18 +74,34 @@ const BuilderUdata = struct {
     fn add(lua: *Lua) i32 {
         const string = lua.checkString(2);
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        ud.builder.add(string[0..std.mem.len(string)]) catch luax.raiseError(lua, "could not allocate memory");
+        ud.builder.add(string[0..std.mem.len(string)]) catch memoryError(lua);
         lua.pop(1);
         return 1;
     }
 
-    fn get(lua: *Lua) i32 {
+    fn toString(lua: *Lua) i32 {
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
-        const string = ud.builder.get() catch luax.raiseError(lua, "could not allocate memory");
+        const string = ud.builder.get() catch memoryError(lua);
         _ = lua.pushString(string);
         return 1;
     }
+
+    fn clear(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        ud.builder.clear();
+        return 1;
+    }
+
+    fn len(lua: *Lua) i32 {
+        const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
+        lua.pushInteger(@intCast(ud.builder.len));
+        return 1;
+    }
 };
+
+fn memoryError(lua: *Lua) noreturn {
+    luax.raiseError(lua, "could not allocate memory");
+}
 
 fn split(lua: *Lua) i32 {
     const str = luax.slice(lua.checkString(1));
@@ -179,7 +199,7 @@ fn insert_sorted(lua: *Lua) i32 {
 fn concats(lua: *Lua) i32 {
     lua.checkType(1, .table);
     const allocator = std.heap.c_allocator;
-    var builder: Builder = Builder.init(allocator, 0) catch luax.raiseError(lua, "could not allocate memory");
+    var builder: Builder = Builder.init(allocator, 0) catch memoryError(lua);
     defer builder.deinit();
 
     const len: u64 = lua.rawLen(1);
@@ -190,7 +210,7 @@ fn concats(lua: *Lua) i32 {
         concats_separator(lua, &builder, len);
     }
 
-    const str = builder.get() catch luax.raiseError(lua, "could not allocate memory");
+    const str = builder.get() catch memoryError(lua);
     _ = lua.pushBytes(str);
     return 1;
 }
@@ -200,7 +220,7 @@ fn concats_simple(lua: *Lua, builder: *Builder, len: u64) void {
     while (i <= len) : (i += 1) {
         _ = lua.getIndex(1, i);
         var string = lua.toBytesFmt(-1);
-        builder.add(string) catch luax.raiseError(lua, "could not allocate memory");
+        builder.add(string) catch memoryError(lua);
         lua.pop(1);
     }
 }
@@ -211,9 +231,9 @@ fn concats_separator(lua: *Lua, builder: *Builder, len: u64) void {
     while (i <= len) : (i += 1) {
         _ = lua.getIndex(1, i);
         var string = lua.toBytesFmt(-1);
-        builder.add(string) catch luax.raiseError(lua, "could not allocate memory");
+        builder.add(string) catch memoryError(lua);
         if (i < len) {
-            builder.add(separator) catch luax.raiseError(lua, "could not allocate memory");
+            builder.add(separator) catch memoryError(lua);
         }
         lua.pop(1);
     }
