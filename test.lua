@@ -232,6 +232,32 @@ function TestLibraries:test_string_builder()
     lu.assertEquals(sb:tostring(), "ABCD")
 end
 
+function TestLibraries:test_string_joiner()
+    local joiner = string.joiner { delimiter = ',' }
+    lu.assertEquals(joiner:len(), 0)
+    lu.assertEquals(joiner:isempty(), true)
+    lu.assertEquals(joiner:tostring(), "")
+
+    joiner:add("one"):add("two"):add("three")
+    --lu.assertEquals(joiner:len(), 13)
+    lu.assertEquals(joiner:tostring(), "one,two,three")
+
+    joiner:clear()
+    lu.assertEquals(joiner:len(), 0)
+    lu.assertEquals(joiner:tostring(), "")
+
+    joiner = string.joiner { delimiter = ',', prefix = '[', suffix = ']' }
+
+    joiner:add("one"):add("two")
+    lu.assertEquals(joiner:tostring(), "[one,two]")
+
+    joiner:add("three")
+    lu.assertEquals(joiner:tostring(), "[one,two,three]")
+
+    joiner:clear():add(1, true, 23.56, false)
+    lu.assertEquals(joiner:tostring(), "[1,true,23.56,false]")
+end
+
 function TestLibraries:test_zip()
     local testfile = "test.zip"
     local inputfile = "README.md"

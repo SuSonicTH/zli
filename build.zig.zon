@@ -4,7 +4,7 @@
         .hash = "12206cf9e90462ee6e14f593ea6e0802b9fe434429ba10992a1451e32900f741005c",
     },
     .zigStringUtil = .{
-        .url = "https://github.com/SuSonicTH/zigStringUtil/archive/fb13efcfed26edb39ea5ab427e7d66d69e502370.tar.gz",
-        .hash = "12202157ce4a4a629f7f56e72abd308929ad6482844d62ab5a1d3219dad7f7e76fa8",
+        .url = "https://github.com/SuSonicTH/zigStringUtil/archive/66577eecdd273b626fe59b6d46b3349331fda632.tar.gz",
+        .hash = "1220024750ad8df560a590919c57725eda68f68f7756d443aa32a3a8be8ee21905a9",
     },
 } }

@@ -7,6 +7,7 @@ const Lua = ziglua.Lua;
 const zigStringUtil = @import("zigStringUtil");
 const Builder = zigStringUtil.Builder;
 const Joiner = zigStringUtil.Joiner;
+const JoinerOptions = zigStringUtil.JoinerOptions;
 
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
@@ -14,6 +15,7 @@ const string_functions = [_]ziglua.FnReg{
     .{ .name = "ltrim", .func = ziglua.wrap(ltrim_lib) },
     .{ .name = "rtrim", .func = ziglua.wrap(rtrim_lib) },
     .{ .name = "builder", .func = ziglua.wrap(BuilderUdata.new) },
+    .{ .name = "joiner", .func = ziglua.wrap(JoinerUdata.new) },
 };
 
 const table_functions = [_]ziglua.FnReg{
@@ -28,6 +30,7 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "string", &string_functions);
     register_module(lua, "table", &table_functions);
     BuilderUdata.register(lua);
+    JoinerUdata.register(lua);
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 0, 0, null);
 }
@@ -299,6 +302,99 @@ const BuilderUdata = struct {
     fn isEmpty(lua: *Lua) i32 {
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
         lua.pushBoolean(ud.builder.isEmpty());
+        return 1;
+    }
+};
+
+const JoinerUdata = struct {
+    joiner: Joiner,
+    const name = "_JoinerUdata";
+    const functions = [_]ziglua.FnReg{
+        .{ .name = "add", .func = ziglua.wrap(add) },
+        .{ .name = "tostring", .func = ziglua.wrap(toString) },
+        .{ .name = "clear", .func = ziglua.wrap(clear) },
+        .{ .name = "len", .func = ziglua.wrap(len) },
+        .{ .name = "isempty", .func = ziglua.wrap(isEmpty) },
+    };
+
+    fn register(lua: *Lua) void {
+        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+    }
+
+    fn new(lua: *Lua) i32 {
+        const allocator = std.heap.c_allocator;
+        lua.argCheck(lua.isTable(1), 1, "expecting option table {prefix='',suffix='',delimiter='',size=0}");
+        const options: JoinerOptions = .{
+            .prefix = luax.getOptionString(lua, "prefix", 1, ""),
+            .suffix = luax.getOptionString(lua, "suffix", 1, ""),
+            .delimiter = luax.getOptionString(lua, "delimiter", 1, ""),
+            .size = @intCast(luax.getOptionInteger(lua, "size", 1, 0)),
+        };
+        const ud: *JoinerUdata = luax.createUserDataTableSetFunctions(lua, name, JoinerUdata, &functions);
+        ud.joiner = Joiner.init(allocator, options) catch memoryError(lua);
+        return 1;
+    }
+
+    fn garbageCollect(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getGcUserData(lua, JoinerUdata);
+        ud.joiner.deinit();
+        return 0;
+    }
+
+    fn add(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
+        const top = lua.getTop();
+        var index: i32 = 2;
+        while (index < top) : (index += 1) {
+            switch (lua.typeOf(index)) {
+                .string, .number => {
+                    const string = lua.toString(index) catch unreachable;
+                    ud.joiner.add(string[0..std.mem.len(string)]) catch memoryError(lua);
+                },
+                .boolean => {
+                    if (lua.toBoolean(index)) {
+                        ud.joiner.add("true") catch memoryError(lua);
+                    } else {
+                        ud.joiner.add("false") catch memoryError(lua);
+                    }
+                },
+                .table => {
+                    const udArg: *JoinerUdata = luax.getUserDataIndex(lua, name, JoinerUdata, index);
+                    const string = udArg.joiner.get() catch memoryError(lua);
+                    ud.joiner.add(string) catch memoryError(lua);
+                },
+                else => {
+                    lua.argError(index, "expected string, number, boolean or string.joiner");
+                },
+            }
+        }
+        lua.setTop(1);
+        return 1;
+    }
+
+    fn toString(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
+        const string = ud.joiner.get() catch memoryError(lua);
+        _ = lua.pushString(string);
+        return 1;
+    }
+
+    fn clear(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
+        ud.joiner.clear();
+        lua.setTop(1);
+        return 1;
+    }
+
+    fn len(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
+        lua.pushInteger(@intCast(ud.joiner.len()));
+        return 1;
+    }
+
+    fn isEmpty(lua: *Lua) i32 {
+        const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
+        lua.pushBoolean(ud.joiner.isEmpty());
         return 1;
     }
 };

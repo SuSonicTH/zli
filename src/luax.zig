@@ -91,3 +91,30 @@ pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: 
 pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
     return lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
 }
+
+pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
+    _ = lua.pushString(key);
+    _ = lua.getTable(index);
+}
+
+pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]const u8) [:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return default;
+    }
+    const value = lua.toString(-1) catch raiseError(lua, "illegal option, expecting String");
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
+}
+
+pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: ziglua.Integer) ziglua.Integer {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return default;
+    }
+    const value = lua.toInteger(-1) catch raiseError(lua, "illegal option, expecting Integer");
+    lua.pop(1);
+    return value;
+}
