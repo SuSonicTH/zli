@@ -16,16 +16,8 @@ pub fn build(b: *std.Build) void {
     });
 
     const zigLuaStrip = b.dependency("zigLuaStrip", .{
-        //.target = .{},
         .optimize = std.builtin.OptimizeMode.Debug,
     });
-
-    //const strip = b.addExecutable(.{
-    //    .name = "luastrip",
-    //    .root_source_file = .{ .path = "src/lib/zigluastrip/src/main.zig" },
-    //    .target = .{},
-    //    .optimize = std.builtin.OptimizeMode.Debug,
-    //});
 
     //zli exe
     const exe = b.addExecutable(.{
