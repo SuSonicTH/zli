@@ -49,7 +49,11 @@ pub fn build(b: *std.Build) void {
         exe.strip = true;
     }
 
-    stripLuaSources(b, exe, zigLuaStrip);
+    for (luastrip_list) |script| {
+        var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
+        run_step.addArgs(&.{ script.input, script.output });
+        exe.step.dependOn(&run_step.step);
+    }
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -91,14 +95,6 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
     .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
 };
-
-fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep, zigLuaStrip: *std.build.Dependency) void {
-    for (luastrip_list) |script| {
-        var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
-        run_step.addArgs(&.{ script.input, script.output });
-        exe.step.dependOn(&run_step.step);
-    }
-}
 
 const luaPath: std.Build.LazyPath = .{ .path = "src/lib/lua/" };
 
