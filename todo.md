@@ -10,17 +10,12 @@
 * add goals for release build (for all platforms) in build.zig
 
 # additional functionality
-* add functionality to add payload (scripts, modules and resources) to end of exe
-    * builtin tool to "compile" exe
-    * DONE module can load payload files
-    * io.open io.read,... can load payload files
-    * DONE zli checks paylod on startup and executes init.lua or main.lua or <exename>.lua
-    * DONE add commandline option to execute payload scripts (@script.lua ??)
+    * io.open io.read,... can read payload files
 
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket
-* http server/client (based on luasocket)
+* http server/client (based on luasocket?) or write own based on zig http server/client (easier to port, probably much small exe)
 * xml library
 * tar library
 * terminal ui library, either some existing lua binding
