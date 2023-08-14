@@ -15,6 +15,18 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zigLuaStrip = b.dependency("zigLuaStrip", .{
+        //.target = .{},
+        .optimize = std.builtin.OptimizeMode.Debug,
+    });
+
+    //const strip = b.addExecutable(.{
+    //    .name = "luastrip",
+    //    .root_source_file = .{ .path = "src/lib/zigluastrip/src/main.zig" },
+    //    .target = .{},
+    //    .optimize = std.builtin.OptimizeMode.Debug,
+    //});
+
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
@@ -45,7 +57,7 @@ pub fn build(b: *std.Build) void {
         exe.strip = true;
     }
 
-    stripLuaSources(b, exe);
+    stripLuaSources(b, exe, zigLuaStrip);
 
     b.installArtifact(exe);
     const run_cmd = b.addRunArtifact(exe);
@@ -88,20 +100,11 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
 };
 
-fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep) void {
-    const strip = b.addExecutable(.{
-        .name = "luastrip",
-        .root_source_file = .{ .path = "src/lib/zigluastrip/src/main.zig" },
-        .target = .{},
-        .optimize = std.builtin.OptimizeMode.Debug,
-    });
-
-    b.installArtifact(strip);
-
+fn stripLuaSources(b: *std.Build, exe: *std.build.CompileStep, zigLuaStrip: *std.build.Dependency) void {
     for (luastrip_list) |script| {
-        var step = b.addRunArtifact(strip);
-        step.addArgs(&.{ script.input, script.output });
-        exe.step.dependOn(&step.step);
+        var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
+        run_step.addArgs(&.{ script.input, script.output });
+        exe.step.dependOn(&run_step.step);
     }
 }
 
