@@ -5,6 +5,7 @@
 # fixes
 
 # possible improvements of compilation
+* convert zigluastrip to module
 * automatic UPX download and build option
 * add goals for release build (for all platforms) in build.zig
 
