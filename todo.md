@@ -2,10 +2,10 @@
 
 # refactorings
 * rewrite lua_zip.c in zig (and get rid of luax/)
+
 # fixes
 
 # possible improvements of compilation
-* convert zigluastrip to module
 * automatic UPX download and build option
 * add goals for release build (for all platforms) in build.zig
 
