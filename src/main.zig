@@ -12,13 +12,13 @@ const main_lua: [:0]const u8 = @embedFile("stripped/main.lua");
 var prog_name: [:0]u8 = undefined;
 var uzfh: c.unzFile = undefined;
 
-pub fn main() !void {
-    const allocator = std.heap.c_allocator;
+const allocator = std.heap.c_allocator;
 
+pub fn main() !void {
     var lua = try Lua.init(allocator);
     defer lua.deinit();
 
-    try createArgTable(&lua, allocator);
+    try createArgTable(&lua);
     _ = lua.gcSetGenerational(0, 0);
     _ = libraries.openlibs(&lua);
     try create_payload_searcher(&lua);
@@ -32,7 +32,7 @@ pub fn main() !void {
     }
 }
 
-fn createArgTable(lua: *Lua, allocator: std.mem.Allocator) !void {
+fn createArgTable(lua: *Lua) !void {
     const args = try std.process.argsAlloc(allocator);
     prog_name = args[0];
 
@@ -82,19 +82,15 @@ const extention_init = "/init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
     const arg = lua.checkString(1);
-    const module = arg[0..std.mem.len(arg) :0];
-    var filename: [260:0]u8 = undefined;
+    const filename = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+    defer allocator.free(filename);
 
-    @memcpy(&filename, module);
-    @memcpy(filename[module.len..], extention_lua);
-    filename[module.len + extention_lua.len] = 0;
+    if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
+        const initName = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+        defer allocator.free(initName);
 
-    if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
-        @memcpy(filename[module.len..], extention_init);
-        filename[module.len + extention_init.len] = 0;
-
-        if (c.unzLocateFile(uzfh, &filename, 0) != c.UNZ_OK) {
-            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ module.ptr, module.ptr, prog_name.ptr });
+        if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
+            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ arg, arg, prog_name.ptr });
             return 1;
         }
     }
@@ -105,7 +101,7 @@ fn payload_searcher(lua: *Lua) i32 {
     }
 
     lua.pushFunction(ziglua.wrap(payload_loader));
-    _ = lua.pushString(filename[0..]);
+    _ = lua.pushString(std.mem.sliceTo(arg, 0));
     return 2;
 }
 
