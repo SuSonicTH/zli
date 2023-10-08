@@ -11,6 +11,7 @@ const JoinerOptions = zigStringUtil.JoinerOptions;
 
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
+    .{ .name = "toTable", .func = ziglua.wrap(toTable) },
     .{ .name = "trim", .func = ziglua.wrap(trim) },
     .{ .name = "ltrim", .func = ziglua.wrap(ltrim_lib) },
     .{ .name = "rtrim", .func = ziglua.wrap(rtrim_lib) },
@@ -56,6 +57,23 @@ fn split(lua: *Lua) i32 {
         count += 1;
     }
     return count;
+}
+
+fn toTable(lua: *Lua) i32 {
+    const str = luax.slice(lua.checkString(1));
+    const delim = luax.slice(lua.optString(2, ","));
+
+    lua.newTable();
+    const table = lua.getTop();
+
+    var index: i32 = 1;
+    var it = std.mem.splitSequence(u8, str, delim);
+    while (it.next()) |item| {
+        _ = lua.pushBytes(item);
+        lua.rawSetIndex(table, index);
+        index += 1;
+    }
+    return 1;
 }
 
 const char_to_strip = " \t\r\n\x00";
