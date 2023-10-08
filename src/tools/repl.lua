@@ -1,5 +1,37 @@
 local cl = require "crossline"
 
+--[[ ~/.config/repl.init ]]
+
+local init = os.home .. "/.config/zli/repl_init.lua"
+if lfs.attributes(init) == nil then
+    io.write_file(init, [==[
+--[================================================================================[
+zli repl init file
+
+you can put global initialisations here that will get executed on every
+invocation of zli repl before the repl loop starts
+it's usefull to set some loacl configurations or load default libraries
+
+the ~/.config/init.lua gets executed before this script is executed
+--]================================================================================]
+
+csv = require "csv"
+json = require "cjson"
+log = require "log"
+lpeg = require "lpeg"
+lu = require "luaunit"
+re = require "re"
+require "lfs"
+sqlite3 = require "sqlite3"
+stream = require "stream"
+zip = require "zip"
+zlib = require "zlib"
+cl = require "crossline"
+
+]==])
+end
+dofile(init)
+
 --[[ Init screen ]]
 cl.screen.clear()
 local dim = cl.screen.dimentions()

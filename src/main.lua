@@ -1,5 +1,33 @@
 local argparse = require "argparse"
 local zip = require "zip"
+require "lfs"
+
+local config = os.home .. "/.config"
+if lfs.attributes(config) == nil then
+    lfs.mkdir(config)
+end
+
+local config_zli = config .. "/zli"
+if lfs.attributes(config_zli) == nil then
+    lfs.mkdir(config_zli)
+end
+
+local init = config_zli .. "/init.lua"
+if lfs.attributes(init) == nil then
+    io.write_file(init, [==[
+--[================================================================================[
+    zli init file
+
+    you can put global initialisations here that will get executed on every
+    invocation of zli before the programm or script is executed
+    it's usefull to set some loacl configurations or load default libraries
+--]================================================================================]
+
+
+]==])
+end
+
+dofile(init)
 
 if arg[1] == "@" then
     --single @ without name fowards the arguments without @ to handler below
