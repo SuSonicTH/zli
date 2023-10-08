@@ -12,7 +12,7 @@ const crossline = [_]ziglua.FnReg{
     .{ .name = "readline", .func = ziglua.wrap(crossline_readline) },
     .{ .name = "set_prompt_color", .func = ziglua.wrap(crossline_prompt_color_set) },
     .{ .name = "set_color", .func = ziglua.wrap(crossline_color_set) },
-    .{ .name = "printPaged", .func = ziglua.wrap(crossline_paging_print_paged) },
+    .{ .name = "print_paged", .func = ziglua.wrap(crossline_paging_print_paged) },
 };
 
 const crossline_screen = [_]ziglua.FnReg{

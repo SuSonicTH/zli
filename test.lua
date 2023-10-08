@@ -73,7 +73,7 @@ function TestAuxLib:test_string()
     lu.assertEquals(string.rtrim(TEST), "   TEST")
     lu.assertEquals(string.trim(TEST), "TEST")
     lu.assertEquals({ string.split("1,2,3") }, { "1", "2", "3" })
-    lu.assertEquals(string.toTable("1,2,3"), { "1", "2", "3" })
+    lu.assertEquals(string.to_table("1,2,3"), { "1", "2", "3" })
 end
 
 function TestAuxLib:test_string_extended()

@@ -12,7 +12,7 @@ const builtin = @import("builtin");
 
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
-    .{ .name = "toTable", .func = ziglua.wrap(toTable) },
+    .{ .name = "to_table", .func = ziglua.wrap(to_table) },
     .{ .name = "trim", .func = ziglua.wrap(trim) },
     .{ .name = "ltrim", .func = ziglua.wrap(ltrim_lib) },
     .{ .name = "rtrim", .func = ziglua.wrap(rtrim_lib) },
@@ -29,7 +29,7 @@ const table_functions = [_]ziglua.FnReg{
 };
 
 const os_functions = [_]ziglua.FnReg{
-    .{ .name = "getName", .func = ziglua.wrap(osName) },
+    .{ .name = "get_name", .func = ziglua.wrap(os_get_name) },
 };
 
 pub fn register(lua: *Lua) void {
@@ -52,7 +52,7 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.Fn
     lua.pop(1);
 }
 
-fn osName(lua: *Lua) i32 {
+fn os_get_name(lua: *Lua) i32 {
     if (builtin.os.tag == .windows) {
         _ = lua.pushString("windows");
     } else if (builtin.os.tag == .linux) {
@@ -78,7 +78,7 @@ fn split(lua: *Lua) i32 {
     return count;
 }
 
-fn toTable(lua: *Lua) i32 {
+fn to_table(lua: *Lua) i32 {
     const str = luax.slice(lua.checkString(1));
     const delim = luax.slice(lua.optString(2, ","));
 

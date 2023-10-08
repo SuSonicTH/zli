@@ -74,7 +74,15 @@ local function table_load_file(filename, options)
     return serpent.load(io_read_file(filename), options)
 end
 
---setting global funcitons
+local function get_home()
+    local home = os.getenv("HOME")
+    if (home == nil and os.get_name() == "windows") then
+        home = os.getenv("homedrive") .. os.getenv("homepath")
+    end
+    return home
+end
+
+--setting global funcitons and constants
 io.readlines = io_read_lines
 io.write_lines = io_write_lines
 io.read_file = io_read_file
@@ -92,7 +100,9 @@ table.load_file = table_load_file
 math.maxdouble = 1.7976931348623158e+308
 math.mindouble = 2.2250738585072014e-308
 
-os.name = os.getName()
-os.isWindows = os.getName() == "windows"
-os.isLinux = os.getName() == "linux"
-os.isMac = os.getName() == "macos"
+os.name = os.get_name()
+os.is_windows = os.get_name() == "windows"
+os.is_linux = os.get_name() == "linux"
+os.is_mac = os.get_name() == "macos"
+os.home = get_home()
+os.separator = os.get_name() == "windows" and "\\" or "/"
