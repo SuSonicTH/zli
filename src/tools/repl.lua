@@ -32,7 +32,12 @@ cl = require "crossline"
 end
 dofile(init)
 
+--[[ Init history ]]
+local history_file = os.home .. "/.config/zli/repl_history"
+cl.history.load(history_file)
+
 --[[ Init screen ]]
+
 cl.screen.clear()
 local dim = cl.screen.dimentions()
 local header = "ZIL - REPL"
@@ -76,8 +81,10 @@ end
 
 -- [[ REPL loop ]]
 local function quit_if_requested(line)
-    if (line:trim():lower() == "quit" or line:trim():lower() == "exit") then
+    local lower_line = line:trim():lower()
+    if (lower_line == "quit" or lower_line == "exit") then
         cl.screen.clear()
+        cl.history.save(history_file)
         os.exit(0)
     end
 end

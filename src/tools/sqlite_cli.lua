@@ -2,6 +2,10 @@ local cl = require "crossline"
 local sqlite = require "sqlite3"
 local json = require "cjson"
 
+--[[ Init history ]]
+local history_file = os.home .. "/.config/zli/sqlite_history"
+cl.history.load(history_file)
+
 --[[ Init screen ]]
 cl.screen.clear()
 local dim = cl.screen.dimentions()
@@ -230,6 +234,7 @@ local function execute()
             return
         end
         if not execute_command(command) then
+            cl.history.save(history_file)
             return
         end
     end
