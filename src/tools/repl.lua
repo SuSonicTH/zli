@@ -34,11 +34,11 @@ end
 
 function Pretty_print(name, value)
     if type(value) == 'table' then
-        cl.paging.print(table.tostring(value, name):toTable("\n"))
+        cl.printPaged(table.tostring(value, name))
     elseif type(value) == 'string' then
-        cl.paging.print(name .. " = \"" .. value .. "\"")
+        cl.printPaged(name .. " = \"" .. value .. "\"")
     else
-        cl.paging.print(name .. " = " .. tostring(value))
+        cl.printPaged(name .. " = " .. tostring(value))
     end
 end
 

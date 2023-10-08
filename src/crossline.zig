@@ -12,6 +12,7 @@ const crossline = [_]ziglua.FnReg{
     .{ .name = "readline", .func = ziglua.wrap(crossline_readline) },
     .{ .name = "set_prompt_color", .func = ziglua.wrap(crossline_prompt_color_set) },
     .{ .name = "set_color", .func = ziglua.wrap(crossline_color_set) },
+    .{ .name = "printPaged", .func = ziglua.wrap(crossline_paging_print_paged) },
 };
 
 const crossline_screen = [_]ziglua.FnReg{
@@ -274,21 +275,55 @@ fn crossline_paging_print_output(lua: *Lua) c_int {
     if (string.len == 0 or string[string.len - 1] != '\n') {
         stdout.writeByte('\n') catch unreachable;
     }
-    return c.crossline_paging_check(@intCast(string.len));
+    lua.pop(1);
+    lua.pushBoolean(c.crossline_paging_check(@intCast(string.len)) >= 1);
+    return 1;
+}
+
+fn crossline_paging_print_paged(lua: *Lua) i32 {
+    _ = c.crossline_paging_set(1);
+    _ = crossline_paging_print(lua);
+    _ = c.crossline_paging_set(0);
+    return 1;
 }
 
 fn crossline_paging_print(lua: *Lua) i32 {
-    var stop: c_int = undefined;
     if (lua.typeOf(1) == .table) {
-        const len = lua.rawLen(1);
-        for (1..len) |i| {
-            _ = lua.rawGetIndex(1, @intCast(i));
-            stop = crossline_paging_print_output(lua);
-            lua.pop(1);
-        }
-    } else {
-        stop = crossline_paging_print_output(lua);
+        return crossline_paging_print_table(lua);
+    } else if (lua.typeOf(1) == .string) {
+        return crossline_paging_print_string(lua);
     }
-    lua.pushBoolean(stop >= 1);
+    _ = lua.pushString("expecting String or table as argument");
+    lua.raiseError();
+    return 0;
+}
+
+fn crossline_paging_print_table(lua: *Lua) i32 {
+    const len = lua.rawLen(1);
+
+    for (1..len) |i| {
+        _ = lua.rawGetIndex(1, @intCast(i));
+        _ = crossline_paging_print_output(lua);
+        if (lua.toBoolean(-1)) {
+            return 1;
+        }
+        lua.pop(1);
+    }
+    return 1;
+}
+
+fn crossline_paging_print_string(lua: *Lua) i32 {
+    const str = luax.slice(lua.checkString(1));
+    var it = std.mem.splitSequence(u8, str, "\n");
+
+    while (it.next()) |item| {
+        _ = lua.pushBytes(item);
+        _ = crossline_paging_print_output(lua);
+        if (lua.toBoolean(-1)) {
+            return 1;
+        }
+        lua.pop(1);
+    }
+
     return 1;
 }
