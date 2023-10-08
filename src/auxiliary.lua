@@ -91,3 +91,8 @@ table.load_file = table_load_file
 
 math.maxdouble = 1.7976931348623158e+308
 math.mindouble = 2.2250738585072014e-308
+
+os.name = os.getName()
+os.isWindows = os.getName() == "windows"
+os.isLinux = os.getName() == "linux"
+os.isMac = os.getName() == "macos"

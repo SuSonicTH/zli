@@ -8,6 +8,7 @@ const zigStringUtil = @import("zigStringUtil");
 const Builder = zigStringUtil.Builder;
 const Joiner = zigStringUtil.Joiner;
 const JoinerOptions = zigStringUtil.JoinerOptions;
+const builtin = @import("builtin");
 
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
@@ -27,9 +28,14 @@ const table_functions = [_]ziglua.FnReg{
     .{ .name = "comparator", .func = ziglua.wrap(comparator) },
 };
 
+const os_functions = [_]ziglua.FnReg{
+    .{ .name = "getName", .func = ziglua.wrap(osName) },
+};
+
 pub fn register(lua: *Lua) void {
     register_module(lua, "string", &string_functions);
     register_module(lua, "table", &table_functions);
+    register_module(lua, "os", &os_functions);
     BuilderUdata.register(lua);
     JoinerUdata.register(lua);
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
@@ -44,6 +50,19 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.Fn
         lua.setTable(-3);
     }
     lua.pop(1);
+}
+
+fn osName(lua: *Lua) i32 {
+    if (builtin.os.tag == .windows) {
+        _ = lua.pushString("windows");
+    } else if (builtin.os.tag == .linux) {
+        _ = lua.pushString("linux");
+    } else if (builtin.os.tag == .macos) {
+        _ = lua.pushString("macos");
+    } else {
+        _ = lua.pushString("unknown");
+    }
+    return 1;
 }
 
 fn split(lua: *Lua) i32 {
