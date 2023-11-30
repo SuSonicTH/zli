@@ -3,6 +3,7 @@ const Lua = ziglua.Lua;
 
 const crossline = @import("crossline.zig");
 const auxiliary = @import("auxiliary.zig");
+const filesystem = @import("filesystem.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lpeg(state: ?*ziglua.LuaState) callconv(.C) c_int;
@@ -15,44 +16,37 @@ const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
 const strlen = std.zig.c_builtins.__builtin_strlen;
 
-const preload = [_]ziglua.FnReg{
-    .{
-        .name = "sqlite3",
-        .func = &luaopen_lsqlite3,
-    },
-    .{
-        .name = "lpeg",
-        .func = &luaopen_lpeg,
-    },
-    .{
-        .name = "lfs",
-        .func = &luaopen_lfs,
-    },
-    .{
-        .name = "zlib",
-        .func = &luaopen_zlib,
-    },
-    .{
-        .name = "cjson",
-        .func = &luaopen_cjson,
-    },
-    .{
-        .name = "luaunit",
-        .func = ziglua.wrap(luaopen_luascript),
-    },
-    .{
-        .name = "re",
-        .func = ziglua.wrap(luaopen_luascript),
-    },
-    .{
-        .name = "zip",
-        .func = &luaopen_zip,
-    },
-    .{
-        .name = "crossline",
-        .func = crossline.luaopen_crossline,
-    },
-};
+const preload = [_]ziglua.FnReg{ .{
+    .name = "sqlite3",
+    .func = &luaopen_lsqlite3,
+}, .{
+    .name = "lpeg",
+    .func = &luaopen_lpeg,
+}, .{
+    .name = "lfs",
+    .func = &luaopen_lfs,
+}, .{
+    .name = "zlib",
+    .func = &luaopen_zlib,
+}, .{
+    .name = "cjson",
+    .func = &luaopen_cjson,
+}, .{
+    .name = "luaunit",
+    .func = ziglua.wrap(luaopen_luascript),
+}, .{
+    .name = "re",
+    .func = ziglua.wrap(luaopen_luascript),
+}, .{
+    .name = "zip",
+    .func = &luaopen_zip,
+}, .{
+    .name = "crossline",
+    .func = crossline.luaopen_crossline,
+}, .{
+    .name = "filesystem",
+    .func = filesystem.luaopen_filesystem,
+} };
 
 const luascript = struct {
     name: [:0]const u8,

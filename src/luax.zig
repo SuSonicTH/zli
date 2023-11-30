@@ -30,12 +30,32 @@ pub fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) v
     }
 }
 
+pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, registry: [:0]const u8) void {
+    lua.loadBuffer(source, name, ziglua.Mode.text) catch lua.raiseError();
+    lua.callCont(0, 1, 0, null);
+    lua.checkType(-1, ziglua.LuaType.function);
+    lua.pushValue(-2);
+    lua.callCont(1, 0, 0, null);
+
+    _ = lua.pushString(registry);
+    lua.pushValue(-2);
+    lua.setTable(ziglua.registry_index);
+}
+
 pub fn slice(str: [*:0]const u8) []const u8 {
     return std.mem.sliceTo(str, 0);
 }
 
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.getGlobal(module) catch undefined;
+    _ = lua.pushString(function);
+    _ = lua.getTable(-2);
+    lua.remove(-2);
+}
+
+pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
+    _ = lua.pushString(module);
+    _ = lua.getTable(ziglua.registry_index);
     _ = lua.pushString(function);
     _ = lua.getTable(-2);
     lua.remove(-2);
@@ -95,6 +115,16 @@ pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
 pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
     _ = lua.pushString(key);
     _ = lua.getTable(index);
+}
+
+pub fn getTableString(lua: *Lua, key: [:0]const u8, index: i32) [:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        raiseError(lua, "illegal option, expecting String");
+    }
+    const value = lua.toString(-1) catch raiseError(lua, "illegal option, expecting String");
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
 }
 
 pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]const u8) [:0]const u8 {
