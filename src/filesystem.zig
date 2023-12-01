@@ -14,12 +14,12 @@ const allocator = std.heap.c_allocator;
 
 const filesystem = [_]ziglua.FnReg{
     .{ .name = "cwd", .func = ziglua.wrap(cwd) },
-    .{ .name = "dir", .func = ziglua.wrap(dir) },
     .{ .name = "create_path", .func = ziglua.wrap(create_path) },
 };
 
-const filesystem_lazy_init = [_]ziglua.FnReg{
-    .{ .name = "full_path", .func = ziglua.wrap(full_path) },
+const filesystem_path = [_]ziglua.FnReg{
+    .{ .name = "dir", .func = ziglua.wrap(dir) },
+    .{ .name = "list", .func = ziglua.wrap(list) },
     .{ .name = "stat", .func = ziglua.wrap(stat) },
     .{ .name = "is_file", .func = ziglua.wrap(is_file) },
     .{ .name = "is_directory", .func = ziglua.wrap(is_directory) },
@@ -38,20 +38,37 @@ const separator_string = switch (builtin.os.tag) {
 };
 
 const zli_filesystem = "zli_filesystem";
+const zli_mt_path = "zli_mt_path";
 
 pub export fn luaopen_filesystem(state: ?*ziglua.LuaState) callconv(.C) c_int {
     var lua: Lua = .{ .state = state.? };
     lua.newLib(&filesystem);
+    lua.setFuncs(&filesystem_path, 0);
     _ = lua.pushString("separator");
     _ = lua.pushString(separator_string);
     lua.setTable(-3);
 
+    register_path_mt(&lua);
     const exteded = @embedFile("filesystem.lua");
     luax.registerExtended(&lua, exteded, "filesytem", zli_filesystem);
     return 1;
 }
 
+fn register_path_mt(lua: *Lua) void {
+    lua.newMetatable(zli_mt_path) catch luax.raiseError(lua, "register_path_mt internal error: could not crete metatable");
+    _ = lua.pushString("__tostring");
+    lua.pushFunction(ziglua.wrap(path__tostring));
+    lua.setTable(-3);
+    lua.pop(1);
+}
+
 var path_buffer: [fs.MAX_PATH_BYTES]u8 = undefined;
+
+pub fn path__tostring(lua: *Lua) i32 {
+    const path = get_path(lua);
+    _ = lua.pushString(path);
+    return 1;
+}
 
 fn pathToString(path: []const u8) [:0]u8 {
     path_buffer[path.len] = 0;
@@ -78,9 +95,17 @@ fn getRealPathAlloc(lua: *Lua, path: []const u8) [:0]u8 {
     return pathToStringAlloc(realPath) catch luax.raiseError(lua, "could not get realPath");
 }
 
+fn list(lua: *Lua) i32 {
+    return dir_sub(lua, false);
+}
+
 fn dir(lua: *Lua) i32 {
-    var path = lua.optString(1, ".");
-    var directory = std.fs.cwd().openIterableDir(path[0..std.mem.len(path)], .{}) catch luax.raiseError(lua, "could not open directory");
+    return dir_sub(lua, true);
+}
+
+fn dir_sub(lua: *Lua, keyValue: bool) i32 {
+    var path = get_path(lua);
+    var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseError(lua, "could not open directory");
     defer directory.close();
 
     const fullPath = getRealPathAlloc(lua, std.mem.sliceTo(path, 0));
@@ -89,10 +114,20 @@ fn dir(lua: *Lua) i32 {
     lua.newTable();
     const table = lua.getTop();
     var iterator = directory.iterate();
-    while (iterator.next() catch luax.raiseError(lua, "could not traverse directory")) |entry| {
-        const name = lua.pushString(pathToString(entry.name));
-        create_path_sub(lua, fullPath, name);
-        lua.setTable(table);
+    if (keyValue) {
+        while (iterator.next() catch luax.raiseError(lua, "could not traverse directory")) |entry| {
+            const name = lua.pushString(pathToString(entry.name));
+            create_path_sub(lua, fullPath, name);
+            lua.setTable(table);
+        }
+    } else {
+        var index: i32 = 1;
+        while (iterator.next() catch luax.raiseError(lua, "could not traverse directory")) |entry| {
+            const name = pathToString(entry.name);
+            create_path_sub(lua, fullPath, name);
+            lua.rawSetIndex(table, index);
+            index += 1;
+        }
     }
     return 1;
 }
@@ -106,16 +141,9 @@ fn create_path(lua: *Lua) i32 {
 
 fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) void {
     lua.newTable();
+    lua.setFuncs(&filesystem_path, 0);
 
-    _ = lua.pushString("__lazy_init");
-    lua.newTable();
-    lua.setFuncs(&filesystem_lazy_init, 0);
-    lua.setTable(-3);
-
-    lua.newTable();
-    _ = lua.pushString("__index");
-    lua.pushClosure(ziglua.wrap(lazy_init), 0);
-    lua.setTable(-3);
+    _ = lua.getMetatableRegistry(zli_mt_path);
     lua.setMetatable(-2);
 
     _ = lua.pushString("path");
@@ -125,38 +153,17 @@ fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) void {
     _ = lua.pushString("name");
     _ = lua.pushString(name);
     lua.setTable(-3);
-}
 
-fn lazy_init(lua: *Lua) i32 {
-    _ = lua.pushString("__lazy_init");
-    _ = lua.getTable(1);
-
-    lua.pushValue(2);
-    _ = lua.getTable(-2);
-    lua.pushValue(1);
-    lua.call(1, 1);
-
-    lua.pushValue(2);
-    lua.pushValue(-2);
-    lua.setTable(1);
-
-    return 1;
-}
-
-fn full_path(lua: *Lua) i32 {
-    lua.argCheck(lua.typeOf(1) == .table, 1, "expected path object");
-    const path = luax.getTableString(lua, "path", 1);
-    const name = luax.getTableString(lua, "name", 1);
-
-    var builder: Builder = full_path_sub(path, name) catch memoryError(lua);
+    var builder: Builder = full_path(path, name) catch memoryError(lua);
     defer builder.deinit();
-
     const fullpath = builder.get() catch memoryError(lua);
-    _ = lua.pushBytes(fullpath);
-    return 1;
+
+    _ = lua.pushString("full_path");
+    _ = lua.pushString(fullpath);
+    lua.setTable(-3);
 }
 
-fn full_path_sub(path: [:0]const u8, name: [:0]const u8) !Builder {
+fn full_path(path: [:0]const u8, name: [:0]const u8) !Builder {
     var builder: Builder = try Builder.init(allocator, 0);
     try builder.add(path);
     try builder.add(separator_string);
@@ -173,12 +180,14 @@ fn cwd(lua: *Lua) i32 {
     return 1;
 }
 
-fn stat(lua: *Lua) i32 {
-    lua.argCheck(lua.typeOf(1) == .table, 1, "expected path object");
-    const fullPath = luax.getTableString(lua, "full_path", 1);
-    const file = open_file_or_directory(std.fs.cwd(), fullPath) catch luax.raiseError(lua, "Could not open file");
+fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.fs.File.Stat {
+    const file = open_file_or_directory(std.fs.cwd(), fullpath) catch luax.raiseError(lua, "Could not open file");
     defer file.close();
-    const stats = file.stat() catch luax.raiseError(lua, "Could not get file stats");
+    return file.stat() catch luax.raiseError(lua, "Could not get file stats");
+}
+
+fn stat(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
 
     lua.newTable();
     _ = lua.pushString("is_directory");
@@ -196,29 +205,38 @@ fn stat(lua: *Lua) i32 {
     return 1;
 }
 
-fn get_stat(lua: *Lua, name: [:0]const u8) i32 {
-    lua.argCheck(lua.typeOf(1) == .table, 1, "expected path object");
-    luax.getTable(lua, "stat", 1);
-    luax.getTable(lua, name, 2);
-    return 1;
+fn get_path(lua: *Lua) [:0]const u8 {
+    const luaType = lua.typeOf(1);
+    if (luaType == .table) {
+        return luax.getTableString(lua, "full_path", 1);
+    } else if (luaType == .string) {
+        const value = lua.toString(1) catch luax.raiseError(lua, "get_path: internal error");
+        return std.mem.sliceTo(value, 0);
+    }
+    lua.argError(1, "expected string representing a path or a path object");
 }
 
 fn is_directory(lua: *Lua) i32 {
-    return get_stat(lua, "is_directory");
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushBoolean(stats.kind == std.fs.File.Kind.directory);
+    return 1;
 }
 
 fn is_file(lua: *Lua) i32 {
-    return get_stat(lua, "is_file");
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushBoolean(stats.kind == std.fs.File.Kind.file);
+    return 1;
 }
 
 fn size(lua: *Lua) i32 {
-    return get_stat(lua, "size");
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(stats.size));
+    return 1;
 }
 
 fn size_hr(lua: *Lua) i32 {
-    _ = get_stat(lua, "size");
     luax.pushRegistryFunction(lua, zli_filesystem, "size_hr");
-    lua.pushValue(-2);
+    _ = size(lua);
     lua.call(1, 1);
     return 1;
 }

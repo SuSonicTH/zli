@@ -1,6 +1,11 @@
 local fs
+local stream
 
 local function concat_path(path, file)
+    file = file == nil and "" or file
+    if type(path) == "table" then
+        path = table.concat(path, fs.separator)
+    end
     local last_char = path:sub(-1);
     if (last_char ~= '/' and last_char ~= '\\') then
         path = path .. fs.separator
@@ -17,13 +22,15 @@ local function split_path(path)
 end
 
 local function path(path, file)
-    if (path == "" or path == '.' or path == './' or path == '.\\') then
+    if path == "" or path == '.' or path == './' or path == '.\\' then
         path = fs.cwd();
-    end
-    if (file == nil) then
+    elseif file == nil then
         local split = split_path(path)
         file = split[#split]
+        split[#split] = nil
+        path = concat_path(split)
     end
+    print("path:" .. path .. "," .. file)
     return fs.create_path(path, file)
 end
 
@@ -53,10 +60,18 @@ local function size_hr(size)
     return size_hr .. " " .. unit
 end
 
+local function stream_dir(path)
+    if stream == nil then
+        stream = require "stream"
+    end
+    return stream(fs.list(path))
+end
+
 return function(filesystem)
     fs = filesystem
     fs.split_path = split_path
     fs.path = path
     fs.concat_path = concat_path
     fs.size_hr = size_hr
+    fs.stream = stream_dir
 end
