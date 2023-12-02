@@ -25,6 +25,16 @@ const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "is_directory", .func = ziglua.wrap(is_directory) },
     .{ .name = "size", .func = ziglua.wrap(size) },
     .{ .name = "size_hr", .func = ziglua.wrap(size_hr) },
+    .{ .name = "access_time", .func = ziglua.wrap(access_time) },
+    .{ .name = "create_time", .func = ziglua.wrap(create_time) },
+    .{ .name = "modify_time", .func = ziglua.wrap(modify_time) },
+    .{ .name = "access_time_ms", .func = ziglua.wrap(access_time_ms) },
+    .{ .name = "create_time_ms", .func = ziglua.wrap(create_time_ms) },
+    .{ .name = "modify_time_ms", .func = ziglua.wrap(modify_time_ms) },
+    .{ .name = "access_time_stamp", .func = ziglua.wrap(access_time_stamp) },
+    .{ .name = "create_time_stamp", .func = ziglua.wrap(create_time_stamp) },
+    .{ .name = "modify_time_stamp", .func = ziglua.wrap(modify_time_stamp) },
+    .{ .name = "mode", .func = ziglua.wrap(mode) },
 };
 
 const separator = switch (builtin.os.tag) {
@@ -64,7 +74,7 @@ fn register_path_mt(lua: *Lua) void {
 
 var path_buffer: [fs.MAX_PATH_BYTES]u8 = undefined;
 
-pub fn path__tostring(lua: *Lua) i32 {
+fn path__tostring(lua: *Lua) i32 {
     const path = get_path(lua);
     _ = lua.pushString(path);
     return 1;
@@ -96,14 +106,14 @@ fn getRealPathAlloc(lua: *Lua, path: []const u8) [:0]u8 {
 }
 
 fn list(lua: *Lua) i32 {
-    return dir_sub(lua, false);
+    return list_dir(lua, false);
 }
 
 fn dir(lua: *Lua) i32 {
-    return dir_sub(lua, true);
+    return list_dir(lua, true);
 }
 
-fn dir_sub(lua: *Lua, keyValue: bool) i32 {
+fn list_dir(lua: *Lua, keyValue: bool) i32 {
     var path = get_path(lua);
     var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseError(lua, "could not open directory");
     defer directory.close();
@@ -186,6 +196,10 @@ fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.fs.File.Stat {
     return file.stat() catch luax.raiseError(lua, "Could not get file stats");
 }
 
+const SECONDS_DENOMINATOR = 1000000000;
+const MILLISECONDS_DENOMINATOR = 1000000;
+const TIMESTAMP_FORMAT = "%Y/%m/%d %H:%M:%S";
+
 fn stat(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
 
@@ -200,6 +214,46 @@ fn stat(lua: *Lua) i32 {
 
     _ = lua.pushString("size");
     lua.pushInteger(@intCast(stats.size));
+    lua.setTable(-3);
+
+    _ = lua.pushString("access_time");
+    lua.pushInteger(@intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("create_time");
+    lua.pushInteger(@intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("modify_time");
+    lua.pushInteger(@intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("access_time_ms");
+    lua.pushInteger(@intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("create_time_ms");
+    lua.pushInteger(@intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("modify_time_ms");
+    lua.pushInteger(@intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
+    lua.setTable(-3);
+
+    _ = lua.pushString("access_time_stamp");
+    push_time_stamp(lua, stats.atime);
+    lua.setTable(-3);
+
+    _ = lua.pushString("create_time_stamp");
+    push_time_stamp(lua, stats.ctime);
+    lua.setTable(-3);
+
+    _ = lua.pushString("modify_time_stamp");
+    push_time_stamp(lua, stats.mtime);
+    lua.setTable(-3);
+
+    _ = lua.pushString("mode");
+    lua.pushInteger(stats.mode);
     lua.setTable(-3);
 
     return 1;
@@ -231,6 +285,73 @@ fn is_file(lua: *Lua) i32 {
 fn size(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
     lua.pushInteger(@intCast(stats.size));
+    return 1;
+}
+
+fn access_time(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn create_time(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn modify_time(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn access_time_ms(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn create_time_ms(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn modify_time_ms(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(@intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
+    return 1;
+}
+
+fn access_time_stamp(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    push_time_stamp(lua, stats.atime);
+    return 1;
+}
+
+fn push_time_stamp(lua: *Lua, time: i128) void {
+    luax.pushLibraryFunction(lua, "os", "date");
+    _ = lua.pushString(TIMESTAMP_FORMAT);
+    lua.pushInteger(@intCast(@divTrunc(time, SECONDS_DENOMINATOR)));
+    lua.call(2, 1);
+}
+
+fn create_time_stamp(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    push_time_stamp(lua, stats.ctime);
+    return 1;
+}
+
+fn modify_time_stamp(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    push_time_stamp(lua, stats.mtime);
+    return 1;
+}
+
+fn mode(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    lua.pushInteger(stats.mode);
     return 1;
 }
 
