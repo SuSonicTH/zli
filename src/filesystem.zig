@@ -253,7 +253,7 @@ fn stat(lua: *Lua) i32 {
     lua.setTable(-3);
 
     _ = lua.pushString("mode");
-    lua.pushInteger(stats.mode);
+    lua.pushInteger(@intCast(stats.mode));
     lua.setTable(-3);
 
     return 1;
@@ -351,7 +351,7 @@ fn modify_time_stamp(lua: *Lua) i32 {
 
 fn mode(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(stats.mode);
+    lua.pushInteger(@intCast(stats.mode));
     return 1;
 }
 
