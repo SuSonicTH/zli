@@ -35,6 +35,7 @@ const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "create_time_stamp", .func = ziglua.wrap(create_time_stamp) },
     .{ .name = "modify_time_stamp", .func = ziglua.wrap(modify_time_stamp) },
     .{ .name = "mode", .func = ziglua.wrap(mode) },
+    .{ .name = "mode_flags", .func = ziglua.wrap(mode_flags) },
 };
 
 const separator = switch (builtin.os.tag) {
@@ -256,6 +257,10 @@ fn stat(lua: *Lua) i32 {
     lua.pushInteger(@intCast(stats.mode));
     lua.setTable(-3);
 
+    _ = lua.pushString("mode_flags");
+    push_mode_flags(lua, stats);
+    lua.setTable(-3);
+
     return 1;
 }
 
@@ -355,6 +360,41 @@ fn mode(lua: *Lua) i32 {
     return 1;
 }
 
+fn mode_flags(lua: *Lua) i32 {
+    const stats = get_stat(lua, get_path(lua));
+    push_mode_flags(lua, stats);
+    return 1;
+}
+
+fn push_mode_flags(lua: *Lua, stats:std.fs.File.Stat) void {
+    if (builtin.os.tag == .windows) {
+        var modeString=[10:0]u8 {'-','r','w','x','r','w','x','r','w','x'};
+
+        if (stats.kind == std.fs.File.Kind.directory) {
+            modeString[0]='d';
+        }
+
+        _=lua.pushString(&modeString);        
+    } else {
+        var modeString=[10:0]u8 {'-','-','-','-','-','-','-','-','-','-'};
+        const modeFlags ="drwxrwxrwx";
+
+        if (stats.kind == std.fs.File.Kind.directory) {
+            modeString[0]='d';
+        }
+
+        var current_flag:u32 = 0b100000000;
+        inline for (1..10) |i| {
+            if (stats.mode & current_flag == current_flag) {
+                modeString[i]=modeFlags[i];
+            }
+            current_flag = current_flag >> 1;
+        }
+
+        _=lua.pushString(&modeString);    
+    }
+}
+
 fn size_hr(lua: *Lua) i32 {
     luax.pushRegistryFunction(lua, zli_filesystem, "size_hr");
     _ = size(lua);
@@ -378,7 +418,7 @@ fn open_file_or_directory(dire: std.fs.Dir, path: []const u8) !std.fs.File {
         };
     }
     return std.fs.File{
-        .handle = try std.os.openat(dir.fd, path, std.os.O.RDONLY, 0),
+        .handle = try std.os.openat(dire.fd, path, std.os.O.RDONLY, 0),
         .capable_io_mode = std.io.default_mode,
         .intended_io_mode = .blocking,
     };
