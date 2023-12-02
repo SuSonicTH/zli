@@ -11,7 +11,7 @@
 
 # additional functionality
     * io.open io.read,... can read payload files
-    * implement lamda compilation from stream library as a string auxiliary function sample ```[[(item)-> item.name]]:l()``` compiles to ```function (item) return item.name end```
+    * strings with variable/expression substitution simmilar to groovy g-strings
 
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?

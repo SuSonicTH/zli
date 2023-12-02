@@ -82,6 +82,43 @@ local function get_home()
     return home
 end
 
+local function lambda(lambda_str)
+    if lambda_str == nil or type(lambda_str) ~= "string" then
+        error("lamda expects a string as argument")
+    end
+
+    local firstChar = lambda_str:sub(1, 1)
+    local function_string
+    if firstChar == ":" then
+        function_string = "return function (it) return it" .. lambda_str .. "() end"
+    elseif firstChar == "." then
+        function_string = "return function (it) return it" .. lambda_str .. " end"
+    elseif firstChar == "(" then
+        local param, expression = lambda_str:match("(%(.+%))%s*%->%s*(.*)")
+        if param ~= nil then
+            function_string = "return function " .. param .. " return " .. expression .. " end"
+        else
+            function_string = "return function " .. lambda_str .. " end"
+        end
+    elseif lambda_str:sub(1, 2) == "->" then
+        function_string = "return function (it) return " .. lambda_str:sub(3) .. " end"
+    else
+        function_string = "return function (it) return " .. lambda_str .. " end"
+    end
+
+    local compiled, error_message = load(function_string)
+    if compiled == nil then
+        error("error compiling lambda: " .. error_message)
+    end
+
+    local success, lambda = pcall(compiled)
+    if success then
+        return lambda
+    else
+        error("error compiling lambda: " .. lambda)
+    end
+end
+
 --setting global funcitons and constants
 io.readlines = io_read_lines
 io.write_lines = io_write_lines
@@ -106,3 +143,5 @@ os.is_linux = os.get_name() == "linux"
 os.is_mac = os.get_name() == "macos"
 os.home = get_home()
 os.separator = os.get_name() == "windows" and "\\" or "/"
+
+string.l = lambda

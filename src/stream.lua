@@ -1,25 +1,10 @@
 local function get_function(func)
-    local argType = type(func);
-    if func == nil or argType == "function" then
+    if func == nil or type(func) == "function" then
         return func
+    elseif type(func) == "string" and ("string").l ~= nil then
+        return func:l()
     end
-
-    if argType == "string" then
-        local firstChar = func:sub(1, 1)
-        if firstChar == ":" then
-            return load("return function (item) return item" .. func .. "() end")()
-        elseif firstChar == "." then
-            return load("return function (item) return item" .. func .. " end")()
-        elseif firstChar == "(" then
-            local param, expression = func:match("(%(.+%))%->(.*)")
-            if param ~= nil then
-                return load("return function " .. param .. " return " .. expression .. " end")()
-            else
-                return load("return function " .. func .. " end")()
-            end
-        end
-    end
-    error("illegal argument, expected function or string starting with one of ':.('", 2)
+    return func
 end
 
 local function new_stream(next)
