@@ -20,6 +20,7 @@ const filesystem = [_]ziglua.FnReg{
 const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "dir", .func = ziglua.wrap(dir) },
     .{ .name = "list", .func = ziglua.wrap(list) },
+    //.{ .name = "iterate", .func = ziglua.wrap(iterate) },
     .{ .name = "stat", .func = ziglua.wrap(stat) },
     .{ .name = "is_file", .func = ziglua.wrap(is_file) },
     .{ .name = "is_directory", .func = ziglua.wrap(is_directory) },
@@ -36,6 +37,30 @@ const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "modify_time_stamp", .func = ziglua.wrap(modify_time_stamp) },
     .{ .name = "mode", .func = ziglua.wrap(mode) },
     .{ .name = "mode_flags", .func = ziglua.wrap(mode_flags) },
+    .{ .name = "rename", .func = ziglua.wrap(rename) },
+    .{ .name = "delete", .func = ziglua.wrap(delete) },
+    //.{ .name = "delete_tree", .func = ziglua.wrap(delete_tree) },
+    //.{ .name = "lines", .func = ziglua.wrap(lines) },
+    //.{ .name = "read_all", .func = ziglua.wrap(read_all) },
+    //.{ .name = "read_lines", .func = ziglua.wrap(read_lines) },
+    .{ .name = "open", .func = ziglua.wrap(open) },
+    .{ .name = "exists", .func = ziglua.wrap(exists) },
+    .{ .name = "absolute", .func = ziglua.wrap(absolute) },
+    //.{ .name = "parent", .func = ziglua.wrap(parent) },
+    //.{ .name = "child", .func = ziglua.wrap(child) },
+    //.{ .name = "sibling", .func = ziglua.wrap(sibling) },
+};
+
+const filesystem_path_lua = [_][:0]const u8{
+    "read_all",
+    "read_lines",
+    "lines",
+    "iterate",
+    "delete_tree",
+    "walk",
+    "parent",
+    "child",
+    "sibling",
 };
 
 const separator = switch (builtin.os.tag) {
@@ -87,23 +112,10 @@ fn pathToString(path: []const u8) [:0]u8 {
     return path_buffer[0..path.len :0];
 }
 
-fn pathToStringAlloc(path: []const u8) ![:0]u8 {
-    var ret = try allocator.alloc(u8, path.len + 1);
-    ret[path.len] = 0;
-    @memcpy(ret[0..path.len], path);
-    return ret[0..path.len :0];
-}
-
 fn getRealPath(lua: *Lua, path: []const u8) [:0]u8 {
-    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseError(lua, "could not get realPath");
+    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseError(lua, "path does not exist");
     defer allocator.free(realPath);
     return pathToString(realPath);
-}
-
-fn getRealPathAlloc(lua: *Lua, path: []const u8) [:0]u8 {
-    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseError(lua, "could not get realPath");
-    defer allocator.free(realPath);
-    return pathToStringAlloc(realPath) catch luax.raiseError(lua, "could not get realPath");
 }
 
 fn list(lua: *Lua) i32 {
@@ -114,13 +126,25 @@ fn dir(lua: *Lua) i32 {
     return list_dir(lua, true);
 }
 
+fn iterate(lua: *Lua) i32 {
+    const args = lua.getTop();
+
+    luax.pushRegistryFunction(lua, zli_filesystem, "iterate");
+    lua.pushValue(1);
+    if (args == 2) {
+        lua.pushValue(2);
+    }
+
+    lua.call(args, 4);
+    return 4;
+}
+
 fn list_dir(lua: *Lua, keyValue: bool) i32 {
     var path = get_path(lua);
     var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseError(lua, "could not open directory");
     defer directory.close();
 
-    const fullPath = getRealPathAlloc(lua, std.mem.sliceTo(path, 0));
-    defer allocator.free(fullPath);
+    const fullPath = lua.pushString(getRealPath(lua, std.mem.sliceTo(path, 0)));
 
     lua.newTable();
     const table = lua.getTop();
@@ -153,6 +177,12 @@ fn create_path(lua: *Lua) i32 {
 fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) void {
     lua.newTable();
     lua.setFuncs(&filesystem_path, 0);
+
+    inline for (filesystem_path_lua) |function_name| {
+        _ = lua.pushString(function_name);
+        luax.pushRegistryFunction(lua, zli_filesystem, function_name);
+        lua.setTable(-3);
+    }
 
     _ = lua.getMetatableRegistry(zli_mt_path);
     lua.setMetatable(-2);
@@ -269,8 +299,8 @@ fn get_path(lua: *Lua) [:0]const u8 {
     if (luaType == .table) {
         return luax.getTableString(lua, "full_path", 1);
     } else if (luaType == .string) {
-        const value = lua.toString(1) catch luax.raiseError(lua, "get_path: internal error");
-        return std.mem.sliceTo(value, 0);
+        const path = lua.toString(1) catch luax.raiseError(lua, "get_path: internal error");
+        return std.mem.sliceTo(path, 0);
     }
     lua.argError(1, "expected string representing a path or a path object");
 }
@@ -366,32 +396,32 @@ fn mode_flags(lua: *Lua) i32 {
     return 1;
 }
 
-fn push_mode_flags(lua: *Lua, stats:std.fs.File.Stat) void {
+fn push_mode_flags(lua: *Lua, stats: std.fs.File.Stat) void {
     if (builtin.os.tag == .windows) {
-        var modeString=[10:0]u8 {'-','r','w','x','r','w','x','r','w','x'};
+        var modeString = [10:0]u8{ '-', 'r', 'w', 'x', 'r', 'w', 'x', 'r', 'w', 'x' };
 
         if (stats.kind == std.fs.File.Kind.directory) {
-            modeString[0]='d';
+            modeString[0] = 'd';
         }
 
-        _=lua.pushString(&modeString);        
+        _ = lua.pushString(&modeString);
     } else {
-        var modeString=[10:0]u8 {'-','-','-','-','-','-','-','-','-','-'};
-        const modeFlags ="drwxrwxrwx";
+        var modeString = [10:0]u8{ '-', '-', '-', '-', '-', '-', '-', '-', '-', '-' };
+        const modeFlags = "drwxrwxrwx";
 
         if (stats.kind == std.fs.File.Kind.directory) {
-            modeString[0]='d';
+            modeString[0] = 'd';
         }
 
-        var current_flag:u32 = 0b100000000;
+        var current_flag: u32 = 0b100000000;
         inline for (1..10) |i| {
             if (stats.mode & current_flag == current_flag) {
-                modeString[i]=modeFlags[i];
+                modeString[i] = modeFlags[i];
             }
             current_flag = current_flag >> 1;
         }
 
-        _=lua.pushString(&modeString);    
+        _ = lua.pushString(&modeString);
     }
 }
 
@@ -399,6 +429,107 @@ fn size_hr(lua: *Lua) i32 {
     luax.pushRegistryFunction(lua, zli_filesystem, "size_hr");
     _ = size(lua);
     lua.call(1, 1);
+    return 1;
+}
+
+fn rename(lua: *Lua) i32 {
+    const old = get_path_arg(lua, 1);
+    const new = get_path_arg(lua, 2);
+    std.fs.cwd().rename(old, new) catch luax.raiseError(lua, "could not rename");
+    return 0;
+}
+
+fn get_path_arg(lua: *Lua, idx: i32) [:0]const u8 {
+    const luaType = lua.typeOf(idx);
+    if (luaType == .table) {
+        return luax.getTableString(lua, "full_path", idx);
+    } else if (luaType == .string) {
+        const value = lua.toString(idx) catch luax.raiseError(lua, "get_path: internal error");
+        return std.mem.sliceTo(value, 0);
+    }
+    lua.argError(idx, "expected string representing a path or a path object");
+}
+
+fn delete(lua: *Lua) i32 {
+    const path = get_path(lua);
+    const stats = get_stat(lua, path);
+    if (stats.kind == std.fs.File.Kind.file) {
+        std.fs.cwd().deleteFile(path) catch luax.raiseError(lua, "Could not delete file");
+    } else {
+        std.fs.cwd().deleteDir(path) catch luax.raiseError(lua, "Could not delete direcory");
+    }
+    return 0;
+}
+
+fn delete_tree(lua: *Lua) i32 {
+    luax.pushRegistryFunction(lua, zli_filesystem, "delete_tree");
+    lua.pushValue(1);
+    lua.call(1, 0);
+    return 0;
+}
+
+fn read_all(lua: *Lua) i32 {
+    luax.pushRegistryFunction(lua, zli_filesystem, "read_all");
+    lua.pushValue(1);
+    lua.call(1, 2);
+    return 2;
+}
+
+fn lines(lua: *Lua) i32 {
+    const args = lua.getTop();
+    luax.pushRegistryFunction(lua, zli_filesystem, "lines");
+    lua.pushValue(1);
+    if (args == 2) {
+        lua.pushValue(2);
+    }
+    lua.call(args, 4);
+    return 4;
+}
+
+fn read_lines(lua: *Lua) i32 {
+    const args = lua.getTop();
+    luax.pushRegistryFunction(lua, zli_filesystem, "read_lines");
+    lua.pushValue(1);
+    if (args == 2) {
+        lua.pushValue(2);
+    }
+    lua.call(args, 2);
+    return 2;
+}
+
+fn open(lua: *Lua) i32 {
+    const args = lua.getTop();
+    const path = get_path(lua);
+
+    luax.pushLibraryFunction(lua, "io", "open");
+    _ = lua.pushString(path);
+    if (args == 2) {
+        lua.pushValue(2);
+    }
+
+    lua.call(args, 2);
+    return 2;
+}
+
+fn exists(lua: *Lua) i32 {
+    const path = get_path(lua);
+    const file = open_file_or_directory(fs.cwd(), path) catch {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    file.close();
+    lua.pushBoolean(true);
+    return 1;
+}
+
+fn absolute(lua: *Lua) i32 {
+    const path = get_path(lua);
+    const realPath = fs.cwd().realpathAlloc(allocator, std.mem.sliceTo(path, 0)) catch {
+        lua.pushNil();
+        return 1;
+    };
+    defer allocator.free(realPath);
+    _ = lua.pushString(pathToString(realPath));
     return 1;
 }
 
