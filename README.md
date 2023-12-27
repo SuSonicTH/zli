@@ -12,7 +12,7 @@ There are many libraries included in the ZIL binary. Some 3rd party lua librarie
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
 
 ## Clone & Build
-This works under linux and windows (under gitbash)
+This works under linux and windows(under gitbash) for x86_64 platforms 
 ```bash
 git clone --recurse-submodules https://github.com/SuSonicTH/zli.git
 cd zli
@@ -31,9 +31,7 @@ The build requires you to have git and zig installed
 Zig can be installed trough your package manager or just download from [ziglang.org](https://ziglang.org/download/) extract and add the directory to your path.
 For windows users I recomend [git for windows](https://gitforwindows.org/) aka **gitbash** or running under [Windows subsystem for Windows](https://learn.microsoft.com/en-us/windows/wsl/install) aka **WSL**
 
-I'm using the master branch of zig which is under heavy development and breaking changes are happening often. 
-Curently I'm on version **zig-0.11.0-dev.4003+c6aa29b6f**.
-You can use `./build.sh --get-zig` to get that specific version as described below (works for linux, gitbash and WSL) which will donwload zig into the subdirectory zig.
+I'm using zig version 0.11.0. As zig is under heavy development and breaking changes are happening often it might not compile with the newest zig (master) version. 
 
 To compile execute `zig build` (or `./zig/zig build` if you are using the local zig installation)
 The executable will be in ./zig-out/bin/.

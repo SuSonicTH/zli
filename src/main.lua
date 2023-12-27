@@ -1,19 +1,19 @@
 local argparse = require "argparse"
 local zip = require "zip"
-require "lfs"
+local fs = require "filesystem"
 
 local config = os.home .. "/.config"
-if lfs.attributes(config) == nil then
-    lfs.mkdir(config)
+if not fs.exists(config) then
+    fs.mkdir(config)
 end
 
 local config_zli = config .. "/zli"
-if lfs.attributes(config_zli) == nil then
-    lfs.mkdir(config_zli)
+if not fs.exists(config_zli) then
+    fs.mkdir(config_zli)
 end
 
 local init = config_zli .. "/init.lua"
-if lfs.attributes(init) == nil then
+if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[
     zli init file

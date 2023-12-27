@@ -36,7 +36,6 @@ pub fn build(b: *std.Build) void {
     exe.addModule("zigStringUtil", zigStringUtil.module("zigStringUtil"));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
-    exe.linkLibrary(lfs(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
     exe.linkLibrary(zlib(b, target, optimize));
     exe.linkLibrary(luaZlib(b, target, optimize));
@@ -110,19 +109,6 @@ fn lsqlite3(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mo
         "src/lib/lsqlite3/sqlite3.c",
         "src/lib/lsqlite3/lsqlite3.c",
     }, flags_c99);
-    lib.linkLibC();
-    return lib;
-}
-
-fn lfs(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
-    const lib = b.addStaticLibrary(.{
-        .name = "lfs",
-        .target = target,
-        .optimize = optimize,
-    });
-    lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "src/lib/luafilesystem/src/" });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/lib/luafilesystem/src/lfs.c" }, .flags = flags_c99 });
     lib.linkLibC();
     return lib;
 }

@@ -1,9 +1,9 @@
 local cl = require "crossline"
-
+local fs = require "filesystem"
 --[[ ~/.config/repl.init ]]
 
 local init = os.home .. "/.config/zli/repl_init.lua"
-if lfs.attributes(init) == nil then
+if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[
 zli repl init file
@@ -21,7 +21,7 @@ log = require "log"
 lpeg = require "lpeg"
 lu = require "luaunit"
 re = require "re"
-require "lfs"
+fs= require "filesystem"
 sqlite3 = require "sqlite3"
 stream = require "stream"
 zip = require "zip"

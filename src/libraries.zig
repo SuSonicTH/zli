@@ -7,7 +7,6 @@ const filesystem = @import("filesystem.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lpeg(state: ?*ziglua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_lfs(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zlib(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_cjson(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_zip(state: ?*ziglua.LuaState) callconv(.C) c_int;
@@ -22,9 +21,6 @@ const preload = [_]ziglua.FnReg{ .{
 }, .{
     .name = "lpeg",
     .func = &luaopen_lpeg,
-}, .{
-    .name = "lfs",
-    .func = &luaopen_lfs,
 }, .{
     .name = "zlib",
     .func = &luaopen_zlib,

@@ -12,15 +12,19 @@ const Builder = zigStringUtil.Builder;
 
 const allocator = std.heap.c_allocator;
 
+//todo: rename cwd to current_dir (or double name)
+//todo: implement create_directory (mkdir)
+//todo: implement change_directory (cd)
+
 const filesystem = [_]ziglua.FnReg{
     .{ .name = "cwd", .func = ziglua.wrap(cwd) },
     .{ .name = "create_path", .func = ziglua.wrap(create_path) },
+    .{ .name = "absolute", .func = ziglua.wrap(absolute) },
 };
 
 const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "dir", .func = ziglua.wrap(dir) },
     .{ .name = "list", .func = ziglua.wrap(list) },
-    //.{ .name = "iterate", .func = ziglua.wrap(iterate) },
     .{ .name = "stat", .func = ziglua.wrap(stat) },
     .{ .name = "is_file", .func = ziglua.wrap(is_file) },
     .{ .name = "is_directory", .func = ziglua.wrap(is_directory) },
@@ -39,16 +43,8 @@ const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "mode_flags", .func = ziglua.wrap(mode_flags) },
     .{ .name = "rename", .func = ziglua.wrap(rename) },
     .{ .name = "delete", .func = ziglua.wrap(delete) },
-    //.{ .name = "delete_tree", .func = ziglua.wrap(delete_tree) },
-    //.{ .name = "lines", .func = ziglua.wrap(lines) },
-    //.{ .name = "read_all", .func = ziglua.wrap(read_all) },
-    //.{ .name = "read_lines", .func = ziglua.wrap(read_lines) },
     .{ .name = "open", .func = ziglua.wrap(open) },
     .{ .name = "exists", .func = ziglua.wrap(exists) },
-    .{ .name = "absolute", .func = ziglua.wrap(absolute) },
-    //.{ .name = "parent", .func = ziglua.wrap(parent) },
-    //.{ .name = "child", .func = ziglua.wrap(child) },
-    //.{ .name = "sibling", .func = ziglua.wrap(sibling) },
 };
 
 const filesystem_path_lua = [_][:0]const u8{
@@ -61,6 +57,9 @@ const filesystem_path_lua = [_][:0]const u8{
     "parent",
     "child",
     "sibling",
+    "stream",
+    "stream_tree",
+    "tree",
 };
 
 const separator = switch (builtin.os.tag) {
@@ -124,19 +123,6 @@ fn list(lua: *Lua) i32 {
 
 fn dir(lua: *Lua) i32 {
     return list_dir(lua, true);
-}
-
-fn iterate(lua: *Lua) i32 {
-    const args = lua.getTop();
-
-    luax.pushRegistryFunction(lua, zli_filesystem, "iterate");
-    lua.pushValue(1);
-    if (args == 2) {
-        lua.pushValue(2);
-    }
-
-    lua.call(args, 4);
-    return 4;
 }
 
 fn list_dir(lua: *Lua, keyValue: bool) i32 {
@@ -459,42 +445,6 @@ fn delete(lua: *Lua) i32 {
         std.fs.cwd().deleteDir(path) catch luax.raiseError(lua, "Could not delete direcory");
     }
     return 0;
-}
-
-fn delete_tree(lua: *Lua) i32 {
-    luax.pushRegistryFunction(lua, zli_filesystem, "delete_tree");
-    lua.pushValue(1);
-    lua.call(1, 0);
-    return 0;
-}
-
-fn read_all(lua: *Lua) i32 {
-    luax.pushRegistryFunction(lua, zli_filesystem, "read_all");
-    lua.pushValue(1);
-    lua.call(1, 2);
-    return 2;
-}
-
-fn lines(lua: *Lua) i32 {
-    const args = lua.getTop();
-    luax.pushRegistryFunction(lua, zli_filesystem, "lines");
-    lua.pushValue(1);
-    if (args == 2) {
-        lua.pushValue(2);
-    }
-    lua.call(args, 4);
-    return 4;
-}
-
-fn read_lines(lua: *Lua) i32 {
-    const args = lua.getTop();
-    luax.pushRegistryFunction(lua, zli_filesystem, "read_lines");
-    lua.pushValue(1);
-    if (args == 2) {
-        lua.pushValue(2);
-    }
-    lua.call(args, 2);
-    return 2;
 }
 
 fn open(lua: *Lua) i32 {
