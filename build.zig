@@ -93,6 +93,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
     .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
     .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
+    .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
 };
 
 const luaPath: std.Build.LazyPath = .{ .path = "src/lib/lua/" };

@@ -84,7 +84,7 @@ pub export fn luaopen_filesystem(state: ?*ziglua.LuaState) callconv(.C) c_int {
     lua.setTable(-3);
 
     register_path_mt(&lua);
-    const exteded = @embedFile("filesystem.lua");
+    const exteded = @embedFile("stripped/filesystem.lua");
     luax.registerExtended(&lua, exteded, "filesytem", zli_filesystem);
     return 1;
 }
