@@ -34,5 +34,5 @@ For windows users I recomend [git for windows](https://gitforwindows.org/) aka *
 I'm currently using zig version 0.11.0. As zig is under heavy development and breaking changes are happening often it might not compile with the newest zig (master) version. 
 
 To compile execute `zig build` (or `./zig/zig build` if you are using the local zig installation)
-The executable will be in ./zig-out/bin/. or use the `./build.sh` tool to compile release versions or fopr other platforms.
+The executable will be in ./zig-out/bin/ Or use the `./build.sh` tool to compile release versions or for other platforms.
 The `./build.sh` also uses a trick to reduce the binary size by compressing it with upx. To do the compression call `upx --ultra-brute --lzma ./zig-out/bin/zig*' (upx is automatically downloaded by the script)
