@@ -1,6 +1,6 @@
 # 3rd party (lua-) libraries
 
-here is a collection of 3rd party libgraries either for lua directly or for a zli binding
+here is a collection of 3rd party libraries either for lua directly or for a zli binding
 
 ## included lua libraries
 Well known lua libraries included in zli
