@@ -9,7 +9,7 @@ there are some custom lua bindings for 3rd party libraries
 | Crossline | https://github.com/jcwangxp/Crossline | MIT                                                                   | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
 | lua_zip   | https://zlib.net/                     | binding to the minizip library included in zlib for zip file handling |
 
-## Inhouse ZIL libraries
+## Inhouse ZLI libraries
 libraries developed specifically for ZLI that don't use any external libraries
 
 | library    | description                                                                                                                                                                         |
