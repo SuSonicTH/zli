@@ -120,7 +120,7 @@ local function lambda(lambda_str)
 end
 
 --setting global funcitons and constants
-io.readlines = io_read_lines
+io.read_lines = io_read_lines
 io.write_lines = io_write_lines
 io.read_file = io_read_file
 io.write_file = io_write_file

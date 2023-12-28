@@ -20,7 +20,7 @@ if not fs.exists(init) then
 
     you can put global initialisations here that will get executed on every
     invocation of zli before the programm or script is executed
-    it's usefull to set some loacl configurations or load default libraries
+    it's usefull to set some local configurations or load default libraries
 --]================================================================================]
 
 

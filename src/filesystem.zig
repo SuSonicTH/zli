@@ -12,12 +12,12 @@ const Builder = zigStringUtil.Builder;
 
 const allocator = std.heap.c_allocator;
 
-//todo: rename cwd to current_dir (or double name)
-//todo: implement create_directory (mkdir)
-//todo: implement change_directory (cd)
+//todo: implement chmod & chown
 
 const filesystem = [_]ziglua.FnReg{
-    .{ .name = "cwd", .func = ziglua.wrap(cwd) },
+    .{ .name = "cwd", .func = ziglua.wrap(current_directory) },
+    .{ .name = "current_directory", .func = ziglua.wrap(current_directory) },
+
     .{ .name = "create_path", .func = ziglua.wrap(create_path) },
     .{ .name = "absolute", .func = ziglua.wrap(absolute) },
 };
@@ -41,10 +41,20 @@ const filesystem_path = [_]ziglua.FnReg{
     .{ .name = "modify_time_stamp", .func = ziglua.wrap(modify_time_stamp) },
     .{ .name = "mode", .func = ziglua.wrap(mode) },
     .{ .name = "mode_flags", .func = ziglua.wrap(mode_flags) },
-    .{ .name = "rename", .func = ziglua.wrap(rename) },
-    .{ .name = "delete", .func = ziglua.wrap(delete) },
     .{ .name = "open", .func = ziglua.wrap(open) },
     .{ .name = "exists", .func = ziglua.wrap(exists) },
+
+    .{ .name = "rename", .func = ziglua.wrap(rename) },
+    .{ .name = "mv", .func = ziglua.wrap(rename) },
+
+    .{ .name = "delete", .func = ziglua.wrap(delete) },
+    .{ .name = "rm", .func = ziglua.wrap(delete) },
+
+    .{ .name = "change_directory", .func = ziglua.wrap(change_directory) },
+    .{ .name = "cd", .func = ziglua.wrap(change_directory) },
+
+    .{ .name = "create_directory", .func = ziglua.wrap(create_directory) },
+    .{ .name = "mkdir", .func = ziglua.wrap(create_directory) },
 };
 
 const filesystem_path_lua = [_][:0]const u8{
@@ -202,7 +212,7 @@ fn memoryError(lua: *Lua) noreturn {
     luax.raiseError(lua, "could not allocate memory");
 }
 
-fn cwd(lua: *Lua) i32 {
+fn current_directory(lua: *Lua) i32 {
     _ = lua.pushString(getRealPath(lua, "."));
     return 1;
 }
@@ -481,6 +491,20 @@ fn absolute(lua: *Lua) i32 {
     defer allocator.free(realPath);
     _ = lua.pushString(pathToString(realPath));
     return 1;
+}
+
+fn change_directory(lua: *Lua) i32 {
+    const path = get_path(lua);
+    var directory = std.fs.cwd().openDir(path, .{}) catch luax.raiseError(lua, "Could not change directory");
+    defer directory.close();
+    directory.setAsCwd() catch luax.raiseError(lua, "Could not change directory");
+    return 0;
+}
+
+fn create_directory(lua: *Lua) i32 {
+    const path = get_path(lua);
+    std.fs.cwd().makeDir(path) catch luax.raiseError(lua, "Could not create directory");
+    return 0;
 }
 
 fn open_file_or_directory(dire: std.fs.Dir, path: []const u8) !std.fs.File {
