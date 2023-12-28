@@ -10,7 +10,6 @@ Well known lua libraries included in zli
 | argparse      | https://github.com/mpeterv/argparse           | MIT     | Argparse is a feature-rich command line parser for Lua inspired by argparse for Python                                                       |
 | LuaSQLite3    | http://lua.sqlite.org/                        | MIT     | LuaSQLite 3 is a thin wrapper around the public domain [SQLite3](https://www.sqlite.org/) database engine.                                   |
 | LPeg          | https://www.inf.puc-rio.br/~roberto/lpeg/     | MIT     | LPeg is a new pattern-matching library for Lua, based on Parsing Expression Grammars (PEGs)                                                  |
-| luafilesystem | https://github.com/lunarmodules/luafilesystem | MIT     | LuaFileSystem is a Lua library developed to complement the set of functions related to file systems offered by the standard Lua distribution |
 | lua-zlib      | https://github.com/brimworks/lua-zlib         | MIT     | lua binding to the [zlib](https://zlib.net/) to compress/decompress                                                                          |
 | luaunit       | https://github.com/bluebird75/luaunit         | BSD     | LuaUnit is a popular unit-testing framework for Lua, with an interface typical of xUnit libraries (Python unittest, Junit, NUnit, ...)       |
 | lua-cjson     | https://github.com/openresty/lua-cjson        | MIT     | Fast JSON encoding/parsing                                                                                                                   |
