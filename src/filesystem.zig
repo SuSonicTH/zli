@@ -12,8 +12,6 @@ const Builder = zigStringUtil.Builder;
 
 const allocator = std.heap.c_allocator;
 
-//todo: implement chmod & chown
-
 const filesystem = [_]ziglua.FnReg{
     .{ .name = "cwd", .func = ziglua.wrap(current_directory) },
     .{ .name = "current_directory", .func = ziglua.wrap(current_directory) },
@@ -290,7 +288,7 @@ fn stat(lua: *Lua) i32 {
     return 1;
 }
 
-fn get_path(lua: *Lua) [:0]const u8 {
+pub fn get_path(lua: *Lua) [:0]const u8 {
     const luaType = lua.typeOf(1);
     if (luaType == .table) {
         return luax.getTableString(lua, "full_path", 1);

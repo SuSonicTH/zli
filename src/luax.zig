@@ -148,3 +148,39 @@ pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: ziglu
     lua.pop(1);
     return value;
 }
+
+pub inline fn getAbsoluteIndex(lua: *Lua, index: i32) i32 {
+    if (index >= 0) {
+        return index;
+    } else {
+        return lua.getTop() + index;
+    }
+}
+
+pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: [:0]const u8) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    _ = lua.pushString(value);
+    lua.setTable(table_index);
+}
+
+pub fn setTableNumber(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.Number) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    lua.pushNumber(value);
+    lua.setTable(table_index);
+}
+
+pub fn setTableInteger(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.Integer) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    lua.pushInteger(value);
+    lua.setTable(table_index);
+}
+
+pub fn setTableBoolean(lua: *Lua, index: i32, key: [:0]const u8, value: bool) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    lua.pushBoolean(value);
+    lua.setTable(table_index);
+}
