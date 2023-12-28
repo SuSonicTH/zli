@@ -95,7 +95,9 @@ pub export fn luaopen_crossline(state: ?*ziglua.LuaState) callconv(.C) c_int {
     luax.createFunctionSubTable(&lua, &crossline_cursor, "cursor");
     luax.createFunctionSubTable(&lua, &crossline_history, "history");
     luax.createFunctionSubTable(&lua, &crossline_paging, "paging");
-    registerExtended(&lua);
+
+    const exteded = @embedFile("crossline.lua");
+    luax.registerExtended(&lua, exteded, "crossline", "zli_crossline");
     return 1;
 }
 
@@ -106,15 +108,6 @@ fn registerColors(lua: *Lua) void {
     luax.createConstantSubTable(lua, &fg_colors, lua.getTop(), "fg");
     luax.createConstantSubTable(lua, &bg_colors, lua.getTop(), "bg");
     lua.setTable(module);
-}
-
-fn registerExtended(lua: *Lua) void {
-    const exteded = @embedFile("crossline.lua");
-    lua.loadBuffer(exteded, "crossline", ziglua.Mode.text) catch lua.raiseError();
-    lua.callCont(0, 1, 0, null);
-    lua.checkType(-1, ziglua.LuaType.function);
-    lua.pushValue(-2);
-    lua.callCont(1, 0, 0, null);
 }
 
 const bufferSize: i32 = 4096;

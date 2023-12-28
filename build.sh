@@ -86,9 +86,8 @@ NATIVE_SUFFIX=""
 if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     NATIVE_SUFFIX=".exe"
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-windows-x86_64-0.11.0-dev.4003+c6aa29b6f"
         echo downloading $ZIG_NAME
-        curl -s https://ziglang.org/builds/${ZIG_NAME}.zip --output zig.zip || exit_on_error
+        curl -s https://ziglang.org/download/0.11.0/zig-windows-x86-0.11.0.zip --output zig.zip || exit_on_error
         echo "unzipping..."
         unzip -q zig.zip || exit_on_error
         rm zig.zip
@@ -96,9 +95,8 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     fi
 
     if [ "$GET_UPX" == "true" ]; then
-        UPX_NAME="upx-4.0.2-win64"
         echo downloading $UPX_NAME
-        curl -s -L https://github.com/upx/upx/releases/download/v4.0.2/${UPX_NAME}.zip --output upx.zip || exit_on_error
+        curl -s -L https://github.com/upx/upx/releases/download/v4.0.2/upx-4.0.2-win64.zip --output upx.zip || exit_on_error
         unzip -q upx.zip || exit_on_error
         rm upx.zip
         mv $UPX_NAME/upx ./ || exit_on_error
@@ -106,16 +104,14 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     fi
 else
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-linux-x86_64-0.11.0-dev.4003+c6aa29b6f"
         echo downloading $ZIG_NAME
-        curl -s https://ziglang.org/builds/${ZIG_NAME}.tar.xz | tar -xJ || exit_on_error
+        curl -s https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz | tar -xJ || exit_on_error
         mv $ZIG_NAME zig || exit_on_error
     fi
 
     if [ "$GET_UPX" == "true" ]; then
-        UPX_NAME="upx-4.0.2-amd64_linux"
         echo downloading $UPX_NAME
-        curl -s -L https://github.com/upx/upx/releases/download/v4.0.2/${UPX_NAME}.tar.xz | tar -xJ || exit_on_error
+        curl -s -L https://github.com/upx/upx/releases/download/v4.0.2/upx-4.0.2-amd64_linux.tar.xz | tar -xJ || exit_on_error
         mv $UPX_NAME/upx ./ || exit_on_error
         rm -r $UPX_NAME
     fi

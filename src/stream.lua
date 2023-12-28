@@ -1,3 +1,12 @@
+local function get_function(func)
+    if func == nil or type(func) == "function" then
+        return func
+    elseif type(func) == "string" and ("string").l ~= nil then
+        return func:l()
+    end
+    return func
+end
+
 local function new_stream(next)
     local stream = {
         next = next,
@@ -7,6 +16,7 @@ local function new_stream(next)
     }
 
     function stream:map(func)
+        func = get_function(func)
         return new_stream(function()
             local value = self:next()
             if (value) then
@@ -17,6 +27,7 @@ local function new_stream(next)
     end
 
     function stream:peek(func)
+        func = get_function(func)
         return new_stream(function()
             local value = self:next()
             if (value) then
@@ -27,6 +38,7 @@ local function new_stream(next)
     end
 
     function stream:filter(func)
+        func = get_function(func)
         return new_stream(function()
             local value
             repeat
@@ -68,6 +80,7 @@ local function new_stream(next)
     end
 
     function stream:sort(func)
+        func = get_function(func)
         return new_stream(table.next(self:tosortedarray(func)))
     end
 
@@ -92,6 +105,7 @@ local function new_stream(next)
     end
 
     function stream:split(func)
+        func = get_function(func)
         local function split(flag, this, other)
             return function()
                 if (this[1] ~= nil) then
@@ -129,6 +143,7 @@ local function new_stream(next)
 
     --[[ TERMINALS ]]
     function stream:foreach(func)
+        func = get_function(func)
         local value = self:next()
         while (value) do
             func(value)
@@ -143,7 +158,7 @@ local function new_stream(next)
     end
 
     function stream:tosortedarray(func)
-        local func = func or table.comparator
+        func = get_function(func) or table.comparator
         local array = {}
         self:foreach(function(value) table.insert_sorted(array, value, func) end)
         return array
@@ -158,6 +173,7 @@ local function new_stream(next)
     end
 
     function stream:allmatch(func)
+        func = get_function(func)
         local value = self:next()
         while value do
             if not func(value) then
@@ -225,10 +241,12 @@ local function new_stream(next)
     end
 
     function stream:collector(func)
+        func = get_function(func)
         return func(self.next)
     end
 
     function stream:reduce(state, func)
+        func = get_function(func)
         local value = self:next()
         while value do
             state = func(state, value)
@@ -238,7 +256,7 @@ local function new_stream(next)
     end
 
     function stream:min(func)
-        local func = func or table.comparator
+        func = get_function(func) or table.comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.maxdouble
@@ -248,7 +266,7 @@ local function new_stream(next)
     end
 
     function stream:max(func)
-        local func = func or table.comparator
+        func = get_function(func) or table.comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.mindouble
@@ -258,6 +276,7 @@ local function new_stream(next)
     end
 
     function stream:groupby(func)
+        func = get_function(func)
         local ret = {}
         stream:foreach(function(value)
             local key = func(value)

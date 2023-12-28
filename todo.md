@@ -11,6 +11,7 @@
 
 # additional functionality
     * io.open io.read,... can read payload files
+    * strings with variable/expression substitution simmilar to groovy g-strings
 
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?

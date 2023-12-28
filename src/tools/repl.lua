@@ -1,16 +1,16 @@
 local cl = require "crossline"
-
+local fs = require "filesystem"
 --[[ ~/.config/repl.init ]]
 
 local init = os.home .. "/.config/zli/repl_init.lua"
-if lfs.attributes(init) == nil then
+if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[
 zli repl init file
 
 you can put global initialisations here that will get executed on every
 invocation of zli repl before the repl loop starts
-it's usefull to set some loacl configurations or load default libraries
+it's usefull to set some local configurations or load default libraries
 
 the ~/.config/init.lua gets executed before this script is executed
 --]================================================================================]
@@ -21,7 +21,7 @@ log = require "log"
 lpeg = require "lpeg"
 lu = require "luaunit"
 re = require "re"
-require "lfs"
+fs= require "filesystem"
 sqlite3 = require "sqlite3"
 stream = require "stream"
 zip = require "zip"
