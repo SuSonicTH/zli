@@ -206,6 +206,26 @@ local function stream_tree(path, dir_first)
     return stream(tree(path, dir_first))
 end
 
+local function chmod(path, mode)
+    if os.is_linux then
+        local success, ret, status = os.execute("chmod " .. mode .. " '" .. get_path(path) .. "'")
+        if success and ret == "exit" and status == 0 then
+            return true
+        end
+    end
+    return false
+end
+
+local function chown(path, owner)
+    if os.is_linux then
+        local success, ret, status = os.execute("chown " .. owner .. " '" .. get_path(path) .. "'")
+        if success and ret == "exit" and status == 0 then
+            return true
+        end
+    end
+    return false
+end
+
 return function(filesystem)
     fs = filesystem
     fs.split_path = split_path
@@ -224,4 +244,6 @@ return function(filesystem)
     fs.parent = parent
     fs.child = child
     fs.sibling = sibling
+    fs.chmod = chmod
+    fs.chown = chown
 end
