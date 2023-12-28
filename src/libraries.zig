@@ -44,7 +44,7 @@ const preload = [_]ziglua.FnReg{ .{
     .name = "filesystem",
     .func = filesystem.luaopen_filesystem,
 }, .{
-    .name = "zip",
+    .name = "lzip",
     .func = lzip.luaopen_lzip,
 } };
 
