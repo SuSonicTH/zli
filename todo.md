@@ -10,6 +10,7 @@
 * add goals for release build (for all platforms) in build.zig
 
 # additional functionality
+    * in filesystem add create_tree and size_tree to create multiple sub directories and get the size of whole directory
     * io.open io.read,... can read payload files
     * strings with variable/expression substitution simmilar to groovy g-strings
 
