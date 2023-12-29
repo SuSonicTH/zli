@@ -66,6 +66,12 @@ pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     lua.raiseError();
 }
 
+pub fn returnError(lua: *Lua, message: [:0]const u8) i32 {
+    lua.pushNil();
+    _ = lua.pushString(message);
+    return 2;
+}
+
 pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: ziglua.CFn) void {
     lua.newMetatable(name) catch raiseError(lua, "could not register userData");
     _ = lua.pushString("__gc");
@@ -153,7 +159,7 @@ pub inline fn getAbsoluteIndex(lua: *Lua, index: i32) i32 {
     if (index >= 0) {
         return index;
     } else {
-        return lua.getTop() + index;
+        return lua.getTop() + index + 1;
     }
 }
 
