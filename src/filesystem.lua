@@ -205,7 +205,6 @@ return function(filesystem)
     fs.split_path = split_path
     fs.path = new_path
     fs.concat_path = concat_path
-    fs.size_hr = size_hr
     fs.stream = stream_dir
     fs.stream_tree = stream_tree
     fs.tree = tree

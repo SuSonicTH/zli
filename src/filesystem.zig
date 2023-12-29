@@ -397,6 +397,7 @@ fn push_mode_flags(lua: *Lua, stats: std.fs.File.Stat) void {
 }
 
 var size_hr_buffer: [20:0]u8 = undefined;
+
 const KB = 1024;
 const MB = KB * 1024;
 const GB = MB * 1024;
