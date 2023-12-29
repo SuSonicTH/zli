@@ -229,61 +229,38 @@ fn stat(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
 
     lua.newTable();
-    _ = lua.pushString("is_directory");
-    lua.pushBoolean(stats.kind == std.fs.File.Kind.directory);
-    lua.setTable(-3);
+    const table = lua.getTop();
+    luax.setTableBoolean(lua, table, "is_directory", stats.kind == std.fs.File.Kind.directory);
+    luax.setTableBoolean(lua, table, "is_file", stats.kind == std.fs.File.Kind.file);
 
-    _ = lua.pushString("is_file");
-    lua.pushBoolean(stats.kind == std.fs.File.Kind.file);
-    lua.setTable(-3);
+    luax.setTableInteger(lua, table, "size", @intCast(stats.size));
+    luax.setTableString(lua, table, "size_hr", size_human_readable(stats.size) catch luax.raiseError(lua, "internal error: could not format human readable size"));
 
-    _ = lua.pushString("size");
-    lua.pushInteger(@intCast(stats.size));
-    lua.setTable(-3);
+    luax.setTableInteger(lua, table, "access_time", @intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
+    luax.setTableInteger(lua, table, "create_time", @intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
+    luax.setTableInteger(lua, table, "modify_time", @intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
 
-    _ = lua.pushString("access_time");
-    lua.pushInteger(@intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
-    lua.setTable(-3);
-
-    _ = lua.pushString("create_time");
-    lua.pushInteger(@intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
-    lua.setTable(-3);
-
-    _ = lua.pushString("modify_time");
-    lua.pushInteger(@intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
-    lua.setTable(-3);
-
-    _ = lua.pushString("access_time_ms");
-    lua.pushInteger(@intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
-    lua.setTable(-3);
-
-    _ = lua.pushString("create_time_ms");
-    lua.pushInteger(@intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
-    lua.setTable(-3);
-
-    _ = lua.pushString("modify_time_ms");
-    lua.pushInteger(@intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
-    lua.setTable(-3);
+    luax.setTableInteger(lua, table, "access_time_ms", @intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
+    luax.setTableInteger(lua, table, "create_time_ms", @intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
+    luax.setTableInteger(lua, table, "modify_time_ms", @intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
 
     _ = lua.pushString("access_time_stamp");
     push_time_stamp(lua, stats.atime);
-    lua.setTable(-3);
+    lua.setTable(table);
 
     _ = lua.pushString("create_time_stamp");
     push_time_stamp(lua, stats.ctime);
-    lua.setTable(-3);
+    lua.setTable(table);
 
     _ = lua.pushString("modify_time_stamp");
     push_time_stamp(lua, stats.mtime);
-    lua.setTable(-3);
+    lua.setTable(table);
 
-    _ = lua.pushString("mode");
-    lua.pushInteger(@intCast(stats.mode));
-    lua.setTable(-3);
+    luax.setTableInteger(lua, table, "mode", @intCast(stats.mode));
 
     _ = lua.pushString("mode_flags");
     push_mode_flags(lua, stats);
-    lua.setTable(-3);
+    lua.setTable(table);
 
     return 1;
 }
@@ -419,10 +396,30 @@ fn push_mode_flags(lua: *Lua, stats: std.fs.File.Stat) void {
     }
 }
 
+var size_hr_buffer: [20:0]u8 = undefined;
+const KB = 1024;
+const MB = KB * 1024;
+const GB = MB * 1024;
+const TB = GB * 1024;
+
+pub fn size_human_readable(file_size: u64) ![:0]u8 {
+    const float_size = @as(f64, @floatFromInt(file_size));
+    if (file_size >= TB) {
+        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} TB", .{float_size / @as(f64, @floatFromInt(TB))});
+    } else if (file_size >= GB) {
+        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} GB", .{float_size / @as(f64, @floatFromInt(GB))});
+    } else if (file_size >= MB) {
+        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} MB", .{float_size / @as(f64, @floatFromInt(MB))});
+    } else if (file_size >= KB) {
+        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} KB", .{float_size / @as(f64, @floatFromInt(KB))});
+    } else {
+        return std.fmt.bufPrintZ(&size_hr_buffer, "{d} B", .{@as(u64, @intCast(file_size))});
+    }
+}
+
 fn size_hr(lua: *Lua) i32 {
-    luax.pushRegistryFunction(lua, zli_filesystem, "size_hr");
-    _ = size(lua);
-    lua.call(1, 1);
+    const stats = get_stat(lua, get_path(lua));
+    _ = lua.pushString(size_human_readable(stats.size) catch luax.raiseError(lua, "internal error: could not format human readable size"));
     return 1;
 }
 

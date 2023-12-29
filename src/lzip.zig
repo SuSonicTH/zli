@@ -49,9 +49,9 @@ fn open(lua: *Lua) i32 {
         const is_directory = zfname[uzfi.size_filename - 1] == '/';
         luax.setTableBoolean(lua, element, "is_directory", is_directory);
         luax.setTableInteger(lua, element, "uncompressed_size", uzfi.uncompressed_size);
-        luax.setTableString(lua, element, "uncompressed_size_hr", humanReadableSize(uzfi.uncompressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
+        luax.setTableString(lua, element, "uncompressed_size_hr", filesystem.size_human_readable(uzfi.uncompressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
         luax.setTableInteger(lua, element, "compressed_size", uzfi.compressed_size);
-        luax.setTableString(lua, element, "compressed_size_hr", humanReadableSize(uzfi.compressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
+        luax.setTableString(lua, element, "compressed_size_hr", filesystem.size_human_readable(uzfi.compressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
 
         var compression_ratio: f64 = undefined;
         if (is_directory) {
@@ -87,17 +87,4 @@ fn pushTime(lua: *Lua, uzfi: c.unz_file_info) void {
     luax.setTableInteger(lua, table, "hour", uzfi.tmu_date.tm_hour);
     luax.setTableInteger(lua, table, "minute", uzfi.tmu_date.tm_min);
     luax.setTableInteger(lua, table, "second", uzfi.tmu_date.tm_sec);
-}
-
-var size_hr: [20:0]u8 = undefined;
-fn humanReadableSize(size: i64) ![:0]u8 {
-    if (size > 1073741824) {
-        return std.fmt.bufPrintZ(&size_hr, "{d:0>1.2} GB", .{@as(f64, @floatFromInt(size)) / 1073741824.0});
-    } else if (size > 1048576) {
-        return std.fmt.bufPrintZ(&size_hr, "{d:0>1.2} MB", .{@as(f64, @floatFromInt(size)) / 1048576.0});
-    } else if (size > 1024) {
-        return std.fmt.bufPrintZ(&size_hr, "{d:0>1.2} KB", .{@as(f64, @floatFromInt(size)) / 1024.0});
-    } else {
-        return std.fmt.bufPrintZ(&size_hr, "{d} B", .{@as(u64, @intCast(size))});
-    }
 }

@@ -37,32 +37,6 @@ local function new_path(path, file)
     return fs.create_path(path, file)
 end
 
-local KB = 1024
-local MB = KB * 1024
-local GB = MB * 1024
-local TB = GB * 1024
-
-local function size_hr(size)
-    local unit = "B"
-    local size_hr = size
-
-    if size >= TB then
-        unit = "TB"
-        size_hr = size / TB
-    elseif size >= GB then
-        unit = "GB"
-        size_hr = size / GB
-    elseif size >= MB then
-        unit = "MB"
-        size_hr = size / MB
-    elseif size >= KB then
-        unit = "KB"
-        size_hr = size / KB
-    end
-    size_hr = (size_hr .. ""):gsub("(%d+%.%d?).*", "%1")
-    return size_hr .. " " .. unit
-end
-
 local function stream_dir(path)
     if stream == nil then
         stream = require "stream"
