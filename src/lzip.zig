@@ -28,7 +28,8 @@ pub export fn luaopen_lzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
 }
 
 const UnzipUdata = struct {
-    uzfh: *anyopaque,
+    uzfh: *anyopaque = undefined,
+    path: [:0]const u8,
     const name = "_UnzipUdata";
     const functions = [_]ziglua.FnReg{
         .{ .name = "files", .func = ziglua.wrap(files) },
@@ -50,12 +51,14 @@ const UnzipUdata = struct {
     }
 
     fn new(lua: *Lua) i32 {
+        const path = filesystem.get_path(lua);
+        const uzfh = c.unzOpen64(path.ptr) orelse return luax.returnFormattedError(lua, "could not open zip file '%s'", .{path.ptr});
+
         const ud: *UnzipUdata = luax.createUserDataTableSetFunctions(lua, name, UnzipUdata, &functions);
         lua.setFuncs(&file_functions, 0);
 
-        const path = filesystem.get_path(lua);
-        ud.uzfh = c.unzOpen64(path.ptr) orelse return luax.returnError(lua, "could not open zip file");
-
+        ud.path = path;
+        ud.uzfh = uzfh;
         return 1;
     }
 
@@ -64,14 +67,14 @@ const UnzipUdata = struct {
         lua.newTable();
         const table = lua.getTop();
 
-        if (c.unzGoToFirstFile(ud.uzfh) != c.UNZ_OK) file_info_error(lua);
+        if (c.unzGoToFirstFile(ud.uzfh) != c.UNZ_OK) file_info_error(lua, ud);
 
         var uzfi: c.unz_file_info = undefined;
         var index: u32 = 1;
         var zfname: [4096:0]u8 = undefined;
 
         while (true) : (index += 1) {
-            if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, &zfname, 4096, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua);
+            if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, &zfname, 4096, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
             create_file_table(lua, zfname, uzfi, ud);
             lua.rawSetIndex(table, index);
@@ -89,7 +92,7 @@ const UnzipUdata = struct {
         const table = lua.getTop();
 
         var uzgi: c.unz_global_info = undefined;
-        if (c.unzGetGlobalInfo(ud.uzfh, &uzgi) != c.UNZ_OK) file_info_error(lua);
+        if (c.unzGetGlobalInfo(ud.uzfh, &uzgi) != c.UNZ_OK) file_info_error(lua, ud);
 
         luax.setTableInteger(lua, table, "entries", uzgi.number_entry);
         _ = lua.pushString("comment");
@@ -107,8 +110,8 @@ const UnzipUdata = struct {
         return 1;
     }
 
-    fn file_info_error(lua: *Lua) noreturn {
-        luax.raiseError(lua, "internal error: could not get zip file information");
+    fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
+        luax.raiseFormattedError(lua, "internal error: could not get zip file information from '%s'", .{ud.path.ptr});
     }
 
     fn create_file_table(lua: *Lua, zfname: [4096:0]u8, uzfi: c.unz_file_info, ud: *UnzipUdata) void {
@@ -159,13 +162,13 @@ const UnzipUdata = struct {
 
     fn read_all(lua: *Lua) i32 {
         const ud: *UnzipUdata = luax.getUserData(lua, name, UnzipUdata);
-        const fname = getFileName(lua); //lua.toString(2) catch luax.raiseError(lua, "expecting file name to read as argument");
+        const fname = getFileName(lua);
         var uzfi: c.unz_file_info = undefined;
 
         _ = c.unzCloseCurrentFile(ud.uzfh);
-        if (c.unzLocateFile(ud.uzfh, fname, 0) != c.UNZ_OK) return luax.returnError(lua, "File not found");
-        if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) luax.raiseError(lua, "Could not open file");
-        if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua);
+        if (c.unzLocateFile(ud.uzfh, fname, 0) != c.UNZ_OK) return luax.returnFormattedError(lua, "File '%s' not found inside '%s'", .{ fname.ptr, ud.path.ptr });
+        if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) luax.raiseFormattedError(lua, "Could not open file '%s' inside '%s'", .{ fname.ptr, ud.path.ptr });
+        if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
         var lua_buffer: ziglua.Buffer = undefined;
         var buffer = lua_buffer.initSize(lua.*, uzfi.uncompressed_size);

@@ -120,7 +120,7 @@ fn pathToString(path: []const u8) [:0]u8 {
 }
 
 fn getRealPath(lua: *Lua, path: []const u8) [:0]u8 {
-    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseError(lua, "path does not exist");
+    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseFormattedError(lua, "path '%s' does not exist", .{path.ptr});
     defer allocator.free(realPath);
     return pathToString(realPath);
 }
@@ -135,7 +135,7 @@ fn dir(lua: *Lua) i32 {
 
 fn list_dir(lua: *Lua, keyValue: bool) i32 {
     var path = get_path(lua);
-    var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseError(lua, "could not open directory");
+    var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
     defer directory.close();
 
     const fullPath = lua.pushString(getRealPath(lua, std.mem.sliceTo(path, 0)));
@@ -144,14 +144,14 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
     const table = lua.getTop();
     var iterator = directory.iterate();
     if (keyValue) {
-        while (iterator.next() catch luax.raiseError(lua, "could not traverse directory")) |entry| {
+        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s", .{path.ptr})) |entry| {
             const name = lua.pushString(pathToString(entry.name));
             create_path_sub(lua, fullPath, name);
             lua.setTable(table);
         }
     } else {
         var index: i32 = 1;
-        while (iterator.next() catch luax.raiseError(lua, "could not traverse directory")) |entry| {
+        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s", .{path.ptr})) |entry| {
             const name = pathToString(entry.name);
             create_path_sub(lua, fullPath, name);
             lua.rawSetIndex(table, index);
@@ -216,9 +216,9 @@ fn current_directory(lua: *Lua) i32 {
 }
 
 fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.fs.File.Stat {
-    const file = open_file_or_directory(std.fs.cwd(), fullpath) catch luax.raiseError(lua, "Could not open file");
+    const file = open_file_or_directory(std.fs.cwd(), fullpath) catch luax.raiseFormattedError(lua, "Could not open file '%s", .{fullpath.ptr});
     defer file.close();
-    return file.stat() catch luax.raiseError(lua, "Could not get file stats");
+    return file.stat() catch luax.raiseFormattedError(lua, "Could not get file stats for '%s'", .{fullpath.ptr});
 }
 
 const SECONDS_DENOMINATOR = 1000000000;
@@ -427,7 +427,7 @@ fn size_hr(lua: *Lua) i32 {
 fn rename(lua: *Lua) i32 {
     const old = get_path_arg(lua, 1);
     const new = get_path_arg(lua, 2);
-    std.fs.cwd().rename(old, new) catch luax.raiseError(lua, "could not rename");
+    std.fs.cwd().rename(old, new) catch luax.raiseFormattedError(lua, "could not rename '%s' to '%s'", .{ old.ptr, new.ptr });
     return 0;
 }
 
@@ -446,9 +446,9 @@ fn delete(lua: *Lua) i32 {
     const path = get_path(lua);
     const stats = get_stat(lua, path);
     if (stats.kind == std.fs.File.Kind.file) {
-        std.fs.cwd().deleteFile(path) catch luax.raiseError(lua, "Could not delete file");
+        std.fs.cwd().deleteFile(path) catch luax.raiseFormattedError(lua, "Could not delete file '%s'", .{path.ptr});
     } else {
-        std.fs.cwd().deleteDir(path) catch luax.raiseError(lua, "Could not delete direcory");
+        std.fs.cwd().deleteDir(path) catch luax.raiseFormattedError(lua, "Could not delete direcory '%s'", .{path.ptr});
     }
     return 0;
 }
@@ -491,15 +491,15 @@ fn absolute(lua: *Lua) i32 {
 
 fn change_directory(lua: *Lua) i32 {
     const path = get_path(lua);
-    var directory = std.fs.cwd().openDir(path, .{}) catch luax.raiseError(lua, "Could not change directory");
+    var directory = std.fs.cwd().openDir(path, .{}) catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
     defer directory.close();
-    directory.setAsCwd() catch luax.raiseError(lua, "Could not change directory");
+    directory.setAsCwd() catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
     return 0;
 }
 
 fn create_directory(lua: *Lua) i32 {
     const path = get_path(lua);
-    std.fs.cwd().makeDir(path) catch luax.raiseError(lua, "Could not create directory");
+    std.fs.cwd().makeDir(path) catch luax.raiseFormattedError(lua, "Could not create directory '%s", .{path.ptr});
     return 0;
 }
 

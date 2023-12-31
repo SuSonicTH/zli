@@ -57,6 +57,11 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     lua.remove(-2);
 }
 
+pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
+    _ = lua.pushFString(message, args);
+    lua.raiseError();
+}
+
 pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     _ = lua.pushString(message);
     lua.raiseError();
@@ -65,6 +70,12 @@ pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
 pub fn returnError(lua: *Lua, message: [:0]const u8) i32 {
     lua.pushNil();
     _ = lua.pushString(message);
+    return 2;
+}
+
+pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32 {
+    lua.pushNil();
+    _ = lua.pushFString(message, args);
     return 2;
 }
 
