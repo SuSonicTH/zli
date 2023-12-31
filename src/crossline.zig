@@ -306,7 +306,7 @@ fn crossline_paging_print_table(lua: *Lua) i32 {
 }
 
 fn crossline_paging_print_string(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
     var it = std.mem.splitSequence(u8, str, "\n");
 
     while (it.next()) |item| {

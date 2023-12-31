@@ -62,7 +62,7 @@ const UnzipUdata = struct {
         while (true) : (index += 1) {
             if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, &zfname, 4096, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua);
 
-            create_file_table(lua, zfname, uzfi);
+            create_file_table(lua, zfname, uzfi, ud);
             lua.rawSetIndex(table, index);
 
             if (c.unzGoToNextFile(ud.uzfh) != c.UNZ_OK) {
@@ -76,10 +76,12 @@ const UnzipUdata = struct {
         luax.raiseError(lua, "internal error: could not get zip file information");
     }
 
-    fn create_file_table(lua: *Lua, zfname: [4096:0]u8, uzfi: c.unz_file_info) void {
+    fn create_file_table(lua: *Lua, zfname: [4096:0]u8, uzfi: c.unz_file_info, ud: *UnzipUdata) void {
         lua.newTable();
         const table = lua.getTop();
+        lua.setFuncs(&functions, 0);
 
+        luax.setTableUserData(lua, table, name, ud);
         luax.setTableString(lua, table, "name", zfname[0..uzfi.size_filename :0]);
 
         const is_directory = zfname[uzfi.size_filename - 1] == '/';
@@ -119,9 +121,10 @@ const UnzipUdata = struct {
         luax.setTableInteger(lua, table, "minute", uzfi.tmu_date.tm_min);
         luax.setTableInteger(lua, table, "second", uzfi.tmu_date.tm_sec);
     }
+
     fn read_all(lua: *Lua) i32 {
         const ud: *UnzipUdata = luax.getUserData(lua, name, UnzipUdata);
-        const fname = lua.toString(2) catch luax.raiseError(lua, "expecting file name to read as argument");
+        const fname = getFileName(lua); //lua.toString(2) catch luax.raiseError(lua, "expecting file name to read as argument");
         var uzfi: c.unz_file_info = undefined;
 
         _ = c.unzCloseCurrentFile(ud.uzfh);
@@ -134,5 +137,9 @@ const UnzipUdata = struct {
         lua_buffer.addSize(@intCast(bytes_read));
         lua_buffer.pushResult();
         return 1;
+    }
+
+    fn getFileName(lua: *Lua) [:0]const u8 {
+        return luax.getTableStringOrError(lua, "name", 1) catch return std.mem.sliceTo(lua.toString(2) catch lua.argError(1, "expected file name"), 0);
     }
 };

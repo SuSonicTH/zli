@@ -42,10 +42,6 @@ pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, reg
     lua.setTable(ziglua.registry_index);
 }
 
-pub fn slice(str: [*:0]const u8) []const u8 {
-    return std.mem.sliceTo(str, 0);
-}
-
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.getGlobal(module) catch undefined;
     _ = lua.pushString(function);
@@ -106,8 +102,9 @@ pub fn getUserData(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
 }
 
 pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: i32) *T {
+    const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(name);
-    _ = lua.getTable(index);
+    _ = lua.getTable(table_index);
     if (lua.isNil(-1)) {
         raiseError(lua, "expected userdata got nil");
     }
@@ -119,18 +116,23 @@ pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
 }
 
 pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
+    const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
-    _ = lua.getTable(index);
+    _ = lua.getTable(table_index);
+}
+
+pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        return error.KeyNotFound;
+    }
+    const value = lua.toString(-1) catch return error.KeyNotaString;
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
 }
 
 pub fn getTableString(lua: *Lua, key: [:0]const u8, index: i32) [:0]const u8 {
-    getTable(lua, key, index);
-    if (lua.isNil(-1)) {
-        raiseError(lua, "illegal option, expecting String");
-    }
-    const value = lua.toString(-1) catch raiseError(lua, "illegal option, expecting String");
-    lua.pop(1);
-    return std.mem.sliceTo(value, 0);
+    return getTableStringOrError(lua, key, index) catch raiseError(lua, "illegal option, expecting String");
 }
 
 pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]const u8) [:0]const u8 {
@@ -188,5 +190,12 @@ pub fn setTableBoolean(lua: *Lua, index: i32, key: [:0]const u8, value: bool) vo
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushBoolean(value);
+    lua.setTable(table_index);
+}
+
+pub fn setTableUserData(lua: *Lua, index: i32, key: [:0]const u8, value: *anyopaque) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    lua.pushLightUserdata(value);
     lua.setTable(table_index);
 }
