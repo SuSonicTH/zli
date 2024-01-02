@@ -119,7 +119,9 @@ pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: 
     if (lua.isNil(-1)) {
         raiseError(lua, "expected userdata got nil");
     }
-    return lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
+    const udata: *T = lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
+    lua.pop(1);
+    return udata;
 }
 
 pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
@@ -135,6 +137,7 @@ pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
 pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]const u8 {
     getTable(lua, key, index);
     if (lua.isNil(-1)) {
+        lua.pop(1);
         return error.KeyNotFound;
     }
     const value = lua.toString(-1) catch return error.KeyNotaString;

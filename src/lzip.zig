@@ -23,6 +23,7 @@ const lzip = [_]ziglua.FnReg{
 pub export fn luaopen_lzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
     var lua: Lua = .{ .state = state.? };
     UnzipUdata.register(&lua);
+    UnzipFile.register(&lua);
     lua.newLib(&lzip);
     return 1;
 }
@@ -38,6 +39,7 @@ const UnzipUdata = struct {
 
     const file_functions = [_]ziglua.FnReg{
         .{ .name = "read_all", .func = ziglua.wrap(read_all) },
+        .{ .name = "open", .func = ziglua.wrap(UnzipFile.open) },
     };
 
     fn register(lua: *Lua) void {
@@ -110,10 +112,6 @@ const UnzipUdata = struct {
         return 1;
     }
 
-    fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
-        luax.raiseFormattedError(lua, "internal error: could not get zip file information from '%s'", .{ud.path.ptr});
-    }
-
     fn create_file_table(lua: *Lua, zfname: [4096:0]u8, uzfi: c.unz_file_info, ud: *UnzipUdata) void {
         lua.newTable();
         const table = lua.getTop();
@@ -161,7 +159,49 @@ const UnzipUdata = struct {
     }
 
     fn read_all(lua: *Lua) i32 {
-        const ud: *UnzipUdata = luax.getUserData(lua, name, UnzipUdata);
+        _ = UnzipFile.open(lua);
+        lua.replace(1);
+        _ = lua.pushString("a");
+        lua.replace(2);
+        lua.setTop(2);
+        return UnzipFile.read(lua);
+    }
+};
+
+fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
+    luax.raiseFormattedError(lua, "internal error: could not get zip file information from '%s'", .{ud.path.ptr});
+}
+
+fn getFileName(lua: *Lua) [:0]const u8 {
+    return luax.getTableStringOrError(lua, "name", 1) catch return std.mem.sliceTo(lua.toString(2) catch lua.argError(1, "expected file name"), 0);
+}
+
+const UnzipFile = struct {
+    fname: [:0]const u8,
+    uzfh: *anyopaque = undefined,
+    buffer: [4096]u8 = undefined,
+    size: u32 = undefined,
+    fpos: u32 = undefined,
+    pos: u32 = undefined,
+    end: u32 = undefined,
+    eof: bool = false,
+
+    const name = "_UnzipFile";
+    const functions = [_]ziglua.FnReg{
+        .{ .name = "read", .func = ziglua.wrap(read) },
+    };
+
+    fn register(lua: *Lua) void {
+        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+    }
+
+    fn garbageCollect(lua: *Lua) i32 {
+        _ = lua;
+        return 0;
+    }
+
+    fn open(lua: *Lua) i32 {
+        const ud: *UnzipUdata = luax.getUserData(lua, UnzipUdata.name, UnzipUdata);
         const fname = getFileName(lua);
         var uzfi: c.unz_file_info = undefined;
 
@@ -170,15 +210,150 @@ const UnzipUdata = struct {
         if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) luax.raiseFormattedError(lua, "Could not open file '%s' inside '%s'", .{ fname.ptr, ud.path.ptr });
         if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
+        const uzf: *UnzipFile = luax.createUserDataTableSetFunctions(lua, name, UnzipFile, &functions);
+        uzf.fname = fname;
+        uzf.size = uzfi.uncompressed_size;
+        uzf.uzfh = ud.uzfh;
+        uzf.pos = 0;
+        uzf.fpos = 0;
+        uzf.end = 0;
+        uzf.eof = false;
+        return 1;
+    }
+
+    fn fillBuffer(uzf: *UnzipFile) void {
+        if (uzf.eof) return;
+
+        const bytes_read = c.unzReadCurrentFile(uzf.uzfh, &uzf.buffer, uzf.buffer.len);
+        uzf.fpos += uzf.end;
+        uzf.pos = 0;
+
+        if (bytes_read > 0) {
+            uzf.end = @intCast(bytes_read);
+        } else if (bytes_read == 0) {
+            uzf.end = 0;
+            uzf.eof = true;
+        }
+    }
+    const read_option = enum { n, a, l, L };
+
+    fn read(lua: *Lua) i32 {
+        const uzf: *UnzipFile = luax.getUserData(lua, name, UnzipFile);
+        if (lua.isNumber(2)) {
+            return read_bytes(lua, uzf, @as(u32, @intCast(lua.toInteger(2) catch luax.raiseError(lua, "argument to read has to be an integer or one of 'n', 'a', 'l' or 'L'"))));
+        }
+        switch (lua.checkOption(read_option, 2, .l)) {
+            .n => return 0,
+            .a => return read_all(lua, uzf),
+            .l => return read_line(lua, uzf, false),
+            .L => return read_line(lua, uzf, true),
+        }
+    }
+
+    fn read_bytes(lua: *Lua, uzf: *UnzipFile, len: u32) i32 {
+        if (uzf.eof) {
+            lua.pushNil();
+            return 1;
+        }
+
+        if (uzf.pos == uzf.end) {
+            var lua_buffer: ziglua.Buffer = undefined;
+            var buffer = lua_buffer.initSize(lua.*, len);
+            const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, len);
+            lua_buffer.addSize(@intCast(bytes_read));
+            lua_buffer.pushResult();
+            if (bytes_read == 0) {
+                lua.pushNil();
+            }
+            return 1;
+        } else if (uzf.end - uzf.pos >= len) {
+            _ = lua.pushBytes(uzf.buffer[uzf.pos .. uzf.pos + len]);
+            uzf.pos += len;
+            return 1;
+        } else {
+            var lua_buffer: ziglua.Buffer = undefined;
+            lua_buffer.init(lua.*);
+            lua_buffer.addBytes(uzf.buffer[uzf.pos..uzf.end]);
+            var size = len - (uzf.end - uzf.pos);
+            while (true) {
+                fillBuffer(uzf);
+                if (uzf.eof) {
+                    lua_buffer.pushResult();
+                    return 1;
+                }
+                if (uzf.end - uzf.pos >= size) {
+                    lua_buffer.addBytes(uzf.buffer[0..size]);
+                    lua_buffer.pushResult();
+                    uzf.pos += size;
+                    return 1;
+                } else {
+                    lua_buffer.addBytes(uzf.buffer[0..uzf.end]);
+                    size -= uzf.end;
+                }
+            }
+        }
+        return 1;
+    }
+
+    fn read_all(lua: *Lua, uzf: *UnzipFile) i32 {
         var lua_buffer: ziglua.Buffer = undefined;
-        var buffer = lua_buffer.initSize(lua.*, uzfi.uncompressed_size);
-        const bytes_read = c.unzReadCurrentFile(ud.uzfh, buffer.ptr, uzfi.uncompressed_size);
+        const size = uzf.size - uzf.fpos + uzf.end;
+        var buffer = lua_buffer.initSize(lua.*, size);
+        const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, size);
         lua_buffer.addSize(@intCast(bytes_read));
         lua_buffer.pushResult();
         return 1;
     }
 
-    fn getFileName(lua: *Lua) [:0]const u8 {
-        return luax.getTableStringOrError(lua, "name", 1) catch return std.mem.sliceTo(lua.toString(2) catch lua.argError(1, "expected file name"), 0);
+    fn read_line(lua: *Lua, uzf: *UnzipFile, include_eol: bool) i32 {
+        if (uzf.pos == uzf.end) {
+            uzf.fillBuffer();
+        }
+        if (uzf.eof) {
+            lua.pushNil();
+            return 1;
+        }
+        var start = uzf.pos;
+
+        var lua_buffer: ziglua.Buffer = undefined;
+        lua_buffer.init(lua.*);
+        while (uzf.buffer[uzf.pos] != '\r' and uzf.buffer[uzf.pos] != '\n') {
+            if (uzf.pos == uzf.end - 1) {
+                lua_buffer.addBytes(uzf.buffer[start..uzf.end]);
+                uzf.fillBuffer();
+                start = 0;
+                if (uzf.eof) {
+                    lua_buffer.pushResult();
+                    return 1;
+                }
+            } else {
+                uzf.pos += 1;
+            }
+        }
+        if (include_eol) {
+            lua_buffer.addBytes(uzf.buffer[start .. uzf.pos + 1]);
+        } else {
+            lua_buffer.addBytes(uzf.buffer[start..uzf.pos]);
+        }
+
+        if (uzf.buffer[uzf.pos] == '\r') {
+            if (uzf.pos == uzf.end - 1) {
+                uzf.fillBuffer();
+                if (uzf.eof) {
+                    lua_buffer.pushResult();
+                    return 1;
+                }
+            }
+            if (uzf.buffer[uzf.pos + 1] == '\n') {
+                uzf.pos += 1;
+                if (include_eol) {
+                    lua_buffer.addChar('\n');
+                }
+            }
+        }
+        uzf.pos += 1;
+
+        lua_buffer.pushResult();
+        return 1;
     }
 };
