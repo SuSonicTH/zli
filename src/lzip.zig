@@ -361,9 +361,9 @@ const UnzipFile = struct {
 const NumberReader = struct {
     uzf: *UnzipFile,
     lua: *Lua,
-    var buffer: [200:0]u8 = undefined;
-    var pos: u8 = 0;
-    var is_hex: bool = false;
+    buffer: [200:0]u8 = undefined,
+    pos: u8 = 0,
+    is_hex: bool = false,
 
     fn init(lua: *Lua, uzf: *UnzipFile) NumberReader {
         return NumberReader{ .lua = lua, .uzf = uzf };
