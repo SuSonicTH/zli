@@ -243,7 +243,7 @@ const UnzipFile = struct {
             return read_bytes(lua, uzf, @as(u32, @intCast(lua.toInteger(2) catch luax.raiseError(lua, "argument to read has to be an integer or one of 'n', 'a', 'l' or 'L'"))));
         }
         switch (lua.checkOption(read_option, 2, .l)) {
-            .n => return 0,
+            .n => return NumberReader.init(lua, uzf).read_number(),
             .a => return read_all(lua, uzf),
             .l => return read_line(lua, uzf, false),
             .L => return read_line(lua, uzf, true),
@@ -355,5 +355,119 @@ const UnzipFile = struct {
 
         lua_buffer.pushResult();
         return 1;
+    }
+};
+
+const NumberReader = struct {
+    uzf: *UnzipFile,
+    lua: *Lua,
+    var buffer: [200:0]u8 = undefined;
+    var pos: u8 = 0;
+    var is_hex: bool = false;
+
+    fn init(lua: *Lua, uzf: *UnzipFile) NumberReader {
+        return NumberReader{ .lua = lua, .uzf = uzf };
+    }
+
+    fn read_number(nr: *const NumberReader) i32 {
+        if (!nr.parse_number()) {
+            nr.lua.pushNil();
+            return 1;
+        }
+        buffer[pos] = 0;
+        std.log.debug(">{s}<", .{buffer});
+        _ = nr.lua.stringToNumber(&buffer) catch nr.lua.pushNil();
+        return 1;
+    }
+
+    fn parse_number(nr: *const NumberReader) bool {
+        pos = 0;
+        is_hex = false;
+
+        if (nr.uzf.pos >= nr.uzf.end) {
+            nr.uzf.fillBuffer();
+        }
+        while (nr.is_space()) {
+            if (!nr.move_next()) return false;
+        }
+        if (nr.current() == '+' or nr.current() == '-') {
+            if (!nr.add_current()) return false;
+        }
+        if (nr.current() == '0') {
+            if (!nr.add_current()) return false;
+            if (nr.current() == 'x' or nr.current() == 'X') {
+                is_hex = true;
+                if (!nr.add_current()) return false;
+            }
+        }
+        if (!nr.parse_digits()) return true;
+        if (nr.current() == '.') {
+            if (!nr.add_current()) return true;
+        }
+        if (!nr.parse_digits()) return true;
+        if ((is_hex and (nr.current() == 'p' or nr.current() == 'P')) or (!is_hex and (nr.current() == 'e' or nr.current() == 'E'))) {
+            if (!nr.add_current()) return false;
+            if (nr.current() == '+' or nr.current() == '-') {
+                if (!nr.add_current()) return false;
+            }
+            if (!nr.parse_digits()) return true;
+        }
+        return true;
+    }
+
+    inline fn current(nr: *const NumberReader) u8 {
+        return nr.uzf.buffer[nr.uzf.pos];
+    }
+
+    inline fn move_next(nr: *const NumberReader) bool {
+        const uzf = nr.uzf;
+        uzf.pos += 1;
+        if (uzf.pos == uzf.end) {
+            uzf.fillBuffer();
+        }
+        return !uzf.eof;
+    }
+
+    inline fn add_current(nr: *const NumberReader) bool {
+        buffer[pos] = nr.current();
+        pos += 1;
+        return nr.move_next();
+    }
+
+    inline fn is_space(nr: *const NumberReader) bool {
+        switch (nr.current()) {
+            ' ', '\t', '\r', '\n' => return true,
+            else => return false,
+        }
+    }
+
+    inline fn parse_digits(nr: *const NumberReader) bool {
+        if (is_hex) {
+            while (nr.is_hex_digit()) {
+                if (!nr.add_current()) return false;
+            }
+            return true;
+        } else {
+            while (nr.is_digit()) {
+                if (!nr.add_current()) return false;
+            }
+            return true;
+        }
+    }
+
+    inline fn is_digit(nr: *const NumberReader) bool {
+        switch (nr.current()) {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => return true,
+            else => return false,
+        }
+    }
+
+    inline fn is_hex_digit(nr: *const NumberReader) bool {
+        switch (nr.current()) {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => return true,
+            'A', 'B', 'C', 'D', 'E', 'F' => return true,
+            'a', 'b', 'c', 'd', 'e', 'f' => return true,
+            else => return false,
+        }
     }
 };
