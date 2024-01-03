@@ -24,17 +24,57 @@ local function split_path(path)
     return ret
 end
 
-local function new_path(path, file)
-    if path == "" or path == '.' or path == './' or path == '.\\' then
-        path = fs.cwd();
+local function get_path(path)
+    return type(path) == "table" and path.full_path or path;
+end
+
+local function new_path(...)
+    --path = get_path(path)
+    --if path == nil or path == "" or path == '.' or path == './' or path == '.\\' then
+    --    path = fs.cwd();
+    --elseif path == '..' or path == './..' or path == '../' or path == '.\\..' or path == '.\\..\\' then
+    --    path = fs.cwd() .. "/../";
+    --end
+
+    local split = {}
+    for _, arg in ipairs({ ... }) do
+        for _, itm in ipairs(split_path(get_path(arg))) do
+            split[#split + 1] = itm
+        end
     end
-    if file == nil then
-        local split = split_path(path)
-        file = split[#split]
-        split[#split] = nil
-        path = concat_path(split)
+
+    if split[1] == "." then
+        table.remove(split, 1)
+        for i, item in ipairs(split_path(fs.cwd())) do
+            table.insert(split, i, item)
+        end
     end
-    return fs.create_path(path, file)
+
+    if split[1] == ".." then
+        for i, item in ipairs(split_path(fs.cwd())) do
+            table.insert(split, i, item)
+        end
+    end
+
+    --remove /./
+    table.remove_if(split, function(item) return item == '.' end)
+
+    --remove /../
+    local remove = {}
+    for i, item in ipairs(split) do
+        if item == '..' then
+            remove[#remove + 1] = i - 1
+            remove[#remove + 1] = i
+        end
+    end
+    for i, index in ipairs(remove) do
+        if index - i + 1 < 1 then error("illegal path, to many parent references i.e.: ../../") end
+        table.remove(split, index - i + 1)
+    end
+
+    local file = split[#split]
+    split[#split] = nil
+    return fs.create_path(concat_path(split), file)
 end
 
 local function stream_dir(path)
@@ -42,10 +82,6 @@ local function stream_dir(path)
         stream = require "stream"
     end
     return stream(fs.list(path))
-end
-
-local function get_path(path)
-    return type(path) == "table" and path.full_path or path;
 end
 
 local function read_all(path)
@@ -219,4 +255,5 @@ return function(filesystem)
     fs.sibling = sibling
     fs.chmod = chmod
     fs.chown = chown
+    fs.get_path = get_path
 end

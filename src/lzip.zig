@@ -20,11 +20,16 @@ const lzip = [_]ziglua.FnReg{
     .{ .name = "open", .func = ziglua.wrap(UnzipUdata.new) },
 };
 
+const zli_zip = "zli_zip";
+
 pub export fn luaopen_lzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
     var lua: Lua = .{ .state = state.? };
     UnzipUdata.register(&lua);
     UnzipFile.register(&lua);
     lua.newLib(&lzip);
+
+    const exteded = @embedFile("stripped/lzip.lua");
+    luax.registerExtended(&lua, exteded, "zip", zli_zip);
     return 1;
 }
 
@@ -40,6 +45,7 @@ const UnzipUdata = struct {
     const file_functions = [_]ziglua.FnReg{
         .{ .name = "read_all", .func = ziglua.wrap(read_all) },
         .{ .name = "open", .func = ziglua.wrap(UnzipFile.open) },
+        .{ .name = "lines", .func = ziglua.wrap(lines) },
     };
 
     fn register(lua: *Lua) void {
@@ -166,6 +172,18 @@ const UnzipUdata = struct {
         lua.setTop(2);
         return UnzipFile.read(lua);
     }
+
+    fn lines(lua: *Lua) i32 {
+        _ = UnzipFile.open(lua);
+        if (lua.isNil(-1)) {
+            return 1;
+        }
+        _ = lua.pushString("lines");
+        _ = lua.getTable(3);
+        lua.replace(2);
+        lua.call(1, 4);
+        return 4;
+    }
 };
 
 fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
@@ -232,7 +250,6 @@ const UnzipFile = struct {
     }
 
     fn setvbuf(lua: *Lua) i32 {
-        //does nothing -> exists just for comaptibility with lua file handle
         _ = lua;
         return 0;
     }
@@ -244,9 +261,16 @@ const UnzipFile = struct {
     }
 
     fn lines(lua: *Lua) i32 {
-        _ = lua;
-        //todo: implement
-        return 0;
+        lua.pushFunction(ziglua.wrap(lines_iterator));
+        lua.pushValue(1);
+        lua.pushNil();
+        lua.pushNil();
+        return 4;
+    }
+
+    fn lines_iterator(lua: *Lua) i32 {
+        const uzf: *UnzipFile = luax.getUserData(lua, name, UnzipFile);
+        return read_line(lua, uzf, false);
     }
 
     fn fillBuffer(uzf: *UnzipFile) void {
