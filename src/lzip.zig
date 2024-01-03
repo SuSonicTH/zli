@@ -189,6 +189,10 @@ const UnzipFile = struct {
     const name = "_UnzipFile";
     const functions = [_]ziglua.FnReg{
         .{ .name = "read", .func = ziglua.wrap(read) },
+        .{ .name = "close", .func = ziglua.wrap(close) },
+        .{ .name = "setvbuf", .func = ziglua.wrap(setvbuf) },
+        .{ .name = "seek", .func = ziglua.wrap(seek) },
+        .{ .name = "lines", .func = ziglua.wrap(lines) },
     };
 
     fn register(lua: *Lua) void {
@@ -219,6 +223,23 @@ const UnzipFile = struct {
         uzf.end = 0;
         uzf.eof = false;
         return 1;
+    }
+
+    fn close(lua: *Lua) i32 {
+        _ = lua;
+        return 0;
+    }
+    fn setvbuf(lua: *Lua) i32 {
+        _ = lua;
+        return 0;
+    }
+    fn seek(lua: *Lua) i32 {
+        _ = lua;
+        return 0;
+    }
+    fn lines(lua: *Lua) i32 {
+        _ = lua;
+        return 0;
     }
 
     fn fillBuffer(uzf: *UnzipFile) void {
@@ -374,15 +395,15 @@ const NumberReader = struct {
             nr.lua.pushNil();
             return 1;
         }
-        buffer[pos] = 0;
-        std.log.debug(">{s}<", .{buffer});
-        _ = nr.lua.stringToNumber(&buffer) catch nr.lua.pushNil();
+        nr.buffer[nr.pos] = 0;
+        std.log.debug(">{s}<", .{nr.buffer});
+        _ = nr.lua.stringToNumber(&nr.buffer) catch nr.lua.pushNil();
         return 1;
     }
 
     fn parse_number(nr: *const NumberReader) bool {
-        pos = 0;
-        is_hex = false;
+        nr.pos = 0;
+        nr.is_hex = false;
 
         if (nr.uzf.pos >= nr.uzf.end) {
             nr.uzf.fillBuffer();
@@ -396,7 +417,7 @@ const NumberReader = struct {
         if (nr.current() == '0') {
             if (!nr.add_current()) return false;
             if (nr.current() == 'x' or nr.current() == 'X') {
-                is_hex = true;
+                nr.is_hex = true;
                 if (!nr.add_current()) return false;
             }
         }
@@ -405,7 +426,7 @@ const NumberReader = struct {
             if (!nr.add_current()) return true;
         }
         if (!nr.parse_digits()) return true;
-        if ((is_hex and (nr.current() == 'p' or nr.current() == 'P')) or (!is_hex and (nr.current() == 'e' or nr.current() == 'E'))) {
+        if ((nr.is_hex and (nr.current() == 'p' or nr.current() == 'P')) or (!nr.is_hex and (nr.current() == 'e' or nr.current() == 'E'))) {
             if (!nr.add_current()) return false;
             if (nr.current() == '+' or nr.current() == '-') {
                 if (!nr.add_current()) return false;
@@ -429,8 +450,8 @@ const NumberReader = struct {
     }
 
     inline fn add_current(nr: *const NumberReader) bool {
-        buffer[pos] = nr.current();
-        pos += 1;
+        nr.buffer[nr.pos] = nr.current();
+        nr.pos += 1;
         return nr.move_next();
     }
 
@@ -442,7 +463,7 @@ const NumberReader = struct {
     }
 
     inline fn parse_digits(nr: *const NumberReader) bool {
-        if (is_hex) {
+        if (nr.is_hex) {
             while (nr.is_hex_digit()) {
                 if (!nr.add_current()) return false;
             }
