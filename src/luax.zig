@@ -30,14 +30,14 @@ pub fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) v
     }
 }
 
-pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, registry: [:0]const u8) void {
+pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, module: [:0]const u8) void {
     lua.loadBuffer(source, name, ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 1, 0, null);
     lua.checkType(-1, ziglua.LuaType.function);
     lua.pushValue(-2);
     lua.callCont(1, 1, 0, null);
     if (lua.typeOf(-1) == .table) {
-        _ = lua.pushString(registry);
+        _ = lua.pushString(module);
         lua.pushValue(-2);
         lua.setTable(ziglua.registry_index);
     }
@@ -54,8 +54,14 @@ pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const 
 pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.pushString(module);
     _ = lua.getTable(ziglua.registry_index);
+    if (lua.isNil(-1)) {
+        raiseFormattedError(lua, "internal error: could not get module '%s' from registry", .{module.ptr});
+    }
     _ = lua.pushString(function);
     _ = lua.getTable(-2);
+    if (lua.isNil(-1)) {
+        raiseFormattedError(lua, "internal error: could not get function '%s' from module '%s'", .{ function.ptr, module.ptr });
+    }
     lua.remove(-2);
 }
 

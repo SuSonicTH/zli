@@ -28,7 +28,9 @@ local function get_path(path)
     return type(path) == "table" and path.full_path or path;
 end
 
-local function new_path(...)
+local function path_to_path_and_name(separator, ...)
+    separator = separator == nil and fs.separator or separator
+
     local split = {}
     for _, arg in ipairs({ ... }) do
         for _, itm in ipairs(split_path(get_path(arg))) do
@@ -64,10 +66,18 @@ local function new_path(...)
         if index - i + 1 < 1 then error("illegal path, to many parent references i.e.: ../../") end
         table.remove(split, index - i + 1)
     end
+    if (split[#split] == "") then
+        split[#split] = nil
+    end
 
-    local file = split[#split]
+    local name = split[#split]
     split[#split] = nil
-    return fs.create_path(concat_path(split), file)
+    return table.concat(split, separator), name
+end
+
+local function new_path(...)
+    local path, name = path_to_path_and_name(nil, ...)
+    return fs.create_path(path, name)
 end
 
 local function stream_dir(path)
@@ -262,6 +272,7 @@ return function(filesystem)
     fs.chown = chown
     fs.get_path = get_path
     fs.create_tree = create_tree
+    fs.path_to_path_and_name = path_to_path_and_name
 
     return {
         read_all    = read_all,
@@ -273,7 +284,7 @@ return function(filesystem)
         parent      = parent,
         child       = child,
         sibling     = sibling,
-        stream      = stream,
+        stream      = stream_dir,
         stream_tree = stream_tree,
         tree        = tree,
     }

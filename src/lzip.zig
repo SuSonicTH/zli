@@ -124,7 +124,21 @@ const UnzipUdata = struct {
         lua.setFuncs(&file_functions, 0);
 
         luax.setTableUserData(lua, table, name, ud);
-        luax.setTableString(lua, table, "name", zfname[0..uzfi.size_filename :0]);
+        luax.setTableString(lua, table, "full_path", zfname[0..uzfi.size_filename :0]);
+
+        luax.pushRegistryFunction(lua, zli_zip, "path_to_path_and_name");
+        _ = lua.pushString("/");
+        _ = lua.pushString(zfname[0..uzfi.size_filename :0]);
+        lua.call(2, 2);
+
+        _ = lua.pushString("name");
+        lua.pushValue(-3);
+        lua.setTable(table);
+
+        _ = lua.pushString("path");
+        lua.pushValue(-2);
+        lua.setTable(table);
+        lua.pop(2);
 
         const is_directory = zfname[uzfi.size_filename - 1] == '/';
         luax.setTableBoolean(lua, table, "is_directory", is_directory);
@@ -429,7 +443,6 @@ const NumberReader = struct {
             return 1;
         }
         buffer[pos] = 0;
-        std.log.debug(">{s}<", .{buffer});
         _ = nr.lua.stringToNumber(&buffer) catch nr.lua.pushNil();
         return 1;
     }
