@@ -134,7 +134,12 @@ fn dir(lua: *Lua) i32 {
 }
 
 fn list_dir(lua: *Lua, keyValue: bool) i32 {
-    var path = get_path(lua);
+    var path: [:0]const u8 = undefined;
+    if (lua.getTop() >= 1) {
+        path = get_path(lua);
+    } else {
+        path = "./";
+    }
     var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
     defer directory.close();
 

@@ -30,16 +30,19 @@ pub fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) v
     }
 }
 
-pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, registry: [:0]const u8) void {
+pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, registry: ?*[:0]const u8) void {
     lua.loadBuffer(source, name, ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 1, 0, null);
     lua.checkType(-1, ziglua.LuaType.function);
     lua.pushValue(-2);
-    lua.callCont(1, 0, 0, null);
-
-    _ = lua.pushString(registry);
-    lua.pushValue(-2);
-    lua.setTable(ziglua.registry_index);
+    lua.callCont(1, 1, 0, null);
+    if (lua.type() == .table) {
+        _ = lua.pushString(registry);
+        lua.pushValue(-2);
+        lua.setTable(ziglua.registry_index);
+    } else {
+        lua.pop(1);
+    }
 }
 
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {

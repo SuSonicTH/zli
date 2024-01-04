@@ -29,13 +29,6 @@ local function get_path(path)
 end
 
 local function new_path(...)
-    --path = get_path(path)
-    --if path == nil or path == "" or path == '.' or path == './' or path == '.\\' then
-    --    path = fs.cwd();
-    --elseif path == '..' or path == './..' or path == '../' or path == '.\\..' or path == '.\\..\\' then
-    --    path = fs.cwd() .. "/../";
-    --end
-
     local split = {}
     for _, arg in ipairs({ ... }) do
         for _, itm in ipairs(split_path(get_path(arg))) do
@@ -256,4 +249,19 @@ return function(filesystem)
     fs.chmod = chmod
     fs.chown = chown
     fs.get_path = get_path
+
+    return {
+        read_all    = read_all,
+        read_lines  = read_lines,
+        lines       = lines,
+        iterate     = iterate,
+        delete_tree = delete_tree,
+        walk        = walk,
+        parent      = parent,
+        child       = child,
+        sibling     = sibling,
+        stream      = stream,
+        stream_tree = stream_tree,
+        tree        = tree,
+    }
 end
