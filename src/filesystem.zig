@@ -92,8 +92,10 @@ pub export fn luaopen_filesystem(state: ?*ziglua.LuaState) callconv(.C) c_int {
     lua.setTable(-3);
 
     register_path_mt(&lua);
+    std.log.debug("b: {d}", .{lua.getTop()});
     const exteded = @embedFile("stripped/filesystem.lua");
     luax.registerExtended(&lua, exteded, "filesytem", zli_filesystem);
+    std.log.debug("a: {d}", .{lua.getTop()});
     return 1;
 }
 

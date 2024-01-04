@@ -209,6 +209,18 @@ local function stream_tree(path, dir_first)
     return stream(tree(path, dir_first))
 end
 
+local function create_tree_sub(path)
+    if (not path:exists()) then
+        create_tree_sub(path:parent())
+        path:create_directory()
+    end
+end
+
+local function create_tree(path)
+    path = type(path) == 'string' and new_path(path) or path
+    create_tree_sub(path)
+end
+
 local function chmod(path, mode)
     if os.is_linux then
         local success, ret, status = os.execute("chmod " .. mode .. " '" .. get_path(path) .. "'")
@@ -249,6 +261,7 @@ return function(filesystem)
     fs.chmod = chmod
     fs.chown = chown
     fs.get_path = get_path
+    fs.create_tree = create_tree
 
     return {
         read_all    = read_all,
