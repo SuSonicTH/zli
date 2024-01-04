@@ -221,3 +221,21 @@ pub fn setTableUserData(lua: *Lua, index: i32, key: [:0]const u8, value: *anyopa
     lua.pushLightUserdata(value);
     lua.setTable(table_index);
 }
+
+pub fn setTableFunction(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.CFn) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    lua.pushFunction(value);
+    lua.setTable(table_index);
+}
+
+pub fn setTableValue(lua: *Lua, index: i32, key: [:0]const u8, value: i32, remove: bool) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    const value_index = getAbsoluteIndex(lua, value);
+    _ = lua.pushString(key);
+    lua.pushValue(value_index);
+    lua.setTable(table_index);
+    if (remove) {
+        lua.remove(value_index);
+    }
+}

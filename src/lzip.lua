@@ -6,8 +6,11 @@ local function extract(zipPath, destination)
     destination = type(destination) == 'table' and destination or fs.path(destination)
     local zfh = zip.open(zipPath)
     for _, file in ipairs(zfh:files()) do
+        local destination_path = fs.path(destination, file);
         if (file.is_directory) then
-            print("create_tree: " .. fs.path(destination, file).full_path)
+            fs.create_tree(destination_path)
+        else
+            file:extract(destination_path)
         end
     end
 end

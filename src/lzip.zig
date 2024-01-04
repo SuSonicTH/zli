@@ -40,12 +40,14 @@ const UnzipUdata = struct {
     const functions = [_]ziglua.FnReg{
         .{ .name = "files", .func = ziglua.wrap(files) },
         .{ .name = "info", .func = ziglua.wrap(info) },
+        .{ .name = "extract", .func = ziglua.wrap(extract) },
     };
 
     const file_functions = [_]ziglua.FnReg{
         .{ .name = "read_all", .func = ziglua.wrap(read_all) },
         .{ .name = "open", .func = ziglua.wrap(UnzipFile.open) },
         .{ .name = "lines", .func = ziglua.wrap(lines) },
+        .{ .name = "extract", .func = ziglua.wrap(extract) },
     };
 
     fn register(lua: *Lua) void {
@@ -131,30 +133,24 @@ const UnzipUdata = struct {
         _ = lua.pushString(zfname[0..uzfi.size_filename :0]);
         lua.call(2, 2);
 
-        _ = lua.pushString("name");
-        lua.pushValue(-3);
-        lua.setTable(table);
-
-        _ = lua.pushString("path");
-        lua.pushValue(-2);
-        lua.setTable(table);
-        lua.pop(2);
+        luax.setTableValue(lua, table, "name", -1, true);
+        luax.setTableValue(lua, table, "path", -1, true);
 
         const is_directory = zfname[uzfi.size_filename - 1] == '/';
         luax.setTableBoolean(lua, table, "is_directory", is_directory);
+        luax.setTableBoolean(lua, table, "is_file", !is_directory);
 
-        luax.setTableInteger(lua, table, "uncompressed_size", uzfi.uncompressed_size);
-        luax.setTableString(lua, table, "uncompressed_size_hr", filesystem.size_human_readable(uzfi.uncompressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
-        luax.setTableInteger(lua, table, "compressed_size", uzfi.compressed_size);
-        luax.setTableString(lua, table, "compressed_size_hr", filesystem.size_human_readable(uzfi.compressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
+        if (!is_directory) {
+            luax.setTableInteger(lua, table, "uncompressed_size", uzfi.uncompressed_size);
+            luax.setTableString(lua, table, "uncompressed_size_hr", filesystem.size_human_readable(uzfi.uncompressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
+            luax.setTableInteger(lua, table, "compressed_size", uzfi.compressed_size);
+            luax.setTableString(lua, table, "compressed_size_hr", filesystem.size_human_readable(uzfi.compressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
 
-        var compression_ratio: f64 = undefined;
-        if (is_directory) {
-            compression_ratio = 0;
-        } else {
-            compression_ratio = @as(f64, @floatFromInt(uzfi.compressed_size)) / @as(f64, @floatFromInt(uzfi.uncompressed_size));
+            const compression_ratio: f64 = @as(f64, @floatFromInt(uzfi.compressed_size)) / @as(f64, @floatFromInt(uzfi.uncompressed_size));
+            luax.setTableNumber(lua, table, "compression_ratio", compression_ratio);
+
+            luax.setTableFunction(lua, table, "extract", ziglua.wrap(extract));
         }
-        luax.setTableNumber(lua, table, "compression_ratio", compression_ratio);
 
         luax.setTableInteger(lua, table, "crc", uzfi.crc);
 
@@ -198,6 +194,35 @@ const UnzipUdata = struct {
         lua.call(1, 4);
         return 4;
     }
+
+    fn extract(lua: *Lua) i32 {
+        const ud: *UnzipUdata = luax.getUserData(lua, UnzipUdata.name, UnzipUdata);
+        const fname = getFileName(lua);
+        var uzfi: c.unz_file_info = undefined;
+
+        _ = c.unzCloseCurrentFile(ud.uzfh);
+        if (c.unzLocateFile(ud.uzfh, fname, 0) != c.UNZ_OK) return luax.returnFormattedError(lua, "File '%s' not found inside '%s'", .{ fname.ptr, ud.path.ptr });
+        if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) luax.raiseFormattedError(lua, "Could not open file '%s' inside '%s'", .{ fname.ptr, ud.path.ptr });
+        if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
+
+        const destination_name: [:0]const u8 = luax.getTableStringOrError(lua, "full_path", -1) catch std.mem.sliceTo(lua.toString(-1) catch lua.argError(1, "expected file name to extract to"), 0);
+        const file = fs.cwd().createFile(destination_name, .{}) catch return luax.returnFormattedError(lua, "could not open output file '%s'", .{destination_name.ptr});
+        defer file.close();
+
+        var buffer: [4096]u8 = undefined;
+
+        while (true) {
+            const bytes_read: usize = @intCast(c.unzReadCurrentFile(ud.uzfh, &buffer, buffer.len));
+            if (bytes_read > 0) {
+                file.writeAll(buffer[0..bytes_read]) catch return luax.returnFormattedError(lua, "could not write to file '%s'", .{destination_name.ptr});
+            } else {
+                break;
+            }
+        }
+
+        lua.pushBoolean(true);
+        return 1;
+    }
 };
 
 fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
@@ -205,7 +230,7 @@ fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
 }
 
 fn getFileName(lua: *Lua) [:0]const u8 {
-    return luax.getTableStringOrError(lua, "name", 1) catch return std.mem.sliceTo(lua.toString(2) catch lua.argError(1, "expected file name"), 0);
+    return luax.getTableStringOrError(lua, "full_path", 1) catch return std.mem.sliceTo(lua.toString(2) catch lua.argError(1, "expected file name in zip"), 0);
 }
 
 const UnzipFile = struct {
