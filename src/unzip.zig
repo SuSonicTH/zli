@@ -11,25 +11,24 @@ const allocator = std.heap.c_allocator;
 
 const c = @cImport({
     @cInclude("unzip.h");
-    @cInclude("zip.h");
 });
 
 const filesystem = @import("filesystem.zig");
 
-const lzip = [_]ziglua.FnReg{
+const unzip = [_]ziglua.FnReg{
     .{ .name = "open", .func = ziglua.wrap(UnzipUdata.new) },
 };
 
-const zli_zip = "zli_zip";
+const zli_unzip = "zli_unzip";
 
-pub export fn luaopen_lzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
+pub export fn luaopen_unzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
     var lua: Lua = .{ .state = state.? };
     UnzipUdata.register(&lua);
     UnzipFile.register(&lua);
-    lua.newLib(&lzip);
+    lua.newLib(&unzip);
 
-    const exteded = @embedFile("stripped/lzip.lua");
-    luax.registerExtended(&lua, exteded, "zip", zli_zip);
+    const exteded = @embedFile("stripped/unzip.lua");
+    luax.registerExtended(&lua, exteded, "zip", zli_unzip);
     return 1;
 }
 
@@ -38,7 +37,8 @@ const UnzipUdata = struct {
     path: [:0]const u8,
     const name = "_UnzipUdata";
     const functions = [_]ziglua.FnReg{
-        .{ .name = "files", .func = ziglua.wrap(files) },
+        .{ .name = "list", .func = ziglua.wrap(list) },
+        .{ .name = "dir", .func = ziglua.wrap(dir) },
         .{ .name = "info", .func = ziglua.wrap(info) },
         .{ .name = "extract", .func = ziglua.wrap(extract) },
     };
@@ -72,7 +72,15 @@ const UnzipUdata = struct {
         return 1;
     }
 
-    fn files(lua: *Lua) i32 {
+    fn list(lua: *Lua) i32 {
+        return list_dir(lua, false);
+    }
+
+    fn dir(lua: *Lua) i32 {
+        return list_dir(lua, true);
+    }
+
+    fn list_dir(lua: *Lua, keyValue: bool) i32 {
         const ud: *UnzipUdata = luax.getUserData(lua, name, UnzipUdata);
         lua.newTable();
         const table = lua.getTop();
@@ -86,9 +94,14 @@ const UnzipUdata = struct {
         while (true) : (index += 1) {
             if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, &zfname, 4096, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
-            create_file_table(lua, zfname, uzfi, ud);
-            lua.rawSetIndex(table, index);
-
+            if (keyValue) {
+                _ = lua.pushString(zfname[0..uzfi.size_filename :0]);
+                create_file_table(lua, zfname, uzfi, ud);
+                lua.setTable(table);
+            } else {
+                create_file_table(lua, zfname, uzfi, ud);
+                lua.rawSetIndex(table, index);
+            }
             if (c.unzGoToNextFile(ud.uzfh) != c.UNZ_OK) {
                 break;
             }
@@ -128,7 +141,7 @@ const UnzipUdata = struct {
         luax.setTableUserData(lua, table, name, ud);
         luax.setTableString(lua, table, "full_path", zfname[0..uzfi.size_filename :0]);
 
-        luax.pushRegistryFunction(lua, zli_zip, "path_to_path_and_name");
+        luax.pushRegistryFunction(lua, zli_unzip, "path_to_path_and_name");
         _ = lua.pushString("/");
         _ = lua.pushString(zfname[0..uzfi.size_filename :0]);
         lua.call(2, 2);

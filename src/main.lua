@@ -1,5 +1,5 @@
 local argparse = require "argparse"
-local zip = require "zip"
+local unzip = require "unzip"
 local fs = require "filesystem"
 
 local config = os.home .. "/.config"
@@ -33,22 +33,22 @@ if arg[1] == "@" then
     --single @ without name fowards the arguments without @ to handler below
     table.remove(arg, 1)
 else
-    local payload = zip.open(arg[0])
+    local payload = unzip.open(arg[0])
     if (payload) then
         --we have a zip attached to the exe
         local script
+        local files = payload:dir()
         if arg[1] and arg[1]:sub(1, 1) == "@" then
             --scriptname given wiht @scriptname
             local name = table.remove(arg, 1):sub(2, -1);
-            if payload.files[name] then
+            if files[name] then
                 script = name
             else
-                name = name .. ".lua"
-                if not payload.files[name] then
+                script = name .. ".lua"
+                if files[script] then
                     print("Error: executable script '" .. name .. "' not found")
                     os.exit(1)
                 end
-                script = name
             end
         else
             --no scriptname given with @ search for main, init or exename lua scripts in payload
@@ -58,8 +58,9 @@ else
                 exe = exe:sub(1, -5)
             end
             exe = exe .. ".lua"
+
             for _, name in ipairs { "main.lua", "init.lua", exe } do
-                if payload.files[name] then
+                if files[name] then
                     script = name
                     break
                 end
@@ -69,7 +70,8 @@ else
                 os.exit(1)
             end
         end
-        assert(load(payload.files[script]:get(), script))()
+        print("loading " .. script)
+        assert(load(payload:read_all(script), script))()
         os.exit(0)
     end
 end
