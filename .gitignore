@@ -5,3 +5,6 @@ zig-out/
 zig/
 zli
 zli.exe
+ziglua.zig
+tst.lua
+
