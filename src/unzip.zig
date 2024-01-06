@@ -117,7 +117,7 @@ const UnzipUdata = struct {
         var uzgi: c.unz_global_info = undefined;
         if (c.unzGetGlobalInfo(ud.uzfh, &uzgi) != c.UNZ_OK) file_info_error(lua, ud);
 
-        luax.setTableInteger(lua, table, "entries", uzgi.number_entry);
+        luax.setTableInteger(lua, table, "entries", @intCast(uzgi.number_entry));
         _ = lua.pushString("comment");
 
         if (uzgi.size_comment == 0) {
@@ -154,9 +154,9 @@ const UnzipUdata = struct {
         luax.setTableBoolean(lua, table, "is_file", !is_directory);
 
         if (!is_directory) {
-            luax.setTableInteger(lua, table, "uncompressed_size", uzfi.uncompressed_size);
+            luax.setTableInteger(lua, table, "uncompressed_size", @intCast(uzfi.uncompressed_size));
             luax.setTableString(lua, table, "uncompressed_size_hr", filesystem.size_human_readable(uzfi.uncompressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
-            luax.setTableInteger(lua, table, "compressed_size", uzfi.compressed_size);
+            luax.setTableInteger(lua, table, "compressed_size", @intCast(uzfi.compressed_size));
             luax.setTableString(lua, table, "compressed_size_hr", filesystem.size_human_readable(uzfi.compressed_size) catch luax.raiseError(lua, "internal error: could not convert size to human readable string"));
 
             const compression_ratio: f64 = @as(f64, @floatFromInt(uzfi.compressed_size)) / @as(f64, @floatFromInt(uzfi.uncompressed_size));
@@ -165,7 +165,7 @@ const UnzipUdata = struct {
             luax.setTableFunction(lua, table, "extract", ziglua.wrap(extract));
         }
 
-        luax.setTableInteger(lua, table, "crc", uzfi.crc);
+        luax.setTableInteger(lua, table, "crc", @intCast(uzfi.crc));
 
         _ = lua.pushString("time");
         pushTime(lua, uzfi);
@@ -286,7 +286,7 @@ const UnzipFile = struct {
 
         const uzf: *UnzipFile = luax.createUserDataTableSetFunctions(lua, name, UnzipFile, &functions);
         uzf.fname = fname;
-        uzf.size = uzfi.uncompressed_size;
+        uzf.size = @intCast(uzfi.uncompressed_size);
         uzf.uzfh = ud.uzfh;
         uzf.pos = 0;
         uzf.fpos = 0;

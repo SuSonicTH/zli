@@ -42,7 +42,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(miniZip(b, target, optimize));
-    exe.linkLibrary(zliLibraries(b, target, optimize));
+
     if (optimize != .Debug) {
         exe.strip = true;
     }
@@ -249,23 +249,5 @@ fn crossline(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.M
     lib.addIncludePath(.{ .path = "src/lib/Crossline/" });
     lib.addCSourceFile(.{ .file = .{ .path = "src/lib/Crossline/crossline.c" }, .flags = flags_c99 });
     lib.linkLibC();
-    return lib;
-}
-
-fn zliLibraries(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
-    const lib = b.addStaticLibrary(.{
-        .name = "zliLibraries",
-        .target = target,
-        .optimize = optimize,
-    });
-    lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "src/" });
-    lib.addIncludePath(.{ .path = "src/luax" });
-    lib.addCSourceFiles(&[_][]const u8{
-        "src/luax/luax_value.c",
-        "src/luax/luax_gcptr.c",
-    }, &[_][]const u8{ "-std=c99", "-DSBUILDER_LUA" });
-    lib.linkLibC();
-
     return lib;
 }
