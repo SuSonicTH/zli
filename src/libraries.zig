@@ -5,6 +5,7 @@ const crossline = @import("crossline.zig");
 const auxiliary = @import("auxiliary.zig");
 const filesystem = @import("filesystem.zig");
 const unzip = @import("unzip.zig");
+const zip = @import("zip.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*ziglua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lpeg(state: ?*ziglua.LuaState) callconv(.C) c_int;
@@ -51,6 +52,10 @@ const preload = [_]ziglua.FnReg{
     .{
         .name = "unzip",
         .func = unzip.luaopen_unzip,
+    },
+    .{
+        .name = "zip",
+        .func = zip.luaopen_zip,
     },
 };
 

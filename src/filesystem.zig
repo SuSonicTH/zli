@@ -270,14 +270,18 @@ fn stat(lua: *Lua) i32 {
 }
 
 pub fn get_path(lua: *Lua) [:0]const u8 {
-    const luaType = lua.typeOf(1);
+    return get_path_index(lua, 1);
+}
+
+pub fn get_path_index(lua: *Lua, index: i32) [:0]const u8 {
+    const luaType = lua.typeOf(index);
     if (luaType == .table) {
-        return luax.getTableString(lua, "full_path", 1);
+        return luax.getTableString(lua, "full_path", index);
     } else if (luaType == .string) {
-        const path = lua.toString(1) catch luax.raiseError(lua, "get_path: internal error");
+        const path = lua.toString(index) catch luax.raiseError(lua, "get_path: internal error");
         return std.mem.sliceTo(path, 0);
     }
-    lua.argError(1, "expected string representing a path or a path object");
+    lua.argError(index, "expected string representing a path or a path object");
 }
 
 fn is_directory(lua: *Lua) i32 {
