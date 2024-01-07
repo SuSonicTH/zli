@@ -88,17 +88,19 @@ const luastrip_entry = struct {
 };
 
 const luastrip_list = [_]luastrip_entry{
-    .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
-    .{ .input = "src/lib/luaunit/luaunit.lua", .output = "src/stripped/luaunit.lua" },
-    .{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
+    .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
+    .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
+    .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },
+    .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
+    .{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
+    .{ .input = "src/lib/luaunit/luaunit.lua", .output = "src/stripped/luaunit.lua" },
+    .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
     .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
+    .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
+    .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
-    .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
-    .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
-    .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
-    .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
 };
 

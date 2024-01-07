@@ -7,7 +7,6 @@ local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
 local log = require "log"
---local zip = require "zip"
 local stream = require "stream"
 local fs = require("filesystem")
 

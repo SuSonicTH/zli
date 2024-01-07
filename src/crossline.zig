@@ -96,8 +96,7 @@ pub export fn luaopen_crossline(state: ?*ziglua.LuaState) callconv(.C) c_int {
     luax.createFunctionSubTable(&lua, &crossline_history, "history");
     luax.createFunctionSubTable(&lua, &crossline_paging, "paging");
 
-    const exteded = @embedFile("crossline.lua");
-    luax.registerExtended(&lua, exteded, "crossline", "zli_crossline");
+    luax.registerExtended(&lua, @embedFile("stripped/crossline.lua"), "crossline", "zli_crossline");
     return 1;
 }
 

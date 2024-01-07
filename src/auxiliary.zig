@@ -38,6 +38,7 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "os", &os_functions);
     BuilderUdata.register(lua);
     JoinerUdata.register(lua);
+
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 0, 0, null);
 }
