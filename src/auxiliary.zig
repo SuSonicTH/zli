@@ -289,7 +289,7 @@ const BuilderUdata = struct {
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
         const top = lua.getTop();
         var index: i32 = 2;
-        while (index < top) : (index += 1) {
+        while (index <= top) : (index += 1) {
             switch (lua.typeOf(index)) {
                 .string, .number => {
                     const string = lua.toString(index) catch unreachable;
@@ -382,7 +382,7 @@ const JoinerUdata = struct {
         const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
         const top = lua.getTop();
         var index: i32 = 2;
-        while (index < top) : (index += 1) {
+        while (index <= top) : (index += 1) {
             switch (lua.typeOf(index)) {
                 .string, .number => {
                     const string = lua.toString(index) catch unreachable;

@@ -60,7 +60,6 @@ local function io_append_file(filename, data)
 end
 
 local function table_copy(orig, copies)
-    arg_check_type("table.copy", 1, orig, 'table')
     copies = copies or {}
     if type(orig) == 'table' then
         if copies[orig] then
@@ -69,9 +68,9 @@ local function table_copy(orig, copies)
             local copy = {}
             copies[orig] = copy
             for orig_key, orig_value in next, orig, nil do
-                copy[deepcopy(orig_key, copies)] = deepcopy(orig_value, copies)
+                copy[table_copy(orig_key, copies)] = table_copy(orig_value, copies)
             end
-            setmetatable(copy, deepcopy(getmetatable(orig), copies))
+            setmetatable(copy, table_copy(getmetatable(orig), copies))
             return copy
         end
     else
