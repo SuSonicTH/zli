@@ -40,8 +40,8 @@ void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
 void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
     struct stat s;
 
-    if (stat(name, &s) != 0) {
-        return 0;
+    if (stat(filename, &s) != 0) {
+        return;
     }
 
     time_t tm_t = s.st_mtime;
