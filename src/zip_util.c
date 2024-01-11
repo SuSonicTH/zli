@@ -39,9 +39,13 @@ void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
 
 void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
     struct stat s;
-    struct tm *filedate;
+
+    if (stat(name, &s) != 0) {
+        return 0;
+    }
+
     time_t tm_t = s.st_mtime;
-    filedate = localtime(&tm_t);
+    struct tm *filedate = localtime(&tm_t);
 
     zfi->tmz_date.tm_sec = filedate->tm_sec;
     zfi->tmz_date.tm_min = filedate->tm_min;
