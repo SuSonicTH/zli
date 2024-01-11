@@ -213,6 +213,7 @@ fn miniZip(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mod
         "src/lib/zlib/contrib/minizip/zip.c",
         "src/lib/zlib/contrib/minizip/unzip.c",
         "src/lib/zlib/contrib/minizip/ioapi.c",
+        "src/zip_util.c",
     }, flags_c99);
     switch (target.getOsTag()) {
         .windows => {
