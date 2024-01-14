@@ -33,7 +33,7 @@ pub export fn luaopen_unzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
 }
 
 const UnzipUdata = struct {
-    uzfh: *anyopaque = undefined,
+    uzfh: ?*anyopaque = undefined,
     path: [:0]const u8,
     const name = "_UnzipUdata";
     const functions = [_]ziglua.FnReg{
@@ -41,6 +41,7 @@ const UnzipUdata = struct {
         .{ .name = "dir", .func = ziglua.wrap(dir) },
         .{ .name = "info", .func = ziglua.wrap(info) },
         .{ .name = "extract", .func = ziglua.wrap(extract) },
+        .{ .name = "close", .func = ziglua.wrap(close) },
     };
 
     const file_functions = [_]ziglua.FnReg{
@@ -56,7 +57,9 @@ const UnzipUdata = struct {
 
     fn garbageCollect(lua: *Lua) i32 {
         const ud: *UnzipUdata = luax.getGcUserData(lua, UnzipUdata);
-        _ = c.unzClose(ud.uzfh);
+        if (ud.uzfh != null) {
+            _ = c.unzClose(ud.uzfh);
+        }
         return 0;
     }
 
@@ -172,7 +175,14 @@ const UnzipUdata = struct {
         lua.setTable(table);
 
         var timestamp: [30:0]u8 = undefined;
-        luax.setTableString(lua, table, "timestamp", std.fmt.bufPrintZ(&timestamp, "{}/{d:0>2}/{d:0>2} {d:0>2}:{d:0>2}:{d:0>2}", .{ @as(u32, @intCast(uzfi.tmu_date.tm_year)), @as(u32, @intCast(uzfi.tmu_date.tm_mon)), @as(u32, @intCast(uzfi.tmu_date.tm_mday)), @as(u32, @intCast(uzfi.tmu_date.tm_hour)), @as(u32, @intCast(uzfi.tmu_date.tm_min)), @as(u32, @intCast(uzfi.tmu_date.tm_sec)) }) catch luax.raiseError(lua, "internal error: could not format timestamp"));
+        luax.setTableString(lua, table, "timestamp", std.fmt.bufPrintZ(&timestamp, "{}/{d:0>2}/{d:0>2} {d:0>2}:{d:0>2}:{d:0>2}", .{
+            @as(u32, @intCast(uzfi.tmu_date.tm_year)),
+            @as(u32, @intCast(uzfi.tmu_date.tm_mon + 1)),
+            @as(u32, @intCast(uzfi.tmu_date.tm_mday)),
+            @as(u32, @intCast(uzfi.tmu_date.tm_hour)),
+            @as(u32, @intCast(uzfi.tmu_date.tm_min)),
+            @as(u32, @intCast(uzfi.tmu_date.tm_sec)),
+        }) catch luax.raiseError(lua, "internal error: could not format timestamp"));
     }
 
     fn pushTime(lua: *Lua, uzfi: c.unz_file_info) void {
@@ -236,6 +246,15 @@ const UnzipUdata = struct {
         lua.pushBoolean(true);
         return 1;
     }
+
+    fn close(lua: *Lua) i32 {
+        const ud: *UnzipUdata = luax.getUserData(lua, UnzipUdata.name, UnzipUdata);
+        if (ud.uzfh != null) {
+            _ = c.unzClose(ud.uzfh);
+        }
+        ud.uzfh = null;
+        return 0;
+    }
 };
 
 fn file_info_error(lua: *Lua, ud: *UnzipUdata) noreturn {
@@ -248,7 +267,7 @@ fn getFileName(lua: *Lua) [:0]const u8 {
 
 const UnzipFile = struct {
     fname: [:0]const u8,
-    uzfh: *anyopaque = undefined,
+    uzfh: ?*anyopaque = undefined,
     buffer: [4096]u8 = undefined,
     size: u32 = undefined,
     fpos: u32 = undefined,
