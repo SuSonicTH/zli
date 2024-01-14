@@ -102,6 +102,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
+    .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
 };
 
 fn copyFile(input_path: [:0]const u8, output_path: [:0]const u8) !void {

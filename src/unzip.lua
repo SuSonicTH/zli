@@ -1,5 +1,5 @@
 local fs = require("filesystem")
-local zip
+local unzip
 
 local function extract(zipPath, destination)
     zipPath = fs.get_path(zipPath)
@@ -15,9 +15,9 @@ local function extract(zipPath, destination)
     end
 end
 
-return function(lzip)
-    zip = lzip
-    zip.extract = extract
+return function(lunzip)
+    unzip = lunzip
+    unzip.extract = extract
 
     return {
         path_to_path_and_name = fs.path_to_path_and_name

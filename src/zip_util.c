@@ -13,7 +13,6 @@ void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
     SYSTEMTIME lt;
 
     if ((ffh = FindFirstFile(filename, &ffd)) == INVALID_HANDLE_VALUE) {
-        FindClose(ffh);
         return;
     }
     FindClose(ffh);

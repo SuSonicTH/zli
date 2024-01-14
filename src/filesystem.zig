@@ -68,6 +68,7 @@ const filesystem_path_lua = [_][:0]const u8{
     "stream",
     "stream_tree",
     "tree",
+    "to_relative",
 };
 
 const separator = switch (builtin.os.tag) {

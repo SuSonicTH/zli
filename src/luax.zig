@@ -239,3 +239,30 @@ pub fn setTableValue(lua: *Lua, index: i32, key: [:0]const u8, value: i32, remov
         lua.remove(value_index);
     }
 }
+
+pub fn setTableRegistryFunction(lua: *Lua, index: i32, key: [:0]const u8, module: [:0]const u8, function: [:0]const u8) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    _ = lua.pushString(key);
+    pushRegistryFunction(lua, module, function);
+    lua.setTable(table_index);
+}
+
+pub fn getArgStringOrError(lua: *Lua, index: i32, message: [:0]const u8) [:0]const u8 {
+    lua.argCheck(lua.typeOf(index) == .string, index, message);
+    return lua.toString(index);
+}
+
+pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) Lua.Integer {
+    lua.argCheck(lua.typeOf(index) == .number, index, message);
+    return lua.toInteger(index);
+}
+
+pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) Lua.Number {
+    lua.argCheck(lua.typeOf(index) == .number, index, message);
+    return lua.toNumber(index);
+}
+
+pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
+    lua.argCheck(lua.typeOf(index) == .boolean, index, message);
+    return lua.toBoolean(index);
+}

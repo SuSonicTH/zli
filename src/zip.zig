@@ -22,15 +22,15 @@ const zip = [_]ziglua.FnReg{
     .{ .name = "create_after", .func = ziglua.wrap(ZipUdata.create_after) },
 };
 
-//const zli_unzip = "zli_unzip";
+const zli_zip = "zli_zip";
 
 pub export fn luaopen_zip(state: ?*ziglua.LuaState) callconv(.C) c_int {
     var lua: Lua = .{ .state = state.? };
     ZipUdata.register(&lua);
     lua.newLib(&zip);
 
-    //    const exteded = @embedFile("stripped/unzip.lua");
-    //    luax.registerExtended(&lua, exteded, "zip", zli_unzip);
+    const exteded = @embedFile("stripped/zip.lua");
+    luax.registerExtended(&lua, exteded, "zip", zli_zip);
     return 1;
 }
 
@@ -55,7 +55,6 @@ const ZipUdata = struct {
 
     fn garbageCollect(lua: *Lua) i32 {
         const ud: *ZipUdata = luax.getGcUserData(lua, ZipUdata);
-        std.log.debug("Zip GC {any}", .{ud.zfh});
         if (ud.zfh != null) {
             _ = c.zipCloseFileInZip(ud.zfh);
             _ = c.zipClose(ud.zfh, null);
@@ -64,32 +63,23 @@ const ZipUdata = struct {
     }
 
     fn create(lua: *Lua) i32 {
-        const path = filesystem.get_path(lua);
-        const zfh = c.zipOpen(path.ptr, c.APPEND_STATUS_CREATE) orelse return luax.returnFormattedError(lua, "could not create zip file '%s'", .{path.ptr});
-
-        const ud: *ZipUdata = luax.createUserDataTableSetFunctions(lua, name, ZipUdata, &functions);
-
-        ud.path = path;
-        ud.zfh = zfh;
-        return 1;
+        return create_or_open_zip(lua, c.APPEND_STATUS_CREATE);
     }
 
     fn open_zip(lua: *Lua) i32 {
-        const path = filesystem.get_path(lua);
-        const zfh = c.zipOpen(path.ptr, c.APPEND_STATUS_ADDINZIP) orelse return luax.returnFormattedError(lua, "could not open zip file '%s'", .{path.ptr});
-
-        const ud: *ZipUdata = luax.createUserDataTableSetFunctions(lua, name, ZipUdata, &functions);
-
-        ud.path = path;
-        ud.zfh = zfh;
-        return 1;
+        return create_or_open_zip(lua, c.APPEND_STATUS_ADDINZIP);
     }
 
     fn create_after(lua: *Lua) i32 {
+        return create_or_open_zip(lua, c.APPEND_STATUS_CREATEAFTER);
+    }
+
+    fn create_or_open_zip(lua: *Lua, mode: c_int) i32 {
         const path = filesystem.get_path(lua);
-        const zfh = c.zipOpen(path.ptr, c.APPEND_STATUS_CREATEAFTER) orelse return luax.returnFormattedError(lua, "could not open zip file '%s'", .{path.ptr});
+        const zfh = c.zipOpen(path.ptr, mode) orelse return luax.returnFormattedError(lua, "could not create zip file '%s'", .{path.ptr});
 
         const ud: *ZipUdata = luax.createUserDataTableSetFunctions(lua, name, ZipUdata, &functions);
+        luax.setTableRegistryFunction(lua, -1, "add_directory", zli_zip, "add_directory");
 
         ud.path = path;
         ud.zfh = zfh;
@@ -137,8 +127,10 @@ const ZipUdata = struct {
     fn create_directory(lua: *Lua) i32 {
         const ud: *ZipUdata = luax.getUserData(lua, name, ZipUdata);
         const path = lua.toString(2) catch unreachable;
-
         _ = c.zipCloseFileInZip(ud.zfh);
+
+        var zfi: c.zip_fileinfo = undefined;
+        c.filetime_to_ziptime(path, &zfi);
 
         if (c.zipOpenNewFileInZip(ud.zfh, path, null, null, 0, null, 0, path, c.Z_DEFLATED, 6) != c.ZIP_OK) {
             luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{path});

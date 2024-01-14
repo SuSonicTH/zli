@@ -2,18 +2,24 @@
 
 # refactorings
 * rewrite lua_zip.c in zig (and get rid of luax/)
+* create a test directory with all tests including binaries for testing for .gz, ,zip,...
+* split tests into libraries
+* increase test coverage for all libraries (where it makes sense)
 
 # fixes
 
 # possible improvements of compilation
 * automatic UPX download and build option
-* add goals for release build (for all platforms) in build.zig
+* add goals for release build (for all platforms, and types) in build.zig (get rid of build.sh)
+* change/check getzli.sh
 
 # additional functionality
-    * in filesystem add create_tree and size_tree to create multiple sub directories and get the size of whole directory
+    * in filesystem add size_tree to get the size of whole directory
     * io.open io.read,... can read payload files
     * strings with variable/expression substitution simmilar to groovy g-strings
-
+    * create a set object simmilar to java hashset
+    * create a treeset simmilar to java and/or a sorted set (based on auxiliarys table.insert_sorted)
+  
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket

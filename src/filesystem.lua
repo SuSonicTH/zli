@@ -80,6 +80,34 @@ local function new_path(...)
     return fs.create_path(path, name)
 end
 
+local function ensure_path(path)
+    if (type(path) == 'table') then
+        if path.full_path then
+            return path
+        else
+            error("expecting table with 'full_path' key", 2)
+        end
+    end
+    return new_path(path)
+end
+
+local function full_path_to_relative(path, base, include_top)
+    path = ensure_path(path)
+    base = ensure_path(base)
+    if (include_top) then
+        base = base:parent()
+    end
+
+    local path_string = get_path(path):gsub("\\", "/")
+    local base_string = get_path(base):gsub("\\", "/") .. '/'
+
+    local relative = path_string:gsub(base_string, ""):gsub("\\", "/")
+    if (path:is_directory()) then
+        relative = relative .. "/"
+    end
+    return relative
+end
+
 local function stream_dir(path)
     if stream == nil then
         stream = require "stream"
@@ -251,6 +279,10 @@ local function chown(path, owner)
     return false
 end
 
+local function is_empty(path)
+    return #ensure_path(path):list() == 0
+end
+
 return function(filesystem)
     fs = filesystem
     fs.split_path = split_path
@@ -271,8 +303,11 @@ return function(filesystem)
     fs.chmod = chmod
     fs.chown = chown
     fs.get_path = get_path
+    fs.ensure_path = ensure_path
     fs.create_tree = create_tree
     fs.path_to_path_and_name = path_to_path_and_name
+    fs.to_relative = full_path_to_relative
+    fs.is_empty = is_empty
 
     return {
         read_all    = read_all,
@@ -287,5 +322,7 @@ return function(filesystem)
         stream      = stream_dir,
         stream_tree = stream_tree,
         tree        = tree,
+        to_relative = full_path_to_relative,
+        is_empty    = is_empty,
     }
 end
