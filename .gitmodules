@@ -22,3 +22,6 @@
 [submodule "src/lib/ftcsv"]
 	path = src/lib/ftcsv
 	url = https://github.com/FourierTransformer/ftcsv.git
+[submodule "src/lib/zlib"]
+	path = src/lib/zlib
+	url = https://github.com/madler/zlib.git
