@@ -20,6 +20,6 @@ Well known lua libraries included in zli
 there are some custom ZLI bindings for 3rd party libraries
 
 | library   | link                                  | licence | description                                                                                                        |
-| --------- | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
-| Crossline | https://github.com/jcwangxp/Crossline | MIT     | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
-| zlib      | https://zlib.net/                     | MIT     | The minizip library included in zlib for zip file handling                                                         |
+| --------- | ------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| Crossline | https://github.com/jcwangxp/Crossline             | MIT     | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
+| zlib      | https://zlib.net/ https://github.com/madler/zlib  | MIT     | The minizip library included in zlib for zip file handling                                                         |
