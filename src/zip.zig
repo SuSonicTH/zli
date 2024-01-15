@@ -130,9 +130,9 @@ const ZipUdata = struct {
         _ = c.zipCloseFileInZip(ud.zfh);
 
         var zfi: c.zip_fileinfo = undefined;
-        c.filetime_to_ziptime(path, &zfi);
+        c.systemtime_to_ziptime(&zfi);
 
-        if (c.zipOpenNewFileInZip(ud.zfh, path, null, null, 0, null, 0, path, c.Z_DEFLATED, 6) != c.ZIP_OK) {
+        if (c.zipOpenNewFileInZip(ud.zfh, path, &zfi, null, 0, null, 0, path, c.Z_DEFLATED, 6) != c.ZIP_OK) {
             luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{path});
         }
         _ = c.zipCloseFileInZip(ud.zfh);
@@ -152,7 +152,10 @@ const ZipUdata = struct {
 
         _ = c.zipCloseFileInZip(ud.zfh);
 
-        if (c.zipOpenNewFileInZip(ud.zfh, path, null, null, 0, null, 0, path, c.Z_DEFLATED, compression) != c.ZIP_OK) {
+        var zfi: c.zip_fileinfo = undefined;
+        c.systemtime_to_ziptime(&zfi);
+
+        if (c.zipOpenNewFileInZip(ud.zfh, path, &zfi, null, 0, null, 0, path, c.Z_DEFLATED, compression) != c.ZIP_OK) {
             luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{path});
         }
 

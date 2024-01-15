@@ -1,5 +1,7 @@
 #include "zip_util.h"
 
+#include <time.h>
+
 #ifdef _WIN32
 
 #define VC_EXTRALEAN
@@ -34,7 +36,6 @@ void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
 #else  // not _WIN32
 
 #include <sys/stat.h>
-#include <time.h>
 
 void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
     struct stat s;
@@ -57,3 +58,20 @@ void filetime_to_ziptime(const char *filename, zip_fileinfo *zfi) {
     zfi->internal_fa = 0;
 }
 #endif
+
+void systemtime_to_ziptime(zip_fileinfo *zfi) {
+    time_t tm_t = 0;
+    struct tm *systemTime;
+    time(&tm_t);
+    systemTime = localtime(&tm_t);
+
+    zfi->tmz_date.tm_sec = systemTime->tm_sec;
+    zfi->tmz_date.tm_min = systemTime->tm_min;
+    zfi->tmz_date.tm_hour = systemTime->tm_hour;
+    zfi->tmz_date.tm_mday = systemTime->tm_mday;
+    zfi->tmz_date.tm_mon = systemTime->tm_mon;
+    zfi->tmz_date.tm_year = systemTime->tm_year;
+    zfi->dosDate = 0;
+    zfi->external_fa = 0;
+    zfi->internal_fa = 0;
+}
