@@ -170,7 +170,6 @@ const ZipUdata = struct {
 
         while (argument <= top) : (argument += 1) {
             const data = lua.toBytes(argument) catch lua.argError(argument, "expecting string or number");
-            std.log.debug("writing arg {d} '{?s}'", .{ argument, data });
             _ = c.zipWriteInFileInZip(ud.zfh, data.ptr, @intCast(data.len));
         }
 
