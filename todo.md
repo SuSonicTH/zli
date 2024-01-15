@@ -1,7 +1,9 @@
 # ZLI todo
 
+# checks
+* benchmark if the fast build is really (much) faster then the small one, if not remove fast builds
+
 # refactorings
-* rewrite lua_zip.c in zig (and get rid of luax/)
 * create a test directory with all tests including binaries for testing for .gz, ,zip,...
 * split tests into libraries
 * increase test coverage for all libraries (where it makes sense)
@@ -17,11 +19,11 @@
 * in filesystem add size_tree to get the size of whole directory
 * io.open io.read,... can read payload files
 * strings with variable/expression substitution simmilar to groovy g-strings
-* create a set object simmilar to java hashset
-* create a treeset simmilar to java and/or a sorted set (based on auxiliarys table.insert_sorted)
-* maybe a tree and a linked list impl.
+* create collection library
+  * create a array list
+  * create a treeset simmilar to java and/or a sorted set (based on auxiliarys table.insert_sorted)
+  * maybe a tree and a linked list impl.
 * add memoize (see lua gems below)
-* add table.create that uses a size hint for list and hash part (bases on lua_createtable)
   
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?

@@ -81,7 +81,7 @@ local function newLogger(name)
     end
 
     function logger:setLevel(level)
-        logger._level = level
+        self._level = level
     end
 
     function logger:setAppender(appender)

@@ -27,6 +27,7 @@ stream = require "stream"
 zip = require "zip"
 zlib = require "zlib"
 cl = require "crossline"
+collection = require "collection"
 
 ]==])
 end

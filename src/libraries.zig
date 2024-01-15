@@ -65,15 +65,16 @@ const luascript = struct {
 };
 
 const luascripts = [_]luascript{
+    .{ .name = "argparse", .source = @embedFile("stripped/argparse.lua") },
+    .{ .name = "collection", .source = @embedFile("stripped/collection.lua") },
+    .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
+    .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
     .{ .name = "luaunit", .source = @embedFile("stripped/luaunit.lua") },
     .{ .name = "re", .source = @embedFile("stripped/re.lua") },
-    .{ .name = "argparse", .source = @embedFile("stripped/argparse.lua") },
-    .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
     .{ .name = "repl", .source = @embedFile("stripped/repl.lua") },
+    .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
     .{ .name = "sqlite_cli", .source = @embedFile("stripped/sqlite_cli.lua") },
     .{ .name = "stream", .source = @embedFile("stripped/stream.lua") },
-    .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
-    .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
 };
 
 pub fn openlibs(lua: *Lua) i32 {

@@ -89,6 +89,7 @@ const luastrip_entry = struct {
 
 const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
+    .{ .input = "src/collection.lua", .output = "src/stripped/collection.lua" },
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },

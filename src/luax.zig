@@ -252,17 +252,17 @@ pub fn getArgStringOrError(lua: *Lua, index: i32, message: [:0]const u8) [:0]con
     return lua.toString(index);
 }
 
-pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) Lua.Integer {
+pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) ziglua.Integer {
     lua.argCheck(lua.typeOf(index) == .number, index, message);
-    return lua.toInteger(index);
+    return lua.toInteger(index) catch unreachable;
 }
 
-pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) Lua.Number {
+pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) ziglua.Number {
     lua.argCheck(lua.typeOf(index) == .number, index, message);
-    return lua.toNumber(index);
+    return lua.toNumber(index) catch unreachable;
 }
 
 pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
     lua.argCheck(lua.typeOf(index) == .boolean, index, message);
-    return lua.toBoolean(index);
+    return lua.toBoolean(index) catch unreachable;
 }

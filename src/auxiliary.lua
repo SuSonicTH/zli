@@ -6,7 +6,7 @@ end
 
 function arg_check(func, narg, test, message)
     if ~test then
-        arg_error(func, narg, message, 2)
+        arg_error(func, narg, message, 3)
     end
 end
 
@@ -17,9 +17,9 @@ function arg_check_type(func, narg, arg, ...)
         if actual == expected then return arg end
     end
     if #types == 1 then
-        arg_error(func, narg, types[1] .. " expected, got " .. type(arg), 2)
+        arg_error(func, narg, types[1] .. " expected, got " .. type(arg), 3)
     else
-        arg_error(func, narg, "expected one of [" .. table.concat(types, ',') .. "], got " .. type(arg), 2)
+        arg_error(func, narg, "expected one of [" .. table.concat(types, ',') .. "], got " .. type(arg), 3)
     end
 end
 

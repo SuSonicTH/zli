@@ -26,6 +26,7 @@ const table_functions = [_]ziglua.FnReg{
     .{ .name = "concats", .func = ziglua.wrap(concats) },
     .{ .name = "spairs", .func = ziglua.wrap(spairs) },
     .{ .name = "comparator", .func = ziglua.wrap(comparator) },
+    .{ .name = "create", .func = ziglua.wrap(table_create) },
 };
 
 const os_functions = [_]ziglua.FnReg{
@@ -254,6 +255,13 @@ fn spairs_iter(lua: *Lua) i32 {
     lua.pushInteger(i + 1);
     lua.replace(Lua.upvalueIndex(3));
     return 2;
+}
+
+fn table_create(lua: *Lua) i32 {
+    const num_arr: i32 = @intCast(luax.getArgIntegerOrError(lua, 1, "expecting number of array items"));
+    const num_rec: i32 = @intCast(luax.getArgIntegerOrError(lua, 1, "expecting number of record items"));
+    lua.createTable(num_arr, num_rec);
+    return 1;
 }
 
 const BuilderUdata = struct {
