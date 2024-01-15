@@ -1,3 +1,5 @@
+local stream = require "stream"
+
 local function iterate_collection(collection, func)
     if collection._is_collection and collection._type == 'key' then
         for item, _ in pairs(collection._items) do
@@ -113,10 +115,15 @@ local function new_set(init)
     end
 
     function set:next()
-        return function(state)
-            state.key = next(state.items, state.key)
-            return state.key
-        end, { items = self._items }
+        local key
+        return function()
+            key = next(self._items, key)
+            return key
+        end
+    end
+
+    function set:stream()
+        return stream(self:next())
     end
 
     function set:union(...)
