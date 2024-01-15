@@ -2,17 +2,27 @@
 
 # refactorings
 * rewrite lua_zip.c in zig (and get rid of luax/)
+* create a test directory with all tests including binaries for testing for .gz, ,zip,...
+* split tests into libraries
+* increase test coverage for all libraries (where it makes sense)
 
 # fixes
 
 # possible improvements of compilation
 * automatic UPX download and build option
-* add goals for release build (for all platforms) in build.zig
+* add goals for release build (for all platforms, and types) in build.zig (get rid of build.sh)
+* change/check getzli.sh
 
 # additional functionality
-    * io.open io.read,... can read payload files
-    * strings with variable/expression substitution simmilar to groovy g-strings
-
+* in filesystem add size_tree to get the size of whole directory
+* io.open io.read,... can read payload files
+* strings with variable/expression substitution simmilar to groovy g-strings
+* create a set object simmilar to java hashset
+* create a treeset simmilar to java and/or a sorted set (based on auxiliarys table.insert_sorted)
+* maybe a tree and a linked list impl.
+* add memoize (see lua gems below)
+* add table.create that uses a size hint for list and hash part (bases on lua_createtable)
+  
 # additional libraries brainstorming
 * https://github.com/daurnimator/lpeg_patterns ?
 * Luasocket https://github.com/lunarmodules/luasocket
@@ -32,3 +42,21 @@
     * https://github.com/nothings/single_file_libs
     * https://github.com/nothings/stb
     * https://en.cppreference.com/w/c/links/libs
+
+# lua gems
+
+## memoize 
+maybe should be improved to also memorize nil and multiple return values
+
+function memoize (f)
+    local mem = {} -- memoizing table
+    setmetatable(mem, {__mode = "kv"}) -- make it weak
+    return function (x) -- new version of ’f’, with memoizing
+        local r = mem[x]
+        if r == nil then -- no previous result?
+            r = f(x) -- calls original function
+            mem[x] = r -- store result for reuse
+        end
+        return r
+    end
+end

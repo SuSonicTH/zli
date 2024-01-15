@@ -38,6 +38,7 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "os", &os_functions);
     BuilderUdata.register(lua);
     JoinerUdata.register(lua);
+
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
     lua.callCont(0, 0, 0, null);
 }
@@ -66,8 +67,8 @@ fn os_get_name(lua: *Lua) i32 {
 }
 
 fn split(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
-    const delim = luax.slice(lua.optString(2, ","));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
+    const delim = std.mem.sliceTo(lua.optString(2, ","), 0);
 
     var count: i32 = 0;
     var it = std.mem.splitSequence(u8, str, delim);
@@ -79,8 +80,8 @@ fn split(lua: *Lua) i32 {
 }
 
 fn to_table(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
-    const delim = luax.slice(lua.optString(2, ","));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
+    const delim = std.mem.sliceTo(lua.optString(2, ","), 0);
 
     lua.newTable();
     const table = lua.getTop();
@@ -98,20 +99,20 @@ fn to_table(lua: *Lua) i32 {
 const char_to_strip = " \t\r\n\x00";
 
 fn trim(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
     const ltrimmed = std.mem.trimLeft(u8, str, char_to_strip);
     _ = lua.pushBytes(std.mem.trimRight(u8, ltrimmed, char_to_strip));
     return 1;
 }
 
 fn ltrim_lib(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
     _ = lua.pushBytes(std.mem.trimLeft(u8, str, char_to_strip));
     return 1;
 }
 
 fn rtrim_lib(lua: *Lua) i32 {
-    const str = luax.slice(lua.checkString(1));
+    const str = std.mem.sliceTo(lua.checkString(1), 0);
     _ = lua.pushBytes(std.mem.trimRight(u8, str, char_to_strip));
     return 1;
 }
@@ -289,7 +290,7 @@ const BuilderUdata = struct {
         const ud: *BuilderUdata = luax.getUserData(lua, name, BuilderUdata);
         const top = lua.getTop();
         var index: i32 = 2;
-        while (index < top) : (index += 1) {
+        while (index <= top) : (index += 1) {
             switch (lua.typeOf(index)) {
                 .string, .number => {
                     const string = lua.toString(index) catch unreachable;
@@ -382,7 +383,7 @@ const JoinerUdata = struct {
         const ud: *JoinerUdata = luax.getUserData(lua, name, JoinerUdata);
         const top = lua.getTop();
         var index: i32 = 2;
-        while (index < top) : (index += 1) {
+        while (index <= top) : (index += 1) {
             switch (lua.typeOf(index)) {
                 .string, .number => {
                     const string = lua.toString(index) catch unreachable;
@@ -437,5 +438,5 @@ const JoinerUdata = struct {
 };
 
 fn memoryError(lua: *Lua) noreturn {
-    luax.raiseError(lua, "could not allocate memory");
+    luax.raiseError(lua, "internal error: could not allocate memory");
 }

@@ -7,7 +7,6 @@ local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
 local log = require "log"
-local zip = require "zip"
 local stream = require "stream"
 local fs = require("filesystem")
 
@@ -260,6 +259,7 @@ function TestLibraries:test_string_joiner()
     lu.assertEquals(joiner:tostring(), "[1,true,23.56,false]")
 end
 
+--[[re-add after zip impl
 function TestLibraries:test_zip()
     local testfile = "test.zip"
     local inputfile = "README.md"
@@ -276,6 +276,7 @@ function TestLibraries:test_zip()
 
     os.remove(testfile)
 end
+]]
 
 TestStreamLib = {}
 

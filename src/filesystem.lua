@@ -24,43 +24,88 @@ local function split_path(path)
     return ret
 end
 
-local function new_path(path, file)
-    if path == "" or path == '.' or path == './' or path == '.\\' then
-        path = fs.cwd();
-    end
-    if file == nil then
-        local split = split_path(path)
-        file = split[#split]
-        split[#split] = nil
-        path = concat_path(split)
-    end
-    return fs.create_path(path, file)
+local function get_path(path)
+    return type(path) == "table" and path.full_path or path;
 end
 
-local KB = 1024
-local MB = KB * 1024
-local GB = MB * 1024
-local TB = GB * 1024
+local function path_to_path_and_name(separator, ...)
+    separator = separator == nil and fs.separator or separator
 
-local function size_hr(size)
-    local unit = "B"
-    local size_hr = size
-
-    if size >= TB then
-        unit = "TB"
-        size_hr = size / TB
-    elseif size >= GB then
-        unit = "GB"
-        size_hr = size / GB
-    elseif size >= MB then
-        unit = "MB"
-        size_hr = size / MB
-    elseif size >= KB then
-        unit = "KB"
-        size_hr = size / KB
+    local split = {}
+    for _, arg in ipairs({ ... }) do
+        for _, itm in ipairs(split_path(get_path(arg))) do
+            split[#split + 1] = itm
+        end
     end
-    size_hr = (size_hr .. ""):gsub("(%d+%.%d?).*", "%1")
-    return size_hr .. " " .. unit
+
+    if split[1] == "." then
+        table.remove(split, 1)
+        for i, item in ipairs(split_path(fs.cwd())) do
+            table.insert(split, i, item)
+        end
+    end
+
+    if split[1] == ".." then
+        for i, item in ipairs(split_path(fs.cwd())) do
+            table.insert(split, i, item)
+        end
+    end
+
+    --remove /./
+    table.remove_if(split, function(item) return item == '.' end)
+
+    --remove /../
+    local remove = {}
+    for i, item in ipairs(split) do
+        if item == '..' then
+            remove[#remove + 1] = i - 1
+            remove[#remove + 1] = i
+        end
+    end
+    for i, index in ipairs(remove) do
+        if index - i + 1 < 1 then error("illegal path, to many parent references i.e.: ../../") end
+        table.remove(split, index - i + 1)
+    end
+    if (split[#split] == "") then
+        split[#split] = nil
+    end
+
+    local name = split[#split]
+    split[#split] = nil
+    return table.concat(split, separator), name
+end
+
+local function new_path(...)
+    local path, name = path_to_path_and_name(nil, ...)
+    return fs.create_path(path, name)
+end
+
+local function ensure_path(path)
+    if (type(path) == 'table') then
+        if path.full_path then
+            return path
+        else
+            error("expecting table with 'full_path' key", 2)
+        end
+    end
+    return new_path(path)
+end
+
+local function full_path_to_relative(path, base, include_top)
+    path = ensure_path(path)
+    base = ensure_path(base)
+    if (include_top) then
+        base = base:parent()
+    end
+
+    local path_string = get_path(path):gsub("\\", "/")
+    local base_string = get_path(base):gsub("\\", "/") .. '/'
+
+    local relative = path_string:gsub(base_string, ""):gsub("\\", "/")
+    if (path:is_directory()) then
+        relative = relative .. "/"
+    end
+    return relative
 end
 
 local function stream_dir(path)
@@ -68,10 +113,6 @@ local function stream_dir(path)
         stream = require "stream"
     end
     return stream(fs.list(path))
-end
-
-local function get_path(path)
-    return type(path) == "table" and path.full_path or path;
 end
 
 local function read_all(path)
@@ -206,6 +247,18 @@ local function stream_tree(path, dir_first)
     return stream(tree(path, dir_first))
 end
 
+local function create_tree_sub(path)
+    if (not path:exists()) then
+        create_tree_sub(path:parent())
+        path:create_directory()
+    end
+end
+
+local function create_tree(path)
+    path = type(path) == 'string' and new_path(path) or path
+    create_tree_sub(path)
+end
+
 local function chmod(path, mode)
     if os.is_linux then
         local success, ret, status = os.execute("chmod " .. mode .. " '" .. get_path(path) .. "'")
@@ -226,12 +279,15 @@ local function chown(path, owner)
     return false
 end
 
+local function is_empty(path)
+    return #ensure_path(path):list() == 0
+end
+
 return function(filesystem)
     fs = filesystem
     fs.split_path = split_path
     fs.path = new_path
     fs.concat_path = concat_path
-    fs.size_hr = size_hr
     fs.stream = stream_dir
     fs.stream_tree = stream_tree
     fs.tree = tree
@@ -246,4 +302,27 @@ return function(filesystem)
     fs.sibling = sibling
     fs.chmod = chmod
     fs.chown = chown
+    fs.get_path = get_path
+    fs.ensure_path = ensure_path
+    fs.create_tree = create_tree
+    fs.path_to_path_and_name = path_to_path_and_name
+    fs.to_relative = full_path_to_relative
+    fs.is_empty = is_empty
+
+    return {
+        read_all    = read_all,
+        read_lines  = read_lines,
+        lines       = lines,
+        iterate     = iterate,
+        delete_tree = delete_tree,
+        walk        = walk,
+        parent      = parent,
+        child       = child,
+        sibling     = sibling,
+        stream      = stream_dir,
+        stream_tree = stream_tree,
+        tree        = tree,
+        to_relative = full_path_to_relative,
+        is_empty    = is_empty,
+    }
 end

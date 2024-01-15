@@ -1,5 +1,28 @@
 local serpent = require "serpent"
 
+function arg_error(func, narg, message, level)
+    error("bad argument #" .. narg .. " to " .. func .. " (" .. message .. ")", level)
+end
+
+function arg_check(func, narg, test, message)
+    if ~test then
+        arg_error(func, narg, message, 2)
+    end
+end
+
+function arg_check_type(func, narg, arg, ...)
+    local types = { ... }
+    local actual = type(arg)
+    for _, expected in ipairs(types) do
+        if actual == expected then return arg end
+    end
+    if #types == 1 then
+        arg_error(func, narg, types[1] .. " expected, got " .. type(arg), 2)
+    else
+        arg_error(func, narg, "expected one of [" .. table.concat(types, ',') .. "], got " .. type(arg), 2)
+    end
+end
+
 local function io_read_lines(filename)
     local ret = {}
     for line in io.lines(filename) do
@@ -36,7 +59,7 @@ local function io_append_file(filename, data)
     fh:close()
 end
 
-local function deepcopy(orig, copies)
+local function table_copy(orig, copies)
     copies = copies or {}
     if type(orig) == 'table' then
         if copies[orig] then
@@ -45,9 +68,9 @@ local function deepcopy(orig, copies)
             local copy = {}
             copies[orig] = copy
             for orig_key, orig_value in next, orig, nil do
-                copy[deepcopy(orig_key, copies)] = deepcopy(orig_value, copies)
+                copy[table_copy(orig_key, copies)] = table_copy(orig_value, copies)
             end
-            setmetatable(copy, deepcopy(getmetatable(orig), copies))
+            setmetatable(copy, table_copy(getmetatable(orig), copies))
             return copy
         end
     else
@@ -56,6 +79,9 @@ local function deepcopy(orig, copies)
 end
 
 local function table_tostring(tbl, name)
+    arg_check_type("table.tostring", 1, tbl, 'table')
+    arg_check_type("table.tostring", 2, name, 'string', 'nil')
+
     local str = serpent.block(tbl, {
         sortkeys = true,
         indent = "    ",
@@ -70,7 +96,73 @@ local function table_tostring(tbl, name)
     return str
 end
 
+local function table_print(tbl, name)
+    arg_check_type("table.print", 1, tbl, 'table')
+    arg_check_type("table.print", 2, name, 'string', 'nil')
+    print(table_tostring(tbl, name))
+end
+
+local function table_remove_if(tbl, func)
+    arg_check_type("table.remove", 1, tbl, 'table')
+    arg_check_type("table.remove", 2, func, 'function')
+    local remove = {}
+    for i, item in ipairs(tbl) do
+        if (func(item)) then
+            remove[#remove + 1] = i
+        end
+    end
+
+    for i, index in ipairs(remove) do
+        table.remove(tbl, index - i + 1)
+    end
+    return tbl
+end
+
+local function table_filter(tbl, func)
+    arg_check_type("table.filter", 1, tbl, 'table')
+    arg_check_type("table.filter", 2, func, 'function')
+    local ret = {}
+    for i, item in ipairs(tbl) do
+        if (func(item)) then
+            ret[#ret + 1] = item
+        end
+    end
+    return ret
+end
+
+local function table_add_all(tbl, ...)
+    arg_check_type("table.add_all", 1, tbl, 'table')
+    for _, arg in ipairs { ... } do
+        if type(arg) == 'table' then
+            for _, item in ipairs(arg) do
+                tbl[#tbl + 1] = item
+            end
+        else
+            tbl[#tbl + 1] = arg
+        end
+    end
+    return tbl
+end
+
+local function table_insert_all(tbl, index, ...)
+    arg_check_type("table.insert_all", 1, tbl, 'table')
+    arg_check_type("table.insert_all", 2, index, 'number')
+    for _, arg in ipairs { ... } do
+        if type(arg) == 'table' then
+            for _, item in ipairs(arg) do
+                table.insert(tbl, index, item)
+                index = index + 1
+            end
+        else
+            table.insert(tbl, index, arg)
+            index = index + 1
+        end
+    end
+    return tbl
+end
+
 local function table_load_file(filename, options)
+    arg_check_type("table.load_file", 1, filename, 'string')
     return serpent.load(io_read_file(filename), options)
 end
 
@@ -83,9 +175,7 @@ local function get_home()
 end
 
 local function lambda(lambda_str)
-    if lambda_str == nil or type(lambda_str) ~= "string" then
-        error("lamda expects a string as argument")
-    end
+    arg_check_type("lambda / string:l()", 1, lambda_str, 'string')
 
     local firstChar = lambda_str:sub(1, 1)
     local function_string
@@ -126,13 +216,18 @@ io.read_file = io_read_file
 io.write_file = io_write_file
 io.append_file = io_append_file
 
-table.copy = deepcopy
+table.copy = table_copy
 table.tostring = table_tostring
+table.print = table_print
 table.dump = serpent.dump
 table.dump_line = serpent.line
 table.dump_block = serpent.block
 table.load = serpent.load
 table.load_file = table_load_file
+table.remove_if = table_remove_if
+table.filter = table_filter
+table.add_all = table_add_all
+table.insert_all = table_insert_all
 
 math.maxdouble = 1.7976931348623158e+308
 math.mindouble = 2.2250738585072014e-308
