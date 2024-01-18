@@ -94,6 +94,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },
+    .{ .input = "src/lib/f-string/F.lua", .output = "src/stripped/F.lua" },
     .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
     .{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
     .{ .input = "src/lib/luaunit/luaunit.lua", .output = "src/stripped/luaunit.lua" },

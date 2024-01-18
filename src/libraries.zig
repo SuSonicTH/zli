@@ -68,6 +68,7 @@ const luascripts = [_]luascript{
     .{ .name = "argparse", .source = @embedFile("stripped/argparse.lua") },
     .{ .name = "collection", .source = @embedFile("stripped/collection.lua") },
     .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
+    .{ .name = "F", .source = @embedFile("stripped/F.lua") },
     .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
     .{ .name = "luaunit", .source = @embedFile("stripped/luaunit.lua") },
     .{ .name = "re", .source = @embedFile("stripped/re.lua") },
