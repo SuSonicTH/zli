@@ -142,24 +142,19 @@ fi
 function build_platform() {
     PLAT=$1
     SUFFIX=$2
-    OPT=$3
-    echo building ${PLAT}-${OPT}
-    rm -f bin/zli-${PLAT}-${OPT}${SUFFIX}
+    echo building ${PLAT}
+    rm -f bin/zli-${PLAT}${SUFFIX}
 
-    zig build -Doptimize=Release${OPT} -Dtarget=${PLAT}
+    zig build -Doptimize=ReleaseFast -Dtarget=${PLAT}
 
-    echo compressing ${PLAT}-${OPT}
-    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli-${PLAT}-${OPT}${SUFFIX} zig-out/bin/zli${SUFFIX}
+    echo compressing ${PLAT}
+    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli-${PLAT}${SUFFIX} zig-out/bin/zli${SUFFIX}
 }
 
 # build all
 if [ "$BUILD_ALL" = "true" ]; then
-    build_platform "x86_64-windows" ".exe" "Fast"
-    build_platform "x86_64-linux-musl" "" "Fast"
-    build_platform "aarch64-linux-musl" "" "Fast"
-
-    build_platform "x86_64-windows" ".exe" "Small"
-    build_platform "x86_64-linux-musl" "" "Small"
-    build_platform "aarch64-linux-musl" "" "Small"    
+    build_platform "x86_64-windows" ".exe"
+    build_platform "x86_64-linux-musl"
+    build_platform "aarch64-linux-musl"
 fi
 

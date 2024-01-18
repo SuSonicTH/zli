@@ -1,4 +1,3 @@
-local argparse = require "argparse"
 local unzip = require "unzip"
 local fs = require "filesystem"
 
@@ -76,15 +75,34 @@ else
     end
 end
 
-local parser = argparse("zli", "Zig Lua Interpreter - A cross platform interpreter with batteries included")
-parser:argument("script", "script to execute"):args("?")
-parser:option("--test", "run unit tests in file <test>")
-parser:option("--repl", "run Read Print Eval Loop."):args("0")
-parser:option("--sqlite", "run sqlite cli tool"):args("0")
+local function print_usage()
+    print [[
 
-local args = parser:parse()
-if (args.test) then
-    local script = io.open(args.test, 'r')
+Usage: zli [-h|--help] [--test <test>] [--repl] [--sqlite] [<script>]
+
+Zig Lua Interpreter - A cross platform interpreter with batteries included
+
+Arguments:
+    script                script to execute
+
+Options:
+    -h, --help            Show this help message and exit.
+    --test <test>         run unit tests in file <test>
+    --repl                run Read Print Eval Loop.
+    --sqlite              run sqlite cli tool
+]]
+end
+
+if arg[1] == '-h' or arg[1] == '--help' then
+    print_usage()
+elseif arg[1] == '--test' then
+    local test = arg[2]
+    if not test then
+        print_usage()
+        print("error missing script argument to test")
+    end
+
+    local script = io.open(arg[2], 'r')
     local source = script:read('a')
     script:close()
 
@@ -92,18 +110,19 @@ if (args.test) then
         local luaunit = require 'luaunit'
         os.exit(luaunit.LuaUnit.run('--pattern', 'Test'))
     ]]
-    assert(load(source, args.test))()
-elseif (args.script) then
-    if (args.script == '-') then
+    assert(load(source, test))()
+elseif arg[1] == '--repl' then
+    require("repl").execute()
+elseif arg[1] == '--sqlite' then
+    require("sqlite_cli").execute()
+else
+    local script = arg[1]
+    table.remove(arg, 1)
+    if not script then
+        require("repl").execute()
+    elseif (script == '-') then
         assert(loadfile())()
     else
-        assert(loadfile(args.script))()
+        assert(loadfile(script))()
     end
-    return 0;
-elseif (args.sqlite) then
-    require("sqlite_cli").execute()
-elseif (args.repl) then
-    require("repl").execute()
-else
-    require("repl").execute()
 end
