@@ -31,7 +31,7 @@ double nanotime(void) {
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
         return 0;
     }
-    return ts.tv_sec + (ts.tv_nsec * multiplier)
+    return ts.tv_sec + (ts.tv_nsec * multiplier);
 }
 
 #endif
