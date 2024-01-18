@@ -10,6 +10,10 @@ const Joiner = zigStringUtil.Joiner;
 const JoinerOptions = zigStringUtil.JoinerOptions;
 const builtin = @import("builtin");
 
+const timer = @cImport({
+    @cInclude("timer.h");
+});
+
 const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
     .{ .name = "to_table", .func = ziglua.wrap(to_table) },
@@ -31,6 +35,7 @@ const table_functions = [_]ziglua.FnReg{
 
 const os_functions = [_]ziglua.FnReg{
     .{ .name = "get_name", .func = ziglua.wrap(os_get_name) },
+    .{ .name = "nanotime", .func = ziglua.wrap(nanotime) },
 };
 
 pub fn register(lua: *Lua) void {
@@ -64,6 +69,11 @@ fn os_get_name(lua: *Lua) i32 {
     } else {
         _ = lua.pushString("unknown");
     }
+    return 1;
+}
+
+fn nanotime(lua: *Lua) i32 {
+    lua.pushNumber(timer.nanotime());
     return 1;
 }
 

@@ -75,6 +75,7 @@ const luascripts = [_]luascript{
     .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
     .{ .name = "sqlite_cli", .source = @embedFile("stripped/sqlite_cli.lua") },
     .{ .name = "stream", .source = @embedFile("stripped/stream.lua") },
+    .{ .name = "timer", .source = @embedFile("stripped/timer.lua") },
 };
 
 pub fn openlibs(lua: *Lua) i32 {

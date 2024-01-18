@@ -42,6 +42,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(luaCJson(b, target, optimize));
     exe.linkLibrary(crossline(b, target, optimize));
     exe.linkLibrary(miniZip(b, target, optimize));
+    exe.linkLibrary(timer(b, target, optimize));
 
     if (optimize != .Debug) {
         exe.strip = true;
@@ -100,6 +101,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
     .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
     .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
+    .{ .input = "src/timer.lua", .output = "src/stripped/timer.lua" },
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
@@ -253,6 +255,18 @@ fn crossline(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.M
     });
     lib.addIncludePath(.{ .path = "src/lib/Crossline/" });
     lib.addCSourceFile(.{ .file = .{ .path = "src/lib/Crossline/crossline.c" }, .flags = flags_c99 });
+    lib.linkLibC();
+    return lib;
+}
+
+fn timer(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.Mode) *std.build.CompileStep {
+    const lib = b.addStaticLibrary(.{
+        .name = "timer",
+        .target = target,
+        .optimize = optimize,
+    });
+    lib.addIncludePath(.{ .path = "src/" });
+    lib.addCSourceFile(.{ .file = .{ .path = "src/timer.c" }, .flags = flags_c99 });
     lib.linkLibC();
     return lib;
 }
