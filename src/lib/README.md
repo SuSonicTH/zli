@@ -1,9 +1,9 @@
 # 3rd party (lua-) libraries
 
-here is a collection of 3rd party libraries either for lua directly or for a zli binding
+here is a collection of 3rd party libraries either for lua directly or for a custom zli binding
 
 ## included lua libraries
-Well known lua libraries included in zli
+3rd party lua libraries included in zli
 
 | library    | link                                        | licence | description                                                                                                                            |
 | ---------- | ------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -18,7 +18,8 @@ Well known lua libraries included in zli
 | f-string   | https://github.com/hishamhm/f-strings       | MIT     | String interpolation for Lua, inspired by f-strings, a form of string interpolation coming in Python 3.6.                              |
 
 ## 3rd party libraries for custom zli bindings
-there are some custom ZLI bindings for 3rd party libraries
+
+thees libraries are used for the custom bindings(lua libraries) in ZLI
 
 | library   | link                                             | licence | description                                                                                                        |
 | --------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------ |
