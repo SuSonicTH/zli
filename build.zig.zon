@@ -2,12 +2,15 @@
     .name = "zli",
     .version = "0.0.1",
     .dependencies = .{
-        .ziglua = .{
-            //.url = "https://github.com/natecraddock/ziglua/archive/ab111adb06d2d4dc187ee9e1e352617ca8659155.tar.gz",
-            //.hash = "12206cf9e90462ee6e14f593ea6e0802b9fe434429ba10992a1451e32900f741005c",
+        .ziglua_luac = .{
             .url = "https://github.com/natecraddock/ziglua/archive/0117fbc349ef9cc5e6111cebf09894d9f7bd7dec.tar.gz",
             .hash = "1220a6d76924a2336b1c8adaa1c40952806140101ebd0a4f0d9e2978d7ae48874b70",
         },
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/0117fbc349ef9cc5e6111cebf09894d9f7bd7dec.tar.gz",
+            .hash = "1220a6d76924a2336b1c8adaa1c40952806140101ebd0a4f0d9e2978d7ae48874b70",
+        },
+
         .zigStringUtil = .{
             .url = "https://github.com/SuSonicTH/zigStringUtil/archive/66577eecdd273b626fe59b6d46b3349331fda632.tar.gz",
             .hash = "1220024750ad8df560a590919c57725eda68f68f7756d443aa32a3a8be8ee21905a9",

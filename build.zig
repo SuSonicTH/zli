@@ -15,10 +15,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const zigLuaStrip = b.dependency("zigLuaStrip", .{
-        .optimize = std.builtin.OptimizeMode.Debug,
-    });
-
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
@@ -44,18 +40,32 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(miniZip(b, target, optimize));
     exe.linkLibrary(timer(b, target, optimize));
 
-    if (optimize != .Debug) {
-        exe.strip = true;
-    }
+    const nativeTarget: std.zig.CrossTarget = .{};
 
     if (optimize != .Debug) {
-        inline for (luastrip_list) |script| {
-            var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
+        exe.strip = true;
+
+        const ziglua_luac = b.dependency("ziglua_luac", .{
+            .target = nativeTarget,
+            .optimize = std.builtin.OptimizeMode.Debug,
+        });
+
+        const luac = b.addExecutable(.{
+            .name = "luac",
+            .root_source_file = .{ .path = "src/build/luac.zig" },
+            .target = nativeTarget,
+            .optimize = std.builtin.OptimizeMode.Debug,
+        });
+        luac.addModule("ziglua", ziglua_luac.module("ziglua"));
+        luac.linkLibrary(ziglua_luac.artifact("lua"));
+
+        inline for (luascript_list) |script| {
+            var run_step = b.addRunArtifact(luac);
             run_step.addArgs(&.{ script.input, script.output });
             exe.step.dependOn(&run_step.step);
         }
     } else {
-        inline for (luastrip_list) |script| {
+        inline for (luascript_list) |script| {
             copyFile(script.input, script.output) catch unreachable;
         }
     }
@@ -83,12 +93,12 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&test_cmd.step);
 }
 
-const luastrip_entry = struct {
+const luascript = struct {
     input: [:0]const u8,
     output: [:0]const u8,
 };
 
-const luastrip_list = [_]luastrip_entry{
+const luascript_list = [_]luascript{
     .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
     .{ .input = "src/collection.lua", .output = "src/stripped/collection.lua" },
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
