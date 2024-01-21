@@ -90,7 +90,6 @@ const luastrip_entry = struct {
 
 const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
-    .{ .input = "src/collection.lua", .output = "src/stripped/collection.lua" },
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },
@@ -107,6 +106,8 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
     .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
+    .{ .input = "src/collection/init.lua", .output = "src/stripped/collection.init.lua" },
+    .{ .input = "src/collection/set.lua", .output = "src/stripped/collection.set.lua" },
 };
 
 fn copyFile(input_path: [:0]const u8, output_path: [:0]const u8) !void {
