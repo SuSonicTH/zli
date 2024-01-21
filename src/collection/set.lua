@@ -8,7 +8,7 @@ local set = {
 
 local set_mt
 
-local function new_set(init)
+function set:new(init)
     local obj = {
         _size = 0
     }
@@ -188,5 +188,5 @@ set_mt = {
 }
 
 return {
-    new = new_set
+    new = set.new
 }
