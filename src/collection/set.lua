@@ -45,8 +45,7 @@ end
 
 function set:clear(size)
     self._size = 0
-
-    if type == nil then
+    if type(size) == 'nil' then
         self._items = {}
     elseif (type(size) == 'number') then
         self._items = table.create(0, size)
@@ -126,7 +125,7 @@ function set:contains_all(collection)
 end
 
 function set:copy()
-    return new_set(self)
+    return self:new(self)
 end
 
 function set:next()

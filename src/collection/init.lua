@@ -2,13 +2,13 @@ local collection = {}
 
 function collection.iterate(col, func)
     if col._is_collection and col._type == 'key' then
-        for item, _ in pairs(collection._items) do
+        for item, _ in pairs(col._items) do
             if func(item) == nil then
                 return false
             end
         end
     elseif col._is_collection and col._type == 'index' then
-        for _, item in ipairs(collection._items) do
+        for _, item in ipairs(col._items) do
             if func(item) == nil then
                 return false
             end
@@ -23,8 +23,13 @@ function collection.iterate(col, func)
     return true
 end
 
+function collection.new(items, mt, init)
+
+end
+
 package.loaded.collection = collection
 
 collection.set = require "collection.set"
+collection.list = require "collection.list"
 
 return collection

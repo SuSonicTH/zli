@@ -108,6 +108,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
     .{ .input = "src/collection/init.lua", .output = "src/stripped/collection.init.lua" },
     .{ .input = "src/collection/set.lua", .output = "src/stripped/collection.set.lua" },
+    .{ .input = "src/collection/list.lua", .output = "src/stripped/collection.list.lua" },
 };
 
 fn copyFile(input_path: [:0]const u8, output_path: [:0]const u8) !void {
