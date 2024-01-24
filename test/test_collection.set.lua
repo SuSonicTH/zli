@@ -3,7 +3,9 @@ lu.ORDER_ACTUAL_EXPECTED = false
 
 local set = require("collection").set
 
-local eight_elemets = { 1, "2", "three", 4.1, "5", { 6 }, true, function() return "8" end }
+local tbl = { 6 }
+local func = function() return "8" end
+local eight_elemets = { 1, "2", "three", 4.1, "5", tbl, true, func }
 
 function test_new_set_is_empty()
     local s = set:new()
@@ -70,6 +72,42 @@ function test_copy_equals_orig()
     lu.assertEquals(s:size(), s2:size())
     lu.assertEquals(true, s2:contains_all(eight_elemets))
     lu.assertEquals(true, s2:remove_all(eight_elemets):is_empty())
+end
+
+function test_table_equals_set()
+    local s = set:new():add_all(eight_elemets)
+    lu.assertEquals(true, s:equals(eight_elemets))
+    lu.assertEquals(false, s:equals({ 1, "2", "three"}))
+end
+
+function test_union()
+    local s1 = set:new():add_all({ 1, "2", "three", 4.1, "5"})
+    local s2 = set:new():add_all({ tbl, true, func})
+    local union = s1:union(s2)
+
+    lu.assertEquals(true, union:equals(eight_elemets))
+    lu.assertEquals(5, s1:size())
+    lu.assertEquals(3, s2:size())
+end
+
+function test_union()
+    local s1 = set:new():add_all(eight_elemets)
+    local s2 = set:new():add_all({ 1, "2", "three", 99,"not there"})
+    local intersection = s1:intersection(s2)
+
+    lu.assertEquals(true, intersection:equals({ 1, "2", "three"}))
+    lu.assertEquals(8, s1:size())
+    lu.assertEquals(5, s2:size())
+end
+
+function test_difference()
+    local s1 = set:new():add_all(eight_elemets)
+    local s2 = set:new():add_all({ tbl, true, func})
+    local difference = s1:difference(s2)
+
+    lu.assertEquals(true, difference:equals({ 1, "2", "three", 4.1, "5"}))
+    lu.assertEquals(8, s1:size())
+    lu.assertEquals(3, s2:size())
 end
 
 return lu.LuaUnit.run('-v')

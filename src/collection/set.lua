@@ -145,7 +145,7 @@ function set:stream()
 end
 
 function set:union(...)
-    local ret = new_set(self);
+    local ret = set:new(self);
     for _, collection in ipairs { ... } do
         ret:add_all(collection)
     end
@@ -153,7 +153,7 @@ function set:union(...)
 end
 
 function set:intersection(...)
-    local ret = new_set(self);
+    local ret = set:new(self);
     for _, collection in ipairs { ... } do
         ret:retain_all(collection)
     end
@@ -161,7 +161,7 @@ function set:intersection(...)
 end
 
 function set:difference(...)
-    local ret = new_set(self);
+    local ret = set:new(self);
     for _, collection in ipairs { ... } do
         ret:remove_all(collection)
     end
@@ -171,7 +171,7 @@ end
 function set:equals(collection)
     arg_check_type("set:equals", 1, collection, 'table')
     local count = 0
-    local finished = iterate_collection(collection,
+    local finished = iterate(collection,
         function(item)
             count = count + 1
             return self._items[item]
