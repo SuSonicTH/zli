@@ -1,4 +1,5 @@
 --[[ base class for all collections]]
+local stream = require "stream"
 local base = {}
 
 function base:iterate(func)
