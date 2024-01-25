@@ -1,6 +1,4 @@
-local stream = require "stream"
 local collection = require("collection")
-local iterate = collection.base.iterate
 
 local set = setmetatable({
     _is_collection = true,
@@ -57,31 +55,33 @@ end
 
 function set:contains_all(collection)
     arg_check_type("set:contains_all", 1, collection, 'table')
-    local finished = iterate(collection,
+    local finished = self.iterate(collection,
         function(item)
             return self._items[item]
         end)
     return finished;
 end
 
-function set:next()
-    local key
-    return function()
-        key = next(self._items, key)
-        return key
-    end
-end
+function set:retain_all(collection)
+    arg_check_type("base:retain_all", 1, collection, 'table')
+    local keep = {}
+    local size = 0
 
-function set:equals(collection)
-    arg_check_type("set:equals", 1, collection, 'table')
-    local count = 0
-    local finished = iterate(collection,
-        function(item)
-            count = count + 1
-            return self._items[item]
+    local lambda = function (item)
+        if self:contains(item) then
+            if keep[item] == nil then
+                size = size + 1
+                keep[item] = true
+            end
         end
-    )
-    return finished and count == self._size
+        return true
+    end
+    
+    self.iterate(collection, lambda)
+
+    self._size = size
+    self._items = keep
+    return self
 end
 
 set_mt = {

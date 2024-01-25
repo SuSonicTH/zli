@@ -7,14 +7,12 @@ local tbl = { 6 }
 local func = function() return "8" end
 local eight_elemets = { 1, "2", "three", 4.1, "5", tbl, true, func }
 
-
 function test_new_list_is_empty()
     local l = list:new()
 
     lu.assertEquals(0, l:size())
     lu.assertEquals(true, l:is_empty())
 end
-
 
 function test_add_one_size_is_1()
     local l = list:new():add("test")
@@ -35,7 +33,6 @@ function test_list_is_empty_after_clear()
     lu.assertEquals(true, l:is_empty())
 end
 
---[[
 function test_remove_2_of_8_elemets_size_is_6()
     local l = list:new():add_all(eight_elemets)
     l:remove("2")
@@ -78,6 +75,7 @@ function test_contains_all()
     lu.assertEquals(false, l:contains_all { 1, 2, "three" })
 end
 
+
 function test_copy_equals_orig()
     local l = list:new():add_all(eight_elemets)
     local l2 = l:copy()
@@ -104,9 +102,9 @@ function test_union()
     lu.assertEquals(3, l2:size())
 end
 
-function test_union()
+function test_intersection()
     local l1 = list:new():add_all(eight_elemets)
-    local l2 = list:new():add_all({ 1, "2", "three", 99,"not there"})
+    local l2 = list:new():add_all({1, "2", "three", 99,"not there"})
     local intersection = l1:intersection(l2)
 
     lu.assertEquals(true, intersection:equals({ 1, "2", "three"}))
@@ -123,5 +121,5 @@ function test_difference()
     lu.assertEquals(8, l1:size())
     lu.assertEquals(3, l2:size())
 end
---]]
+
 return lu.LuaUnit.run('-v')

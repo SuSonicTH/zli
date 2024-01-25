@@ -1,6 +1,5 @@
 local stream = require "stream"
 local collection = require("collection")
-local iterate = collection.iterate
 
 local list = setmetatable({
     _is_collection = true,
@@ -42,6 +41,49 @@ function list:add(item, ...)
     self._items[index] = item
     return self
 end
+
+function list:remove(item)
+    for index,v in ipairs(self._items) do
+        if v==item then
+            table.remove( self._items, index)
+            self._size = self._size - 1
+            return self
+        end
+    end
+    return self
+end
+
+function list:contains(item) 
+    for index,v in ipairs(self._items) do
+        if v==item then
+            return true
+        end
+    end
+    return false
+end
+
+function list:retain_all(col)
+    arg_check_type("base:retain_all", 1, col, 'table')
+    local keep = {}
+    local size = 0
+
+    if col.__index~='key' then
+        col = collection.set:new(col)
+    end
+    
+    self:iterate(function (item)
+        if col:contains(item) then
+            size=size+1
+            keep[size] = item
+        end
+        return true
+    end)
+
+    self._items = keep
+    self._size = size
+    return self
+end
+
 
 list_mt = {
     __index    = list,

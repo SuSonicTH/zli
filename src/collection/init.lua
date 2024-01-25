@@ -5,19 +5,22 @@ local base = {}
 function base:iterate(func)
     if self._is_collection and self._type == 'set' then
         for item, _ in pairs(self._items) do
-            if func(item) == nil then
+            local ret= func(item)
+            if ret == false or ret == nil then
                 return false
             end
         end
     elseif self._is_collection and self._type == 'list' then
         for _, item in ipairs(self._items) do
-            if func(item) == nil then
+            local ret= func(item)
+            if ret == false or ret == nil then
                 return false
             end
         end
     else
         for _, item in ipairs(self) do
-            if func(item) == nil then
+            local ret= func(item)
+            if ret == false or ret == nil then
                 return false
             end
         end
@@ -49,29 +52,25 @@ function base:remove_all(collection)
     return self
 end
 
-function base:retain_all(collection)
-    arg_check_type("base:retain_all", 1, collection, 'table')
-    if collection._is_collection and collection._type == 'key' then
-        for item, _ in pairs(self._items) do
-            if collection:contains(item) == false then
-                self._items[item] = nil
-                self._size = self._size - 1
-            end
-        end
-    else
-        local keep = {}
-        local size = 0
-        base.iterate(collection, function(item)
-            if self._items[item] then
-                keep[item] = true
-                size = size + 1
-            end
-            return true
+function base:contains_all(collection)
+    arg_check_type("set:contains_all", 1, collection, 'table')
+    local finished = self.iterate(collection,
+        function(item)
+            return self:contains(item)
         end)
-        self._items = keep
-        self._size = size
-    end
-    return self
+    return finished;
+end
+
+function base:equals(collection)
+    arg_check_type("collection:equals", 1, collection, 'table')
+    local count = 0
+    local finished = self.iterate(collection,
+        function(item)
+            count = count + 1
+            return self:contains(item)
+        end
+    )
+    return finished and count == self._size
 end
 
 function base:copy()
@@ -106,12 +105,10 @@ function base:difference(...)
     return ret
 end
 
---[[ Module ]]--
+local mod = {base = base}
+package.loaded.collection = mod
 
-local collection = {base = base}
-package.loaded.collection = collection
-
-collection.set = require "collection.set"
-collection.list = require "collection.list"
+mod.set = require "collection.set"
+mod.list = require "collection.list"
 
 return collection
