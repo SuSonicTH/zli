@@ -4,7 +4,7 @@ local collection = require("collection")
 local list = setmetatable({
     _is_collection = true,
     _type = 'list',
-}, {__index = collection.base})
+}, { __index = collection.base })
 
 local list_mt
 
@@ -17,12 +17,12 @@ function list:clear(size)
     if type(size) == 'nil' then
         self._items = {}
     elseif type(size) == 'number' then
-        self._items = table.create(size,0)
+        self._items = table.create(size, 0)
     elseif type(size) == 'table' then
         if type(size.size) == 'function' then
-            self._items = table.create(size:size(),0)
+            self._items = table.create(size:size(), 0)
         else
-            self._items = table.create(#size,0)
+            self._items = table.create(#size, 0)
         end
         self:add_all(size)
     else
@@ -36,16 +36,25 @@ function list:add(item, ...)
     if #{ ... } > 0 then
         arg_error("list:add", 2, "expecting single argument, use list:add_all{} to add mutliple items", 2)
     end
-    local index = self._size+1
+    local index = self._size + 1
     self._size = index
     self._items[index] = item
     return self
 end
 
+function list:next()
+    local key
+    local value
+    return function()
+        key, value = next(self._items, key)
+        return value
+    end
+end
+
 function list:remove(item)
-    for index,v in ipairs(self._items) do
-        if v==item then
-            table.remove( self._items, index)
+    for index, v in ipairs(self._items) do
+        if v == item then
+            table.remove(self._items, index)
             self._size = self._size - 1
             return self
         end
@@ -53,9 +62,9 @@ function list:remove(item)
     return self
 end
 
-function list:contains(item) 
-    for index,v in ipairs(self._items) do
-        if v==item then
+function list:contains(item)
+    for index, v in ipairs(self._items) do
+        if v == item then
             return true
         end
     end
@@ -67,13 +76,13 @@ function list:retain_all(col)
     local keep = {}
     local size = 0
 
-    if col.__index~='key' then
+    if col.__index ~= 'key' then
         col = collection.set:new(col)
     end
-    
-    self:iterate(function (item)
+
+    self:iterate(function(item)
         if col:contains(item) then
-            size=size+1
+            size = size + 1
             keep[size] = item
         end
         return true
@@ -83,7 +92,6 @@ function list:retain_all(col)
     self._size = size
     return self
 end
-
 
 list_mt = {
     __index    = list,

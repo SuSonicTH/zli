@@ -3,7 +3,7 @@ local collection = require("collection")
 local set = setmetatable({
     _is_collection = true,
     _type = 'set',
-}, {__index = collection.base})
+}, { __index = collection.base })
 
 local set_mt
 
@@ -49,6 +49,14 @@ function set:remove(item)
     return self
 end
 
+function set:next()
+    local key
+    return function()
+        key = next(self._items, key)
+        return key
+    end
+end
+
 function set:contains(item)
     return self._items[item] ~= nil
 end
@@ -67,7 +75,7 @@ function set:retain_all(collection)
     local keep = {}
     local size = 0
 
-    local lambda = function (item)
+    local lambda = function(item)
         if self:contains(item) then
             if keep[item] == nil then
                 size = size + 1
@@ -76,7 +84,7 @@ function set:retain_all(collection)
         end
         return true
     end
-    
+
     self.iterate(collection, lambda)
 
     self._size = size
