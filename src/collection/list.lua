@@ -31,14 +31,34 @@ function list:clear(size)
     return self
 end
 
---todo: implement add(index,item)
-function list:add(item, ...)
+function list:add(i, item, ...)
     if #{ ... } > 0 then
-        arg_error("list:add", 2, "expecting single argument, use list:add_all{} to add mutliple items", 2)
+        arg_error("list:add", 2,
+            "expecting just an item or an index and an item as arguments, use list:add_all{} to add mutliple items", 2)
     end
-    local index = self._size + 1
-    self._size = index
-    self._items[index] = item
+
+    if item == nil then
+        local index = self._size + 1
+        self._size = index
+        self._items[index] = i
+    else
+        arg_check_type("list:add", 2, i, "number")
+        table.insert(self._items, i, item)
+        self._size = self._size + 1
+    end
+
+    return self
+end
+
+function list:add_all(i, col)
+    if col == nil then
+        collection.base.add_all(self, i)
+    else
+        collection.base.iterate(col, function(item)
+            self:add(i, item)
+            item = item + 1
+        end)
+    end
     return self
 end
 
@@ -62,13 +82,51 @@ function list:remove(item)
     return self
 end
 
+function list:remove_index(index)
+    arg_check_type("list:remove_index", 1, index, "number")
+    table.remove(self._items, index)
+    self._size = self._size - 1
+    return self
+end
+
 function list:contains(item)
-    for index, v in ipairs(self._items) do
+    for _, v in ipairs(self._items) do
         if v == item then
             return true
         end
     end
     return false
+end
+
+function list:get(index)
+    arg_check_type("list:get", 1, index, "number")
+    return self._items[index]
+end
+
+function list:set(index, item)
+    arg_check_type("list:get", 1, index, "number")
+    local old = self._items[index]
+    self._items[index] = item
+    return old
+end
+
+function list:index_of(item)
+    for index, v in ipairs(self._items) do
+        if v == item then
+            return index
+        end
+    end
+    return 0
+end
+
+function list:last_index_of(item)
+    local last = 0
+    for index, v in ipairs(self._items) do
+        if v == item then
+            last = index
+        end
+    end
+    return last
 end
 
 function list:retain_all(col)
@@ -91,6 +149,17 @@ function list:retain_all(col)
     self._items = keep
     self._size = size
     return self
+end
+
+function list:sublist(from, to)
+    arg_check_type("list:sublist", 1, from, "number")
+    arg_check_type("list:sublist", 2, to, "number")
+    local size = to - from + 1
+    local new = list:new(size)
+    for i = from, to do
+        new:add(self._items[i])
+    end
+    return new
 end
 
 list_mt = {

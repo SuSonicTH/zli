@@ -127,6 +127,14 @@ function Test_collection_set.Test_stream()
     lu.assertEquals(15, set:new():add_all({ 1, 2, 3, 4, 5 }):stream():sum())
 end
 
+function Test_collection_set.Test_to_array()
+    local items = { 'a', 'b', 'c', 'd', 'e' }
+    local l = set:new():add_all(items)
+    local array = l:to_array()
+    table.sort(array, function(a, b) return a < b end)
+    lu.assertEquals(items, array)
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

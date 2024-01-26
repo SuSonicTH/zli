@@ -5,21 +5,21 @@ local base = {}
 function base:iterate(func)
     if self._is_collection and self._type == 'set' then
         for item, _ in pairs(self._items) do
-            local ret= func(item)
+            local ret = func(item)
             if ret == false or ret == nil then
                 return false
             end
         end
     elseif self._is_collection and self._type == 'list' then
         for _, item in ipairs(self._items) do
-            local ret= func(item)
+            local ret = func(item)
             if ret == false or ret == nil then
                 return false
             end
         end
     else
         for _, item in ipairs(self) do
-            local ret= func(item)
+            local ret = func(item)
             if ret == false or ret == nil then
                 return false
             end
@@ -105,7 +105,20 @@ function base:difference(...)
     return ret
 end
 
-local mod = {base = base}
+function base:to_array()
+    local array = table.create(self._size, 0)
+    local index = 1
+
+    self:iterate(function(item)
+        array[index] = item
+        index = index + 1
+        return true
+    end)
+
+    return array
+end
+
+local mod = { base = base }
 package.loaded.collection = mod
 
 mod.set = require "collection.set"
