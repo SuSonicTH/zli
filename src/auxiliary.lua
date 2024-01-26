@@ -21,6 +21,7 @@ function arg_check_type(func, narg, arg, ...)
     else
         arg_error(func, narg, "expected one of [" .. table.concat(types, ',') .. "], got " .. type(arg), 3)
     end
+    return arg
 end
 
 local function io_read_lines(filename)
