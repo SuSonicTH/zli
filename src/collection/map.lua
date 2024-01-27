@@ -107,6 +107,63 @@ function map:remove(key, value)
     return old
 end
 
+function map:contains_key(key)
+    return self._items[key] ~= nil
+end
+
+function map:contains_value(value)
+    for _, v in pairs(self._items) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
+function map:entry_set()
+    local set = collection.set:new()
+    for k, v in pairs(self._items) do
+        set:add({ key = k, value = v })
+    end
+    return set
+end
+
+function map:key_set()
+    local set = collection.set:new()
+    for k, _ in pairs(self._items) do
+        set:add(k)
+    end
+    return set
+end
+
+function map:values()
+    local list = collection.list:new()
+    for _, v in pairs(self._items) do
+        list:add(v)
+    end
+    return list
+end
+
+function map:equals(other)
+    arg_check_type("map:equals", 1, other, "table")
+    if other._is_collection then
+        if other._type ~= 'map' or self:size() ~= other:size() then
+            return false
+        end
+        other = other._items
+    end
+
+    local match = 0
+    for k, v in pairs(other) do
+        if self._items[k] ~= v then
+            return false
+        end
+        match = match + 1
+    end
+
+    return match == self._size
+end
+
 map_mt = {
     __index    = map,
     __tostring = map.tostring,

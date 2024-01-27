@@ -36,7 +36,7 @@ function base:is_empty()
     return self._size == 0
 end
 
-function base:tostring(level)
+function base:tostring()
     return table.tostring(self:stream():toarray())
 end
 
@@ -125,4 +125,4 @@ mod.set = require "collection.set"
 mod.list = require "collection.list"
 mod.map = require "collection.map"
 
-return collection
+return mod

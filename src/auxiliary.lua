@@ -241,3 +241,4 @@ os.home = get_home()
 os.separator = os.get_name() == "windows" and "\\" or "/"
 
 string.l = lambda
+L = lambda
