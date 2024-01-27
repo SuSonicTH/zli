@@ -176,7 +176,7 @@ local function get_home()
 end
 
 local function lambda(lambda_str)
-    arg_check_type("lambda / string:l()", 1, lambda_str, 'string')
+    arg_check_type("lambda / L / string:l()", 1, lambda_str, 'string')
 
     local firstChar = lambda_str:sub(1, 1)
     local function_string
@@ -197,16 +197,16 @@ local function lambda(lambda_str)
         function_string = "return function (it) return " .. lambda_str .. " end"
     end
 
-    local compiled, error_message = load(function_string)
+    local compiled, error_message = load(function_string, lambda_str)
     if compiled == nil then
-        error("error compiling lambda: " .. error_message)
+        error("error compiling lambda '" .. lambda_str .. "': " .. error_message)
     end
 
     local success, lambda = pcall(compiled)
-    if success then
+    if success and type(lambda) == 'function' then
         return lambda
     else
-        error("error compiling lambda: " .. lambda)
+        error("error compiling lambda '" .. lambda_str .. "': " .. error_message)
     end
 end
 
@@ -240,5 +240,5 @@ os.is_mac = os.get_name() == "macos"
 os.home = get_home()
 os.separator = os.get_name() == "windows" and "\\" or "/"
 
-string.l = lambda
+string.L = lambda
 L = lambda
