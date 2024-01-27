@@ -92,6 +92,13 @@ function set:retain_all(collection)
     return self
 end
 
+function set:for_each(func)
+    for item, _ in pairs(self._items) do
+        func(item)
+    end
+    return self
+end
+
 set_mt = {
     __index    = set,
     __tostring = set.tostring,

@@ -131,8 +131,18 @@ function Test_collection_set.Test_to_array()
     local items = { 'a', 'b', 'c', 'd', 'e' }
     local l = set:new():add_all(items)
     local array = l:to_array()
-    table.sort(array, function(a, b) return a < b end)
+    table.sort(array)
     lu.assertEquals(items, array)
+end
+
+function Test_collection_set.Test_for_each()
+    local items = { 'a', 'b', 'c', 'd', 'e' }
+    local l = set:new():add_all(items)
+    local list = {}
+
+    l:for_each(function(item) list[#list + 1] = item end)
+    table.sort(list)
+    lu.assertEquals(items, list)
 end
 
 if not RUN_ALL then

@@ -214,6 +214,22 @@ function Test_collection_list.Test_to_array()
     lu.assertEquals(items, l:to_array())
 end
 
+function Test_collection_list.Test_for_each()
+    local items = { 'a', 'b', 'c', 'd', 'e' }
+    local l = list:new():add_all(items)
+    local str = ""
+    l:for_each(function(item) str = str .. item end)
+    lu.assertEquals("abcde", str)
+end
+
+function Test_collection_list.Test_for_each_index()
+    local items = { 'a', 'b', 'c', 'd', 'e' }
+    local l = list:new():add_all(items)
+    local str = ""
+    l:for_each_index(function(i, item) str = str .. i .. ":" .. item .. ',' end)
+    lu.assertEquals("1:a,2:b,3:c,4:d,5:e,", str)
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

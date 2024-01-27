@@ -161,6 +161,20 @@ function list:sublist(from, to)
     return new
 end
 
+function list:for_each(func)
+    for _, v in ipairs(self._items) do
+        func(v)
+    end
+    return self
+end
+
+function list:for_each_index(func)
+    for i, v in ipairs(self._items) do
+        func(i, v)
+    end
+    return self
+end
+
 list_mt = {
     __index    = list,
     __tostring = list.tostring,
