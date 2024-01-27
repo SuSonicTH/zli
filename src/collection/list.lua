@@ -1,4 +1,3 @@
-local stream = require "stream"
 local collection = require("collection")
 
 local list = setmetatable({

@@ -123,5 +123,6 @@ package.loaded.collection = mod
 
 mod.set = require "collection.set"
 mod.list = require "collection.list"
+mod.map = require "collection.map"
 
 return collection
