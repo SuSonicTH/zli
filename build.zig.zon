@@ -3,8 +3,8 @@
     .version = "0.0.1",
     .dependencies = .{
         .ziglua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/0117fbc349ef9cc5e6111cebf09894d9f7bd7dec.tar.gz",
-            .hash = "1220a6d76924a2336b1c8adaa1c40952806140101ebd0a4f0d9e2978d7ae48874b70",
+            .url = "https://github.com/natecraddock/ziglua/archive/b3f0d75b1815789be542001d8f12a2017b859538.tar.gz",
+            .hash = "1220d14df5c57d4c3fafe26191fcc3b32c23ffd319e7f5d839d2ace030372f1f85b4",
         },
         .zigStringUtil = .{
             .url = "https://github.com/SuSonicTH/zigStringUtil/archive/66577eecdd273b626fe59b6d46b3349331fda632.tar.gz",
