@@ -175,6 +175,76 @@ function Test_collection_map.Test_values()
     lu.assertEquals(list, { 'A', 'B', 'C' })
 end
 
+function Test_collection_map.Test_compute()
+    local m = map:new()
+
+    lu.assertEquals("A", m:compute("a", L ":upper"))
+    lu.assertEquals("A", m:get('a'))
+end
+
+function Test_collection_map.Test_compute_if_absent()
+    local m = map:new()
+
+    lu.assertEquals("A", m:compute_if_absent("a", L ":upper"))
+    lu.assertEquals("A", m:get('a'))
+    lu.assertEquals("A", m:compute_if_absent("a", L "->'Z'"))
+end
+
+function Test_collection_map.Test_compute_if_present()
+    local m = map:new(test_map)
+
+    lu.assertEquals("X", m:compute_if_present("a", L "->'X'"))
+    lu.assertEquals("X", m:get('a'))
+    lu.assertEquals(3, m:size())
+
+    lu.assertIsNil(m:compute_if_present("z", L "->'Z'"))
+    lu.assertEquals(3, m:size())
+
+    lu.assertIsNil(m:compute_if_present("a", L "->nil"))
+    lu.assertEquals(2, m:size())
+end
+
+function Test_collection_map.Test_for_each()
+    local m = map:new(test_map)
+    local tbl = {}
+    m:for_each(function(k, v)
+        tbl[k] = v
+    end)
+    lu.assertIsTrue(m:equals(tbl))
+end
+
+function Test_collection_map.Test_replace()
+    local m = map:new(test_map)
+    lu.assertEquals('A', m:replace('a', 'Z'))
+    lu.assertEquals('Z', m:get('a'))
+
+    lu.assertIsNil(m:replace('z', 'Z'))
+    lu.assertEquals(3, m:size())
+
+    lu.assertEquals('B', m:replace('b', nil))
+    lu.assertIsNil(m:get('b'))
+    lu.assertEquals(2, m:size())
+end
+
+function Test_collection_map.Test_replace_old_equals()
+    local m = map:new(test_map)
+    lu.assertEquals('A', m:replace('a', 'A', 'Z'))
+    lu.assertEquals('Z', m:get('a'))
+
+    lu.assertEquals('B', m:replace('b', 'Z', 'X'))
+    lu.assertEquals('B', m:get('b'))
+
+    lu.assertIsNil(m:replace('z', 'Z', 'X'))
+    lu.assertEquals(3, m:size())
+end
+
+function Test_collection_map.Test_merge()
+    local m = map:new(test_map)
+
+    lu.assertEquals('Z', m:merge('z', 'Z'))
+    lu.assertEquals('Y', m:merge('a', 'X', L "->'Y'"))
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

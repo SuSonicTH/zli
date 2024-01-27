@@ -107,6 +107,38 @@ function map:remove(key, value)
     return old
 end
 
+function map:merge(key, value, func)
+    if self._items[key] ~= nil then
+        value = func(key, value)
+    end
+
+    self._items[key] = value
+    if value == nil then
+        self._size = self._size - 1
+    end
+
+    return value
+end
+
+function map:replace(key, value, new)
+    local old = self._items[key]
+
+    if old ~= nil then
+        if new ~= nil then
+            if old == value then
+                self._items[key] = new
+            end
+        else
+            self._items[key] = value
+            if value == nil then
+                self._size = self._size - 1
+            end
+        end
+    end
+
+    return old
+end
+
 function map:contains_key(key)
     return self._items[key] ~= nil
 end
@@ -162,6 +194,40 @@ function map:equals(other)
     end
 
     return match == self._size
+end
+
+function map:compute(key, func)
+    local value = func(key, self._items[key])
+    self._items[key] = value
+    return value
+end
+
+function map:compute_if_absent(key, func)
+    local value = self._items[key]
+    if value == nil then
+        value = func(key)
+        self._items[key] = value
+    end
+    return value
+end
+
+function map:compute_if_present(key, func)
+    local value = self._items[key]
+    if value ~= nil then
+        value = func(key, value)
+        self._items[key] = value
+        if value == nil then
+            self._size = self._size - 1
+        end
+    end
+    return value
+end
+
+function map:for_each(func)
+    for k, v in pairs(self._items) do
+        func(k, v)
+    end
+    return self
 end
 
 map_mt = {
