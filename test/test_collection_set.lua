@@ -77,6 +77,15 @@ function Test_collection_set.Test_contains_all()
     lu.assertEquals(false, s:contains_all { 1, 2, "three" })
 end
 
+function Test_collection_set.Test_iterate()
+    local s = set:new():add_all({ 'a', 'b', 'c', 'd', 'e' })
+    local res = {}
+    for item in s:iterate() do
+        res[#res + 1] = item
+    end
+    lu.assertIsTrue(s:equals(res))
+end
+
 function Test_collection_set.Test_copy_equals_orig()
     local s = set:new():add_all(eight_elemets)
     local s2 = s:copy()

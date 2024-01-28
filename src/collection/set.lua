@@ -49,7 +49,7 @@ function set:remove(item)
     return self
 end
 
-function set:next()
+function set:iterate()
     local key
     return function()
         key = next(self._items, key)
@@ -57,35 +57,57 @@ function set:next()
     end
 end
 
+function set:iterate_indexed()
+    local key
+    local index = 0
+    return function()
+        key = next(self._items, key)
+        if key then
+            index = index + 1
+            return index, key
+        end
+    end
+end
+
+function set:iterator(func)
+    for item in pairs(self._items) do
+        local ret = func(item)
+        if ret == false or ret == nil then
+            return false
+        end
+    end
+    return true
+end
+
+function set:iterator_indexed(func)
+    local index = 1
+    for item in pairs(self._items) do
+        local ret = func(index, item)
+        if ret == false or ret == nil then
+            return false
+        end
+        index = index + 1
+    end
+    return true
+end
+
 function set:contains(item)
     return self._items[item] ~= nil
 end
 
-function set:contains_all(collection)
-    arg_check_type("set:contains_all", 1, collection, 'table')
-    local finished = self.iterate(collection,
-        function(item)
-            return self._items[item]
-        end)
-    return finished;
-end
-
-function set:retain_all(collection)
-    arg_check_type("base:retain_all", 1, collection, 'table')
+function set:retain_all(items)
+    arg_check_type("base:retain_all", 1, items, 'table')
     local keep = {}
     local size = 0
 
-    local lambda = function(item)
+    for item in collection.base._iterate(items) do
         if self:contains(item) then
             if keep[item] == nil then
                 size = size + 1
                 keep[item] = true
             end
         end
-        return true
     end
-
-    self.iterate(collection, lambda)
 
     self._size = size
     self._items = keep

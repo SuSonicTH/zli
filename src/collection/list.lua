@@ -53,21 +53,45 @@ function list:add_all(i, col)
     if col == nil then
         collection.base.add_all(self, i)
     else
-        collection.base.iterate(col, function(item)
+        for item in collection.base._iterate(col) do
             self:add(i, item)
-            item = item + 1
-        end)
+            i = i + 1
+        end
     end
     return self
 end
 
-function list:next()
+function list:iterate()
     local key
     local value
     return function()
         key, value = next(self._items, key)
         return value
     end
+end
+
+function list:iterate_indexed()
+    return ipairs(self._items)
+end
+
+function list:iterator(func)
+    for _, item in ipairs(self._items) do
+        local ret = func(item)
+        if ret == false or ret == nil then
+            return false
+        end
+    end
+    return true
+end
+
+function list:iterator_indexed(func)
+    for i, item in ipairs(self._items) do
+        local ret = func(i, item)
+        if ret == false or ret == nil then
+            return false
+        end
+    end
+    return true
 end
 
 function list:remove(item)
@@ -128,22 +152,22 @@ function list:last_index_of(item)
     return last
 end
 
-function list:retain_all(col)
-    arg_check_type("base:retain_all", 1, col, 'table')
+function list:retain_all(items)
+    arg_check_type("base:retain_all", 1, items, 'table')
+
+    if items.__index ~= 'key' then
+        items = collection.set:new(items)
+    end
+
     local keep = {}
     local size = 0
 
-    if col.__index ~= 'key' then
-        col = collection.set:new(col)
-    end
-
-    self:iterate(function(item)
-        if col:contains(item) then
+    for item in self:iterate() do
+        if items:contains(item) then
             size = size + 1
             keep[size] = item
         end
-        return true
-    end)
+    end
 
     self._items = keep
     self._size = size

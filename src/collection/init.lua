@@ -2,30 +2,17 @@
 local stream = require "stream"
 local base = {}
 
-function base:iterate(func)
-    if self._is_collection and self._type == 'set' then
-        for item, _ in pairs(self._items) do
-            local ret = func(item)
-            if ret == false or ret == nil then
-                return false
-            end
-        end
-    elseif self._is_collection and self._type == 'list' then
-        for _, item in ipairs(self._items) do
-            local ret = func(item)
-            if ret == false or ret == nil then
-                return false
-            end
-        end
+function base._iterate(items)
+    if items._is_collection then
+        return items:iterate()
     else
-        for _, item in ipairs(self) do
-            local ret = func(item)
-            if ret == false or ret == nil then
-                return false
-            end
+        local key
+        local value
+        return function()
+            key, value = next(items, key)
+            return value
         end
     end
-    return true
 end
 
 function base:size()
@@ -42,35 +29,40 @@ end
 
 function base:add_all(items)
     arg_check_type("collection:add_all", 1, items, 'table')
-    base.iterate(items, function(item) return self:add(item) end)
+    for item in base._iterate(items) do
+        self:add(item)
+    end
     return self
 end
 
-function base:remove_all(collection)
-    arg_check_type("collection:remove_all", 1, collection, 'table')
-    base.iterate(collection, function(item) return self:remove(item) end)
+function base:remove_all(items)
+    arg_check_type("collection:remove_all", 1, items, 'table')
+    for item in base._iterate(items) do
+        self:remove(item)
+    end
     return self
 end
 
-function base:contains_all(collection)
-    arg_check_type("set:contains_all", 1, collection, 'table')
-    local finished = self.iterate(collection,
-        function(item)
-            return self:contains(item)
-        end)
-    return finished;
-end
-
-function base:equals(collection)
-    arg_check_type("collection:equals", 1, collection, 'table')
-    local count = 0
-    local finished = self.iterate(collection,
-        function(item)
-            count = count + 1
-            return self:contains(item)
+function base:contains_all(items)
+    arg_check_type("set:contains_all", 1, items, 'table')
+    for item in base._iterate(items) do
+        if not self:contains(item) then
+            return false
         end
-    )
-    return finished and count == self._size
+    end
+    return true;
+end
+
+function base:equals(items)
+    arg_check_type("collection:equals", 1, items, 'table')
+    local count = 0
+    for item in base._iterate(items) do
+        if not self:contains(item) then
+            return false
+        end
+        count = count + 1
+    end
+    return count == self._size
 end
 
 function base:copy()
@@ -78,7 +70,7 @@ function base:copy()
 end
 
 function base:stream()
-    return stream(self:next())
+    return stream(self:iterate())
 end
 
 function base:union(...)
@@ -107,13 +99,10 @@ end
 
 function base:to_array()
     local array = table.create(self._size, 0)
-    local index = 1
 
-    self:iterate(function(item)
+    for index, item in self:iterate_indexed() do
         array[index] = item
-        index = index + 1
-        return true
-    end)
+    end
 
     return array
 end

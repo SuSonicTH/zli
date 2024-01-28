@@ -53,6 +53,20 @@ function map:put(key, value)
     return old
 end
 
+function map:iterate()
+    return pairs(self._items)
+end
+
+function map:iterator(func)
+    for k, v in pairs(self._items) do
+        local ret = func(k, v)
+        if ret == false or ret == nil then
+            return false
+        end
+    end
+    return true
+end
+
 function map:get(key)
     return self._items[key]
 end

@@ -47,6 +47,24 @@ function Test_collection_list.Test_addall_with_index()
     local l = list:new():add_all({ 1, 2, 6 }):add_all(3, { 3, 4, 5 })
 end
 
+function Test_collection_list.Test_iterate()
+    local l = list:new():add_all({ 'a', 'b', 'c', 'd', 'e' })
+    local str = ""
+    for item in l:iterate() do
+        str = str .. item .. ","
+    end
+    lu.assertEquals("a,b,c,d,e,", str)
+end
+
+function Test_collection_list.Test_iterate_index()
+    local l = list:new():add_all({ 'a', 'b', 'c', 'd', 'e' })
+    local str = ""
+    for i, item in l:iterate_indexed() do
+        str = str .. i .. ":" .. item .. ","
+    end
+    lu.assertEquals("1:a,2:b,3:c,4:d,5:e,", str)
+end
+
 function Test_collection_list.Test_get()
     local l = list:new():add_all({ 'a', 'b', 'c' })
     lu.assertEquals('a', l:get(1))

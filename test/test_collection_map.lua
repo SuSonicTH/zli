@@ -245,6 +245,15 @@ function Test_collection_map.Test_merge()
     lu.assertEquals('Y', m:merge('a', 'X', L "->'Y'"))
 end
 
+function Test_collection_map.Test_iterate()
+    local m = map:new(test_map)
+    local res = {}
+    for k, v in m:iterate() do
+        res[k] = v
+    end
+    lu.assertIsTrue(m:equals(res))
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
