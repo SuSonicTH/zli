@@ -7,26 +7,38 @@ local set = setmetatable({
 
 local set_mt
 
-function set:new(init)
-    return setmetatable({}, set_mt):clear(init)
+function set:new(init, ordered)
+    local ret = { _ordered = ordered }
+    if ordered then ret._order = {} end
+    return setmetatable(ret, set_mt):clear(init)
 end
 
 function set:clear(size)
     self._size = 0
+    local items
     if type(size) == 'nil' then
         self._items = {}
+        size = nil
     elseif type(size) == 'number' then
         self._items = table.create(0, size)
     elseif type(size) == 'table' then
+        items = size
         if type(size.size) == 'function' then
-            self._items = table.create(0, size:size())
+            size = size:size()
         else
-            self._items = table.create(0, #size)
+            size = #size
         end
-        self:add_all(size)
     else
         arg_error("set:clear", 1, "expecting size or no argument", 2)
     end
+
+    if size then
+        self._items = table.create(0, size)
+        if self._ordererd then self._order = table.create(size, 0) end
+    elseif self._ordererd then
+        self._order = {}
+    end
+    if items then self:add_all(items) end
     return self
 end
 
@@ -34,44 +46,62 @@ function set:add(item, ...)
     if #{ ... } > 0 then
         arg_error("set:add", 2, "expecting single argument, use set:add_all{} to add mutliple items", 2)
     end
+
     if self._items[item] == nil then
         self._size = self._size + 1
+        self._items[item] = self._size
+        if self._ordered then self._order[self._size] = item end
     end
-    self._items[item] = true
+
     return self
 end
 
 function set:remove(item)
-    if self._items[item] then
+    local index = self._items[item]
+    if index then
         self._size = self._size - 1
         self._items[item] = nil
+        if self._ordered then table.remove(self._order, index) end
         return true
     end
     return false
 end
 
 function set:iterate()
-    local key
-    return function()
-        key = next(self._items, key)
-        return key
+    if self._ordered then
+        local index = 1
+        return function()
+            local item = self._order[index]
+            index = index + 1
+            return item
+        end
+    else
+        local key
+        return function()
+            key = next(self._items, key)
+            return key
+        end
     end
 end
 
 function set:iterate_indexed()
-    local key
-    local index = 0
-    return function()
-        key = next(self._items, key)
-        if key then
-            index = index + 1
-            return index, key
+    if self._ordered then
+        return ipairs(self._ordered)
+    else
+        local key
+        local index = 0
+        return function()
+            key = next(self._items, key)
+            if key then
+                index = index + 1
+                return index, key
+            end
         end
     end
 end
 
 function set:iterator(func)
-    for item in pairs(self._items) do
+    for item in self:iterate() do
         local ret = func(item)
         if ret == false or ret == nil then
             return false
@@ -81,13 +111,11 @@ function set:iterator(func)
 end
 
 function set:iterator_indexed(func)
-    local index = 1
-    for item in pairs(self._items) do
-        local ret = func(index, item)
+    for i, item in self:iterate_indexed() do
+        local ret = func(i, item)
         if ret == false or ret == nil then
             return false
         end
-        index = index + 1
     end
     return true
 end
@@ -116,7 +144,7 @@ function set:retain_all(items)
 end
 
 function set:for_each(func)
-    for item, _ in pairs(self._items) do
+    for item in self:iterate() do
         func(item)
     end
     return self
