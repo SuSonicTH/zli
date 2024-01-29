@@ -24,7 +24,7 @@ function base:is_empty()
 end
 
 function base:tostring()
-    return table.tostring(self:stream():toarray())
+    return table.tostring(self:to_array())
 end
 
 function base:add_all(items)
