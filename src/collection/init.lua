@@ -37,10 +37,15 @@ end
 
 function base:remove_all(items)
     arg_check_type("collection:remove_all", 1, items, 'table')
+    local ret = false
     for item in base._iterate(items) do
-        self:remove(item)
+        if not ret then
+            ret = self:remove(item)
+        else
+            self:remove(item)
+        end
     end
-    return self
+    return ret
 end
 
 function base:contains_all(items)

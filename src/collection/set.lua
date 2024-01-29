@@ -45,8 +45,9 @@ function set:remove(item)
     if self._items[item] then
         self._size = self._size - 1
         self._items[item] = nil
+        return true
     end
-    return self
+    return false
 end
 
 function set:iterate()

@@ -38,7 +38,7 @@ function map:is_empty()
     return self._size == 0
 end
 
-function map:tostring(level)
+function map:tostring()
     return table.tostring(self._items)
 end
 
@@ -81,7 +81,10 @@ end
 
 function map:put_all(tbl)
     arg_check_type("map:add", 1, tbl, "table")
-    if tbl._is_collection and tbl._type == 'map' then
+    if tbl._is_collection then
+        if tbl._type ~= 'map' then
+            arg_error("map:put_all", 1, "expecting a key value table or map", 2)
+        end
         tbl = tbl._items
     end
     for k, v in pairs(tbl) do

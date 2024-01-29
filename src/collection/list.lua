@@ -99,10 +99,10 @@ function list:remove(item)
         if v == item then
             table.remove(self._items, index)
             self._size = self._size - 1
-            return self
+            return true
         end
     end
-    return self
+    return false
 end
 
 function list:remove_index(index)

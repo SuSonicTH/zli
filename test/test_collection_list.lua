@@ -13,7 +13,7 @@ function Test_collection_list.Test_new_list_is_empty()
     local l = list:new()
 
     lu.assertEquals(0, l:size())
-    lu.assertEquals(true, l:is_empty())
+    lu.assertIsTrue(l:is_empty())
 end
 
 function Test_collection_list.Test_add_with_index_insert()
@@ -70,7 +70,7 @@ function Test_collection_list.Test_get()
     lu.assertEquals('a', l:get(1))
     lu.assertEquals('b', l:get(2))
     lu.assertEquals('c', l:get(3))
-    lu.assertEquals(nil, l:get(5))
+    lu.assertIsNil(l:get(5))
 end
 
 function Test_collection_list.Test_set()
@@ -122,22 +122,22 @@ function Test_collection_list.Test_list_is_empty_after_clear()
     local l = list:new():add_all(eight_elemets):clear()
 
     lu.assertEquals(0, l:size())
-    lu.assertEquals(true, l:is_empty())
+    lu.assertIsTrue(l:is_empty())
 end
 
 function Test_collection_list.Test_remove_2_of_8_elemets_size_is_6()
     local l = list:new():add_all(eight_elemets)
-    l:remove("2")
-    l:remove(true)
-    l:remove("Not in set")
+    lu.assertTrue(l:remove("2"))
+    lu.assertTrue(l:remove(true))
+    lu.assertFalse(l:remove("Not in set"))
 
     lu.assertEquals(6, l:size())
 end
 
 function Test_collection_list.Test_remove_3_of_8_elemets_size_is_5()
     local l = list:new():add_all(eight_elemets)
-    l:remove_all { 1, 4.1, "5", "not", "in", "set" }
-
+    lu.assertIsTrue(l:remove_all { 1, 4.1, "5", "not", "in", "set" })
+    lu.assertIsFalse(l:remove_all { "not", "in", "set" })
     lu.assertEquals(5, l:size())
 end
 
@@ -151,7 +151,7 @@ end
 function Test_collection_list.Test_contains()
     local l = list:new():add_all(eight_elemets)
     for _, item in ipairs(eight_elemets) do
-        lu.assertEquals(true, l:contains(item))
+        lu.assertIsTrue(l:contains(item))
     end
 
     lu.assertEquals(false, l:contains("Not in set"))
@@ -162,8 +162,8 @@ end
 function Test_collection_list.Test_contains_all()
     local l = list:new():add_all(eight_elemets)
 
-    lu.assertEquals(true, l:contains_all(eight_elemets))
-    lu.assertEquals(true, l:contains_all { 1, "2", "three" })
+    lu.assertIsTrue(l:contains_all(eight_elemets))
+    lu.assertIsTrue(l:contains_all { 1, "2", "three" })
     lu.assertEquals(false, l:contains_all { 1, 2, "three" })
 end
 
@@ -172,14 +172,15 @@ function Test_collection_list.Test_copy_equals_orig()
     local l2 = l:copy()
 
     lu.assertEquals(l:size(), l2:size())
-    lu.assertEquals(true, l2:contains_all(eight_elemets))
-    lu.assertEquals(true, l2:remove_all(eight_elemets):is_empty())
+    lu.assertIsTrue(l2:contains_all(eight_elemets))
+    lu.assertIsTrue(l2:remove_all(eight_elemets))
+    lu.assertIsTrue(l2:is_empty())
 end
 
 function Test_collection_list.Test_table_equals_list()
     local l = list:new():add_all(eight_elemets)
 
-    lu.assertEquals(true, l:equals(eight_elemets))
+    lu.assertIsTrue(l:equals(eight_elemets))
     lu.assertEquals(false, l:equals({ 1, "2", "three" }))
 end
 
@@ -188,7 +189,7 @@ function Test_collection_list.Test_union()
     local l2 = list:new():add_all({ tbl, true, func })
     local union = l1:union(l2)
 
-    lu.assertEquals(true, union:equals(eight_elemets))
+    lu.assertIsTrue(union:equals(eight_elemets))
     lu.assertEquals(5, l1:size())
     lu.assertEquals(3, l2:size())
 end
@@ -198,7 +199,7 @@ function Test_collection_list.Test_intersection()
     local l2 = list:new():add_all({ 1, "2", "three", 99, "not there" })
     local intersection = l1:intersection(l2)
 
-    lu.assertEquals(true, intersection:equals({ 1, "2", "three" }))
+    lu.assertIsTrue(intersection:equals({ 1, "2", "three" }))
     lu.assertEquals(8, l1:size())
     lu.assertEquals(5, l2:size())
 end
@@ -208,7 +209,7 @@ function Test_collection_list.Test_difference()
     local l2 = list:new():add_all({ tbl, true, func })
     local difference = l1:difference(l2)
 
-    lu.assertEquals(true, difference:equals({ 1, "2", "three", 4.1, "5" }))
+    lu.assertIsTrue(difference:equals({ 1, "2", "three", 4.1, "5" }))
     lu.assertEquals(8, l1:size())
     lu.assertEquals(3, l2:size())
 end
