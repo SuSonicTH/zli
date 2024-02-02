@@ -159,7 +159,7 @@ end
 
 function Test_collection_set.Test_ordered_itereator_keeps_order()
     local items = { 'a', 'b', 'c', 'd', 'e' }
-    local l = set:new(nil, true):add_all(items)
+    local l = set:new_ordered(nil):add_all(items)
     local list = {}
     for item in l:iterate() do
         list[#list + 1] = item
@@ -170,7 +170,7 @@ end
 
 function Test_collection_set.Test_ordered_for_each_keeps_order()
     local items = { 'a', 'b', 'c', 'd', 'e' }
-    local l = set:new(nil, true):add_all(items)
+    local l = set:new_ordered(nil):add_all(items)
     local list = {}
 
     l:for_each(function(item) list[#list + 1] = item end)

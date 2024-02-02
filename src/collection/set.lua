@@ -7,10 +7,12 @@ local set = setmetatable({
 
 local set_mt
 
-function set:new(init, ordered)
-    local ret = { _ordered = ordered }
-    if ordered then ret._order = {} end
-    return setmetatable(ret, set_mt):clear(init)
+function set:new(init)
+    return setmetatable({}, set_mt):clear(init)
+end
+
+function set:new_ordered(init)
+    return setmetatable({ _order = {} }, set_mt):clear(init)
 end
 
 function set:clear(size)
@@ -34,9 +36,7 @@ function set:clear(size)
 
     if size then
         self._items = table.create(0, size)
-        if self._ordererd then self._order = table.create(size, 0) end
-    elseif self._ordererd then
-        self._order = {}
+        if self._order then self._order = table.create(size, 0) end
     end
     if items then self:add_all(items) end
     return self
@@ -50,7 +50,7 @@ function set:add(item, ...)
     if self._items[item] == nil then
         self._size = self._size + 1
         self._items[item] = self._size
-        if self._ordered then self._order[self._size] = item end
+        if self._order then self._order[self._size] = item end
     end
 
     return self
@@ -61,14 +61,14 @@ function set:remove(item)
     if index then
         self._size = self._size - 1
         self._items[item] = nil
-        if self._ordered then table.remove(self._order, index) end
+        if self._order then table.remove(self._order, index) end
         return true
     end
     return false
 end
 
 function set:iterate()
-    if self._ordered then
+    if self._order then
         local index = 1
         return function()
             local item = self._order[index]
@@ -85,7 +85,7 @@ function set:iterate()
 end
 
 function set:iterate_indexed()
-    if self._ordered then
+    if self._order then
         return ipairs(self._ordered)
     else
         local key
@@ -157,5 +157,6 @@ set_mt = {
 }
 
 return {
-    new = set.new
+    new = set.new,
+    new_ordered = set.new_ordered
 }
