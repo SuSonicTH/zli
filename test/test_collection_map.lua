@@ -254,6 +254,91 @@ function Test_collection_map.Test_iterate()
     lu.assertIsTrue(m:equals(res))
 end
 
+function Test_collection_map.Test_ordered_itereator_keeps_order()
+    local m = map:new_ordered()
+    m:put("a", 'A')
+    m:put("b", 'B')
+    m:put("c", 'C')
+    m:put("d", 'D')
+
+    local list = {}
+    for k, v in m:iterate() do
+        list[#list + 1] = { k, v }
+    end
+
+    lu.assertEquals({
+        { "a", 'A' },
+        { "b", 'B' },
+        { "c", 'C' },
+        { "d", 'D' },
+    }, list)
+end
+
+function Test_collection_map.Test_ordered_for_each_keeps_order()
+    local m = map:new_ordered()
+    m:put("a", 'A')
+    m:put("b", 'B')
+    m:put("c", 'C')
+    m:put("d", 'D')
+
+    local list = {}
+    m:for_each(function(k, v)
+        list[#list + 1] = { k, v }
+    end)
+
+    lu.assertEquals({
+        { "a", 'A' },
+        { "b", 'B' },
+        { "c", 'C' },
+        { "d", 'D' },
+    }, list)
+end
+
+function Test_collection_map.Test_ordered_for_each_keeps_order()
+    local m = map:new_ordered()
+    m:put("a", 'A')
+    m:put("b", 'B')
+    m:put("c", 'C')
+    m:put("d", 'D')
+
+    local list = {}
+    m:iterator(function(k, v)
+        list[#list + 1] = { k, v }
+        return true
+    end)
+
+    lu.assertEquals({
+        { "a", 'A' },
+        { "b", 'B' },
+        { "c", 'C' },
+        { "d", 'D' },
+    }, list)
+end
+
+function Test_collection_map.Test_ordered_for_each_keeps_order_and_breaks()
+    local m = map:new_ordered()
+    m:put("a", 'A')
+    m:put("b", 'B')
+    m:put("c", 'C')
+    m:put("d", 'D')
+    m:put("e", 'E')
+
+    local list = {}
+    m:iterator(function(k, v)
+        list[#list + 1] = { k, v }
+        if v == 'C' then
+            return false
+        end
+        return true
+    end)
+
+    lu.assertEquals({
+        { "a", 'A' },
+        { "b", 'B' },
+        { "c", 'C' },
+    }, list)
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

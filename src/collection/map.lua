@@ -11,22 +11,38 @@ function map:new(init)
     return setmetatable({}, map_mt):clear(init)
 end
 
+function map:new_ordered(init)
+    return setmetatable({ _order = {} }, map_mt):clear(init)
+end
+
 function map:clear(size)
     self._size = 0
+    local items
+    local init_size
     if type(size) == 'nil' then
         self._items = {}
+        self._order_key = {}
     elseif type(size) == 'number' then
-        self._items = table.create(0, size)
+        init_size = size
     elseif type(size) == 'table' then
+        items = size
         if type(size.size) == 'function' then
-            self._items = table.create(0, size:size())
+            init_size = size:size()
         else
-            self._items = table.create(0, #size)
+            init_size = #size
         end
-        self:put_all(size)
     else
-        arg_error("map:clear", 1, "expecting size or no argument", 2)
+        arg_error("set:clear", 1, "expecting size or no argument", 2)
     end
+
+    if init_size then
+        self._items = table.create(0, init_size)
+        if self._order then
+            self._order = table.create(init_size, 0)
+            self._order_key = table.create(0, init_size)
+        end
+    end
+    if items then self:put_all(items) end
     return self
 end
 
@@ -43,23 +59,38 @@ function map:tostring()
 end
 
 function map:put(key, value)
+    if value == nil then
+        return self:remove(key)
+    end
+
     local old = self._items[key]
-    if old == nil and value ~= nil then
+    if old == nil then
         self._size = self._size + 1
-    elseif value == nil then
-        self._size = self._size - 1
+        if self._order then
+            self._order[self._size] = key
+            self._order_key[key] = self._size
+        end
     end
     self._items[key] = value
     return old
 end
 
 function map:iterate()
-    return pairs(self._items)
+    if self._order then
+        local index = 1
+        return function()
+            local key = self._order[index]
+            index = index + 1
+            return key, self._items[key]
+        end
+    else
+        return pairs(self._items)
+    end
 end
 
 function map:iterator(func)
-    for k, v in pairs(self._items) do
-        local ret = func(k, v)
+    for key, item in self:iterate() do
+        local ret = func(key, item)
         if ret == false or ret == nil then
             return false
         end
@@ -113,6 +144,10 @@ function map:remove(key, value)
         if old == value then
             self._size = self._size - 1
             self._items[key] = nil
+            if self._order then
+                table.remove(self._order, self._order_key[key])
+                self._order_key[key] = nil
+            end
             return true
         else
             return false
@@ -121,19 +156,21 @@ function map:remove(key, value)
 
     self._size = self._size - 1
     self._items[key] = nil
+    if self._order then
+        table.remove(self._order, self._order_key[key])
+        self._order_key[key] = nil
+    end
     return old
 end
 
 function map:merge(key, value, func)
+    local old_value = self._items[key]
     if self._items[key] ~= nil then
         value = func(key, value)
     end
-
-    self._items[key] = value
-    if value == nil then
-        self._size = self._size - 1
+    if old_value ~= value then
+        self:put(key, value)
     end
-
     return value
 end
 
@@ -143,13 +180,10 @@ function map:replace(key, value, new)
     if old ~= nil then
         if new ~= nil then
             if old == value then
-                self._items[key] = new
+                self:put(key, new)
             end
         else
-            self._items[key] = value
-            if value == nil then
-                self._size = self._size - 1
-            end
+            self:put(key, value)
         end
     end
 
@@ -241,7 +275,7 @@ function map:compute_if_present(key, func)
 end
 
 function map:for_each(func)
-    for k, v in pairs(self._items) do
+    for k, v in self:iterate() do
         func(k, v)
     end
     return self
@@ -254,5 +288,6 @@ map_mt = {
 }
 
 return {
-    new = map.new
+    new = map.new,
+    new_ordered = map.new_ordered,
 }

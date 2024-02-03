@@ -18,25 +18,25 @@ end
 function set:clear(size)
     self._size = 0
     local items
+    local init_size
     if type(size) == 'nil' then
         self._items = {}
-        size = nil
     elseif type(size) == 'number' then
-        self._items = table.create(0, size)
+        init_size = size
     elseif type(size) == 'table' then
         items = size
         if type(size.size) == 'function' then
-            size = size:size()
+            init_size = size:size()
         else
-            size = #size
+            init_size = #size
         end
     else
         arg_error("set:clear", 1, "expecting size or no argument", 2)
     end
 
-    if size then
-        self._items = table.create(0, size)
-        if self._order then self._order = table.create(size, 0) end
+    if init_size then
+        self._items = table.create(0, init_size)
+        if self._order then self._order = table.create(init_size, 0) end
     end
     if items then self:add_all(items) end
     return self
