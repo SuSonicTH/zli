@@ -7,8 +7,17 @@ local list = setmetatable({
 
 local list_mt
 
+local function compare(a, b)
+    return a < b
+end
+
 function list:new(init)
     return setmetatable({}, list_mt):clear(init)
+end
+
+function list:new_sorted(init, func)
+    func = func == nil and compare or func
+    return setmetatable({ _sort = func }, list_mt):clear(init)
 end
 
 function list:clear(size)
@@ -37,11 +46,19 @@ function list:add(i, item, ...)
     end
 
     if item == nil then
-        local index = self._size + 1
-        self._size = index
-        self._items[index] = i
+        if self._sort then
+            table.insert_sorted(self._items, i, self._sort)
+            self._size = self._size + 1
+        else
+            local index = self._size + 1
+            self._size = index
+            self._items[index] = i
+        end
     else
         arg_check_type("list:add", 2, i, "number")
+        if self._sort then
+            arg_error("list:add", 2, "you may not insert by index in a sorted list")
+        end
         table.insert(self._items, i, item)
         self._size = self._size + 1
     end
@@ -206,5 +223,6 @@ list_mt = {
 }
 
 return {
-    new = list.new
+    new = list.new,
+    new_sorted = list.new_sorted,
 }
