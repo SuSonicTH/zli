@@ -10,6 +10,7 @@ function print_help() {
     echo "        --clean-all   additionally delete downloaded dependencies"
     echo "        --build       build for current platform (output in bin without suffix)"
     echo "        --build-all   build for all platforms (output in bin with platform suffix)"
+    echo "        --no-compress do not compress binary with upx"
     echo "        --get-zig     download local zig even though it is installed"
     echo "        --get-upx     download local upx even though it is installed"
     echo "        --get-all     download build binaries regardless if they are installed"
@@ -38,6 +39,7 @@ CLEAN_ALL="false"
 BUILD_NATIVE="false"
 BUILD_ALL="false"
 GET_ZIG="false"
+COMPRESS="true"
 
 if [ "$#" -eq 0 ]; then
     exit_argument_error "no argument given"
@@ -45,14 +47,15 @@ fi
 
 while (( "$#" )); do
     case "$1" in
-        -h | --help )  print_help; exit 0;;
-        --clean )      CLEAN="true"; shift;;
-        --clean-all )  CLEAN="true"; CLEAN_ALL="true"; shift;;
-        --build )      BUILD_NATIVE="true"; shift;;
-        --build-all )  BUILD_ALL="true"; shift;;
-        --get-zig )    GET_ZIG="true"; shift;;
-        --get-upx )    GET_UPX="true"; shift;;
-        --get-all )    GET_ZIG="true";GET_UPX="true"; shift;;
+        -h | --help )   print_help; exit 0;;
+        --clean )       CLEAN="true"; shift;;
+        --clean-all )   CLEAN="true"; CLEAN_ALL="true"; shift;;
+        --build )       BUILD_NATIVE="true"; shift;;
+        --no-compress ) COMPRESS="false"; shift;;
+        --build-all )   BUILD_ALL="true"; shift;;
+        --get-zig )     GET_ZIG="true"; shift;;
+        --get-upx )     GET_UPX="true"; shift;;
+        --get-all )     GET_ZIG="true";GET_UPX="true"; shift;;
         * ) print_help; exit_argument_error "unknown command $1";;
     esac
 done
@@ -135,8 +138,12 @@ if [ "$BUILD_NATIVE" = "true" ]; then
 
     $ZIG_BIN build -Doptimize=ReleaseFast || exit_on_error
 
-    echo compressing binary with upx
-    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli${NATIVE_SUFFIX} zig-out/bin/zli${NATIVE_SUFFIX} 
+    if [ "$COMPRESS" = "true" ]; then
+        echo compressing binary with upx
+        $UPX_BIN -qq --ultra-brute --lzma -o bin/zli${NATIVE_SUFFIX} zig-out/bin/zli${NATIVE_SUFFIX}
+    else
+        cp zig-out/bin/zli${NATIVE_SUFFIX} bin/zli_no_upx${NATIVE_SUFFIX}
+    fi
 fi
 
 function build_platform() {
@@ -147,8 +154,12 @@ function build_platform() {
 
     zig build -Doptimize=ReleaseFast -Dtarget=${PLAT}
 
-    echo compressing ${PLAT}
-    $UPX_BIN -qq --ultra-brute --lzma -o bin/zli-${PLAT}${SUFFIX} zig-out/bin/zli${SUFFIX}
+    if [ "$COMPRESS" = "true" ]; then
+        echo compressing ${PLAT}
+        $UPX_BIN -qq --ultra-brute --lzma -o bin/zli-${PLAT}${SUFFIX} zig-out/bin/zli${SUFFIX}
+    else
+        cp zig-out/bin/zli${SUFFIX} bin/zli-${PLAT}_no_upx${SUFFIX}
+    fi
 }
 
 # build all
