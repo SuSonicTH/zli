@@ -167,6 +167,37 @@ local function table_load_file(filename, options)
     return serpent.load(io_read_file(filename), options)
 end
 
+local function default_index(self, key)
+    local value = self.tbl[key]
+    if value ~= nil then
+        return value
+    end
+    value = self.default[key]
+
+    if value == nil and rawget(self, "error") then
+        local error_type = type(self.error)
+        if error_type == 'function' then
+            return self.error(self.tbl, key)
+        elseif error_type == 'string' then
+            error(self.error:format(key), 2)
+        else
+            error(string.format("option '%s' is not set and is not optional", key, 2))
+        end
+    end
+
+    return value
+end
+
+local default_meta = { __index = default_index }
+
+local function default(tbl, default, error)
+    return setmetatable({
+        tbl = tbl,
+        default = default,
+        error = error
+    }, default_meta)
+end
+
 local function get_home()
     local home = os.getenv("HOME")
     if (home == nil and os.get_name() == "windows") then
@@ -210,6 +241,30 @@ local function lambda(lambda_str)
     end
 end
 
+local function starts_with(self, str)
+    if self:sub(1, #str) == str then
+        return true
+    else
+        return false
+    end
+end
+
+local function ends_with(self, str)
+    if self:sub(#str) == str then
+        return true
+    else
+        return false
+    end
+end
+
+local function contains(self, str)
+    if self:find(#str, 1, true) then
+        return true
+    else
+        return false
+    end
+end
+
 --setting global funcitons and constants
 io.read_lines = io_read_lines
 io.write_lines = io_write_lines
@@ -229,6 +284,7 @@ table.remove_if = table_remove_if
 table.filter = table_filter
 table.add_all = table_add_all
 table.insert_all = table_insert_all
+table.default = default
 
 math.maxdouble = 1.7976931348623158e+308
 math.mindouble = 2.2250738585072014e-308
@@ -240,5 +296,8 @@ os.is_mac = os.get_name() == "macos"
 os.home = get_home()
 os.separator = os.get_name() == "windows" and "\\" or "/"
 
+string.starts_with = starts_with
+string.ends_with = ends_with
+string.contains = contains
 string.L = lambda
 L = lambda
