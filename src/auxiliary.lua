@@ -24,6 +24,25 @@ function arg_check_type(func, narg, arg, ...)
     return arg
 end
 
+function sorted_pairs(tbl, func)
+    local keys = {}
+    local idx = 1
+
+    for key, _ in pairs(tbl) do
+        keys[idx] = key
+        idx = idx + 1
+    end
+
+    table.sort(keys, func)
+
+    local index = 1
+    return function()
+        local key = keys[index]
+        index = index + 1
+        return key, tbl[key]
+    end
+end
+
 local function io_read_lines(filename)
     local ret = {}
     for line in io.lines(filename) do

@@ -22,7 +22,7 @@ local function collect_runs(bench)
             if name:starts_with("before_") or name:starts_with("after_") then
                 init[name] = func
             else
-                runs[#runs + 1] = { name = name, func = func, iter = {}, factor = 1}
+                runs[#runs + 1] = { name = name, func = func, iter = {}, factor = 1 }
             end
         end
     end
@@ -56,12 +56,12 @@ local function do_run(bench, run, i, grd)
     local time = end_time - start_time
     local mem = end_mem - start_mem
 
-    run.iter[i] = {time=time*run.factor, mem=mem * 1024}
-    grd:print_row(i, time*run.factor, mem * 1024)
+    run.iter[i] = { time = time * run.factor, mem = mem * 1024 }
+    grd:print_row(i, time * run.factor, mem * 1024)
 end
 
 local function calculate_average(run)
-    local avg = {time=0,mem=0}
+    local avg = { time = 0, mem = 0 }
     for _, stat in ipairs(run.iter) do
         avg.time = avg.time + stat.time
         avg.mem = avg.mem + stat.mem
@@ -69,16 +69,16 @@ local function calculate_average(run)
     avg.time = avg.time / #run.iter
     avg.mem = avg.mem / #run.iter
 
-    run.avg=avg
+    run.avg = avg
 end
 
 local function benchmark(bench, n)
     local init, runs = collect_runs(bench)
     local iter = bench.iter == nil and 3 or bench.iter
-    local summary=grid:new{
-        { name = "benchmark", align = "left",},
-        { name = "time", align = "right", fixed_width = 20},
-        { name = "memory", align = "right", fixed_width = 10},
+    local summary = grid:new {
+        { name = "benchmark", align = "left", },
+        { name = "time",      align = "right", fixed_width = 20 },
+        { name = "memory",    align = "right", fixed_width = 10 },
     }
 
     collectgarbage("stop")
@@ -89,12 +89,19 @@ local function benchmark(bench, n)
 
     for _, run in ipairs(runs) do
         print("running", run.name, iter .. "x", (bench.n and ("n=" .. bench.n) or ""))
-        local grd=grid:new{
-            { name = "run", align = "right", fixed_width = 3},
-            { name = "time", align = "right", fixed_width = 20},
-            { name = "memory", align = "right", fixed_width = 10},
+        local grd = grid:new {
+            { name = "run",    align = "right", fixed_width = 3 },
+            { name = "time",   align = "right", fixed_width = 20 },
+            { name = "memory", align = "right", fixed_width = 10 },
         }
         grd:print_header()
+        --[[
+        for i = 1, 3 do
+            before(bench, run, init)
+            do_run(bench, run, 0, grd)
+            after(bench, run, init)
+        end
+]]
         for i = 1, iter do
             before(bench, run, init)
             do_run(bench, run, i, grd)

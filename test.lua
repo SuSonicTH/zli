@@ -93,7 +93,7 @@ function TestAuxLib:test_spairs()
     }
 
     local actual = ""
-    for k, v in table.spairs(tbl) do
+    for k, v in sorted_pairs(tbl) do
         actual = actual .. k .. ":" .. v .. "\n"
     end
     lu.assertEquals("x:one\ny:two\nz:three\n", actual)

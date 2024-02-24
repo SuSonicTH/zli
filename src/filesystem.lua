@@ -160,7 +160,7 @@ end
 
 local function iterate(path, sorted)
     if sorted then
-        return table.spairs(fs.dir(path))
+        return sorted_pairs(fs.dir(path))
     else
         return pairs(fs.dir(path))
     end
