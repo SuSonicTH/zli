@@ -1,7 +1,8 @@
-local benchmark = { n = 1000, iter = 5 }
+local benchmark = { n = 1000, iter = 3 }
 local words = io.read_lines("benchmark/wordlist.10000.txt")
 
 function benchmark:plus(run)
+    run.factor = self.n
     local str = ""
     for _, word in ipairs(words) do
         str = str .. word .. ","

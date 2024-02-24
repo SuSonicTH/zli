@@ -22,7 +22,7 @@ local function collect_runs(bench)
             if name:starts_with("before_") or name:starts_with("after_") then
                 init[name] = func
             else
-                runs[#runs + 1] = { name = name, func = func, iter = {} }
+                runs[#runs + 1] = { name = name, func = func, iter = {}, factor = 1}
             end
         end
     end
@@ -45,7 +45,7 @@ local function after(bench, run, init)
     init.after_each(bench, run)
 end
 
-local function do_run(bench, run, i)
+local function do_run(bench, run, i, grd)
     collectgarbage("collect")
     local start_mem = collectgarbage("count")
     local start_time = nanotime()
@@ -56,41 +56,64 @@ local function do_run(bench, run, i)
     local time = end_time - start_time
     local mem = end_mem - start_mem
 
-    run.iter[i] = time
-    print("", run.name, i, time, mem * 1024)
+    run.iter[i] = {time=time*run.factor, mem=mem * 1024}
+    grd:print_row(i, time*run.factor, mem * 1024)
 end
 
-local function print_result(run)
-    local sum = 0
-    for _, time in ipairs(run.iter) do
-        sum = sum + time
+local function calculate_average(run)
+    local avg = {time=0,mem=0}
+    for _, stat in ipairs(run.iter) do
+        avg.time = avg.time + stat.time
+        avg.mem = avg.mem + stat.mem
     end
-    print()
-    print("", run.name, "avg", sum / #run.iter)
-    print()
+    avg.time = avg.time / #run.iter
+    avg.mem = avg.mem / #run.iter
+
+    run.avg=avg
 end
 
 local function benchmark(bench, n)
     local init, runs = collect_runs(bench)
     local iter = bench.iter == nil and 3 or bench.iter
+    local summary=grid:new{
+        { name = "benchmark", align = "left",},
+        { name = "time", align = "right", fixed_width = 20},
+        { name = "memory", align = "right", fixed_width = 10},
+    }
+
     collectgarbage("stop")
+    collectgarbage("collect")
 
     randomseed()
     init.before_all(bench)
 
     for _, run in ipairs(runs) do
         print("running", run.name, iter .. "x", (bench.n and ("n=" .. bench.n) or ""))
+        local grd=grid:new{
+            { name = "run", align = "right", fixed_width = 3},
+            { name = "time", align = "right", fixed_width = 20},
+            { name = "memory", align = "right", fixed_width = 10},
+        }
+        grd:print_header()
         for i = 1, iter do
             before(bench, run, init)
-            do_run(bench, run, i)
+            do_run(bench, run, i, grd)
             after(bench, run, init)
         end
-        print_result(run)
+        calculate_average(run)
+        grd:print_row("avg", run.avg.time, run.avg.mem)
+        grd:print_last()
+        print()
+
+        summary:add_row(run.name, run.avg.time, run.avg.mem)
     end
 
     init.after_all(bench)
 
     collectgarbage("restart")
+
+    print "summary"
+    print(summary:tostring())
 end
 
 return {

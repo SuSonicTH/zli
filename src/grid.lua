@@ -84,11 +84,22 @@ function grid:add_rows(rows)
     end
 end
 
-function grid:add_row(row)
+local function columns_from_arg(...)
+    local row={...}
+    if type(row[1]) == 'table' then
+        row = row[1]
+    end
     local columns = {}
     for i, value in ipairs(row) do
         columns[i] = tostring(value)
-        update_with(self.widths, self.max_width, i, columns[i])
+    end
+    return columns
+end
+
+function grid:add_row(...)
+    local columns = columns_from_arg(...)
+    for i, value in ipairs(columns) do
+        update_with(self.widths, self.max_width, i, value)
     end
     self.rows[#self.rows + 1] = columns
 end
@@ -110,36 +121,73 @@ local function padd(self, align, values)
 end
 
 local function calculate_templates(self)
-    if not self.spaces then
-        local spaces = {}
-        local lines = {}
-        local extra_padd = self.padding and 2 or 0
+    local spaces = {}
+    local lines = {}
+    local extra_padd = self.padding and 2 or 0
 
-        for i, width in ipairs(self.widths) do
-            spaces[i] = string.rep(" ", width)
-            lines[i] = string.rep("-", width + extra_padd)
-        end
-
-        self.spaces = spaces
-        self.lines = lines
-        self.padd = (self.padding and ' ' or '')
-        self.vertical = self.padd .. border.vertical .. self.padd
+    for i, width in ipairs(self.widths) do
+        spaces[i] = string.rep(" ", width)
+        lines[i] = string.rep("-", width + extra_padd)
     end
+
+    self.spaces = spaces
+    self.lines = lines
+    self.padd = (self.padding and ' ' or '')
+    self.vertical = self.padd .. border.vertical .. self.padd
+end
+
+
+function grid:get_header() 
+    local tbl = {}
+    calculate_templates(self)
+    tbl[1] = borders(self, border.top)
+    if self.show_header then
+        tbl[2] = padd(self, {}, self.header)
+    end
+    return tbl
+end
+
+function grid:row(...) 
+    local row = columns_from_arg(...)
+    local tbl = {}
+    if not self.spaces then
+        table.add_all(tbl,self:get_header())
+    end
+    tbl[#tbl+1] = borders(self, border.center)
+    tbl[#tbl+1] = padd(self, self.align, row)
+    return tbl
+end
+
+function grid:header_string()
+    return table.concat(self:get_header(), "\n")
+end
+
+function grid:row_string(...)
+    return table.concat(self:row(...), "\n")
+end
+   
+function grid:last_string()
+    return borders(self, border.bottom)
+end
+
+function grid:print_header()
+    print(self:header_string())
+end
+
+function grid:print_row(...)
+    print(self:row_string(...))
+end
+
+function grid:print_last()
+    return print(self:last_string())
 end
 
 function grid:tostring()
-    calculate_templates(self)
     local tbl = {}
-    tbl[1] = borders(self, border.top)
-    if self.show_header then
-        tbl[#tbl + 1] = padd(self, {}, self.header)
-    else
-    end
     for _, row in ipairs(self.rows) do
-        tbl[#tbl + 1] = borders(self, border.center)
-        tbl[#tbl + 1] = padd(self, self.align, row)
+        table.add_all(tbl,self:row(row,self.align))
     end
-    tbl[#tbl + 1] = borders(self, border.bottom)
+    tbl[#tbl + 1] = self:last_string()
     return table.concat(tbl, "\n")
 end
 
@@ -147,18 +195,6 @@ grid_mt = {
     __index = grid,
     __tostring = grid.toString,
 }
-
-print(grid:new({
-    { name = "name" },
-    { name = "value", align = 'right',  fixed_width = 24 },
-}, {
-    { 'Michael Wolf',    1024 },
-    { 'Barbara Wolf',    2048 },
-    { 'Maximilian Wolf', 512 },
-    { 'Katharina Wolf',  256 },
-    { 'Christina Wolf',  1 },
-}):tostring())
-
 
 return {
     new = grid.new
