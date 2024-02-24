@@ -7,6 +7,10 @@ local function get_function(func)
     return func
 end
 
+local function comparator(a, b)
+    return a < b
+end
+
 local function new_stream(next)
     local stream = {
         next = next,
@@ -158,9 +162,10 @@ local function new_stream(next)
     end
 
     function stream:tosortedarray(func)
-        func = get_function(func) or table.comparator
+        func = get_function(func) or comparator
         local array = {}
-        self:foreach(function(value) table.insert_sorted(array, value, func) end)
+        self:foreach(function(value) array[#array + 1] = value end)
+        table.sort(array, func)
         return array
     end
 
@@ -256,7 +261,7 @@ local function new_stream(next)
     end
 
     function stream:min(func)
-        func = get_function(func) or table.comparator
+        func = get_function(func) or comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.maxdouble
@@ -266,7 +271,7 @@ local function new_stream(next)
     end
 
     function stream:max(func)
-        func = get_function(func) or table.comparator
+        func = get_function(func) or comparator
         local ret
         stream:foreach(function(value)
             ret = ret or math.mindouble

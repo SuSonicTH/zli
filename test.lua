@@ -108,11 +108,13 @@ function TestAuxLib:test_copytyble()
     lu.assertEquals(tbl, table.copy(tbl))
 end
 
+--[[removed from lib
 function TestAuxLib:test_concats()
     local tbl = { 1, "2", 3 }
     lu.assertEquals(table.concats(tbl), "123")
     lu.assertEquals(table.concats(tbl, ","), "1,2,3")
 end
+]]
 
 function TestAuxLib:test_table_to_String()
     local tbl = {
@@ -124,6 +126,7 @@ function TestAuxLib:test_table_to_String()
     lu.assertEquals(table.tostring(tbl, "tbl"), 'tbl = {\n    1,\n    "2",\n    3,\n    key = "value"\n}')
 end
 
+--[[removed from lib
 function TestAuxLib:test_insert_sorted()
     local tbl = {}
     for _, value in ipairs({ 9, 1, 5, 3, 6, 2, 7, 8, 4 }) do
@@ -131,6 +134,7 @@ function TestAuxLib:test_insert_sorted()
     end
     lu.assertEquals(tbl, { 1, 2, 3, 4, 5, 6, 7, 8, 9 })
 end
+]]
 
 function TestLibraries:test_csv_create_and_read()
     local data = [[
@@ -209,6 +213,7 @@ function TestLibraries:test_log()
     })
 end
 
+--[[removed from lib
 function TestLibraries:test_string_builder()
     local sb = string.builder()
     lu.assertEquals(sb:len(), 0)
@@ -232,7 +237,9 @@ function TestLibraries:test_string_builder()
     sb:clear():add("A", string.builder():add("B", "C"), "D")
     lu.assertEquals(sb:tostring(), "ABCD")
 end
+]]
 
+--[==[removed from lib
 function TestLibraries:test_string_joiner()
     local joiner = string.joiner { delimiter = ',' }
     lu.assertEquals(joiner:len(), 0)
@@ -258,6 +265,7 @@ function TestLibraries:test_string_joiner()
     joiner:clear():add(1, true, 23.56, false)
     lu.assertEquals(joiner:tostring(), "[1,true,23.56,false]")
 end
+]==]
 
 --[[re-add after zip impl
 function TestLibraries:test_zip()
