@@ -7,9 +7,6 @@ const ziglua = @import("ziglua");
 const Lua = ziglua.Lua;
 const luax = @import("luax.zig");
 
-const zigStringUtil = @import("zigStringUtil");
-const Builder = zigStringUtil.Builder;
-
 const allocator = std.heap.c_allocator;
 
 const filesystem = [_]ziglua.FnReg{
@@ -194,21 +191,22 @@ fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) void {
     _ = lua.pushString(name);
     lua.setTable(-3);
 
-    var builder: Builder = full_path(path, name) catch memoryError(lua);
-    defer builder.deinit();
-    const fullpath = builder.get() catch memoryError(lua);
+    const fullpath = full_path(path, name) catch memoryError(lua);
+    defer allocator.free(fullpath);
 
     _ = lua.pushString("full_path");
     _ = lua.pushString(fullpath);
     lua.setTable(-3);
 }
 
-fn full_path(path: [:0]const u8, name: [:0]const u8) !Builder {
-    var builder: Builder = try Builder.init(allocator, 0);
-    try builder.add(path);
-    try builder.add(separator_string);
-    try builder.add(name);
-    return builder;
+fn full_path(path: [:0]const u8, name: [:0]const u8) ![:0]u8 {
+    const len = path.len + separator_string.len + name.len + 1;
+    const buffer = try allocator.alloc(u8, len);
+    @memcpy(buffer[0..path.len], path);
+    @memcpy(buffer[path.len .. path.len + separator_string.len], separator_string);
+    @memcpy(buffer[path.len + separator_string.len .. path.len + separator_string.len + name.len], name);
+    buffer[len - 1] = 0;
+    return buffer[0 .. len - 1 :0];
 }
 
 fn memoryError(lua: *Lua) noreturn {

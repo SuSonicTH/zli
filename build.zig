@@ -10,11 +10,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const zigStringUtil = b.dependency("zigStringUtil", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     const zigLuaStrip = b.dependency("zigLuaStrip", .{
         .optimize = std.builtin.OptimizeMode.Debug,
     });
@@ -33,7 +28,6 @@ pub fn build(b: *std.Build) void {
 
     exe.addModule("ziglua", ziglua.module("ziglua"));
     exe.linkLibrary(ziglua.artifact("lua"));
-    exe.addModule("zigStringUtil", zigStringUtil.module("zigStringUtil"));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
