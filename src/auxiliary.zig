@@ -14,13 +14,12 @@ const string_functions = [_]ziglua.FnReg{
     .{ .name = "split", .func = ziglua.wrap(split) },
     .{ .name = "to_table", .func = ziglua.wrap(to_table) },
     .{ .name = "trim", .func = ziglua.wrap(trim) },
-    .{ .name = "ltrim", .func = ziglua.wrap(ltrim_lib) },
-    .{ .name = "rtrim", .func = ziglua.wrap(rtrim_lib) },
+    .{ .name = "ltrim", .func = ziglua.wrap(ltrim) },
+    .{ .name = "rtrim", .func = ziglua.wrap(rtrim) },
 };
 
 const table_functions = [_]ziglua.FnReg{
     .{ .name = "next", .func = ziglua.wrap(next) },
-    .{ .name = "spairs", .func = ziglua.wrap(spairs) },
     .{ .name = "create", .func = ziglua.wrap(table_create) },
 };
 
@@ -105,13 +104,13 @@ fn trim(lua: *Lua) i32 {
     return 1;
 }
 
-fn ltrim_lib(lua: *Lua) i32 {
+fn ltrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
     _ = lua.pushBytes(std.mem.trimLeft(u8, str, char_to_strip));
     return 1;
 }
 
-fn rtrim_lib(lua: *Lua) i32 {
+fn rtrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
     _ = lua.pushBytes(std.mem.trimRight(u8, str, char_to_strip));
     return 1;
@@ -131,43 +130,6 @@ fn next_function(lua: *Lua) i32 {
     lua.pushInteger(index + 1);
     lua.replace(Lua.upvalueIndex(2));
     return 1;
-}
-
-fn spairs(lua: *Lua) i32 {
-    var i: ziglua.Integer = 1;
-    lua.newTable();
-    lua.pushNil();
-    while (lua.next(1)) : (i += 1) {
-        lua.pop(1);
-        lua.pushValue(-1);
-        lua.rawSetIndex(-3, i);
-    }
-
-    luax.pushLibraryFunction(lua, "table", "sort");
-    if (lua.isFunction(2)) {
-        lua.pushValue(-2);
-        lua.pushValue(2);
-        lua.call(2, 0);
-    } else {
-        lua.pushValue(-2);
-        lua.call(1, 0);
-    }
-
-    lua.pushValue(1);
-    lua.pushInteger(1);
-    lua.pushClosure(ziglua.wrap(spairs_iter), 3);
-
-    return 1;
-}
-
-fn spairs_iter(lua: *Lua) i32 {
-    const i = lua.toInteger(Lua.upvalueIndex(3)) catch undefined;
-    _ = lua.getIndex(Lua.upvalueIndex(1), i);
-    lua.pushValue(-1);
-    _ = lua.getTable(Lua.upvalueIndex(2));
-    lua.pushInteger(i + 1);
-    lua.replace(Lua.upvalueIndex(3));
-    return 2;
 }
 
 fn table_create(lua: *Lua) i32 {
