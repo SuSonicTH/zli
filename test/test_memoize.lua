@@ -96,3 +96,7 @@ function Test_memoize.Test_three_arguments()
         lu.assertEquals(3, called)
     end
 end
+
+if not RUN_ALL then
+    os.exit(lu.LuaUnit.run('-v'))
+end
