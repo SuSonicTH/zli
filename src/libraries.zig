@@ -82,6 +82,7 @@ const luascripts = [_]luascript{
     .{ .name = "timer", .source = @embedFile("stripped/timer.lua") },
     .{ .name = "benchmark", .source = @embedFile("stripped/benchmark.lua") },
     .{ .name = "grid", .source = @embedFile("stripped/grid.lua") },
+    .{ .name = "memoize", .source = @embedFile("stripped/memoize.lua") },
 };
 
 pub fn openlibs(lua: *Lua) i32 {
