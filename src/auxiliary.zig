@@ -134,7 +134,7 @@ fn next_function(lua: *Lua) i32 {
 
 fn table_create(lua: *Lua) i32 {
     const num_arr: i32 = @intCast(luax.getArgIntegerOrError(lua, 1, "expecting number of array items"));
-    const num_rec: i32 = @intCast(luax.getArgIntegerOrError(lua, 1, "expecting number of record items"));
+    const num_rec: i32 = @intCast(luax.getArgIntegerOrError(lua, 2, "expecting number of record items"));
     lua.createTable(num_arr, num_rec);
     return 1;
 }
