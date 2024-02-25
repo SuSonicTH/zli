@@ -294,7 +294,7 @@ function Test_collection_map.Test_ordered_for_each_keeps_order()
     }, list)
 end
 
-function Test_collection_map.Test_ordered_for_each_keeps_order()
+function Test_collection_map.Test_ordered_iterator_keeps_order()
     local m = map:new_ordered()
     m:put("a", 'A')
     m:put("b", 'B')
