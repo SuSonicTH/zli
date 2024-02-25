@@ -79,6 +79,8 @@ function lambda(lambda_str)
     end
 end
 
+L = lambda
+
 --[[ io ]]
 
 function io.read_lines(filename)
@@ -255,6 +257,31 @@ function table.default(tbl, default, error)
         default = default,
         error = error
     }, default_meta)
+end
+
+local function comparator(a, b)
+    return a < b
+end
+
+function table.insert_sorted(tbl, value, comp)
+    comp = comp or comparator
+
+    local start = 1
+    local len = #tbl
+    local mid = 1
+    local state = 0
+
+    while start <= len do
+        mid = start + math.floor((len - start) / 2)
+        if comp(tbl[mid], value) then
+            start = mid + 1;
+            state = 1;
+        else
+            len = mid - 1;
+            state = 0;
+        end
+    end
+    table.insert(tbl, mid + state, value)
 end
 
 --[[ os ]]
