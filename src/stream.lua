@@ -1,8 +1,8 @@
 local function get_function(func)
     if func == nil or type(func) == "function" then
         return func
-    elseif type(func) == "string" and ("string").l ~= nil then
-        return func:l()
+    elseif type(func) == "string" and func.L ~= nil then
+        return func:L()
     end
     return func
 end
