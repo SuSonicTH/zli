@@ -258,7 +258,7 @@ function table.default(tbl, default, error)
 end
 
 --[[ os ]]
-function os.home()
+local function home()
     local home = os.getenv("HOME")
     if (home == nil and os.get_name() == "windows") then
         home = os.getenv("homedrive") .. os.getenv("homepath")
@@ -267,6 +267,7 @@ function os.home()
 end
 
 os.name = os.get_name()
+os.home = home()
 os.is_windows = os.get_name() == "windows"
 os.is_linux = os.get_name() == "linux"
 os.is_mac = os.get_name() == "macos"
