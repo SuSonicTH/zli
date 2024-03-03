@@ -73,6 +73,45 @@ function Test_auxiliary.Test_table_create()
     lu.assertError(table.create, "1", 2)
 end
 
+function Test_auxiliary.Test_sorted_pairs()
+    local tbl = { Z = 6, B = 2, A = 1, C = 3, Y = 5, X = 4 }
+    local expected = "A=1,B=2,C=3,X=4,Y=5,Z=6"
+    local actual = {}
+    for k, v in sorted_pairs(tbl) do
+        actual[#actual + 1] = k .. "=" .. v
+    end
+    lu.assertEquals(expected, table.concat(actual, ","))
+end
+
+function Test_auxiliary.Test_string_starts_with()
+    lu.assertIsTrue(("Test"):starts_with "T")
+    lu.assertIsTrue(("Test"):starts_with "Te")
+    lu.assertIsTrue(("Test"):starts_with "Tes")
+    lu.assertIsTrue(("Test"):starts_with "Test")
+    lu.assertIsFalse(("Test"):starts_with "t")
+    lu.assertIsFalse(("Test1"):starts_with "1")
+end
+
+function Test_auxiliary.Test_string_ends_with()
+    lu.assertIsTrue(("Test"):ends_with "t")
+    lu.assertIsTrue(("Test"):ends_with "st")
+    lu.assertIsTrue(("Test"):ends_with "est")
+    lu.assertIsTrue(("Test"):ends_with "Test")
+    lu.assertIsFalse(("Test"):ends_with "T")
+end
+
+function Test_auxiliary.Test_string_contains()
+    lu.assertIsTrue(("Test"):contains "T")
+    lu.assertIsTrue(("Test"):contains "e")
+    lu.assertIsTrue(("Test"):contains "s")
+    lu.assertIsTrue(("Test"):contains "t")
+
+    lu.assertIsTrue(("Test"):contains "Te")
+    lu.assertIsTrue(("Test"):contains "es")
+    lu.assertIsTrue(("Test"):contains "st")
+    lu.assertIsTrue(("Test"):contains "Test")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

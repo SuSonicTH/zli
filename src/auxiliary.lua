@@ -45,7 +45,7 @@ function sorted_pairs(tbl, func)
 end
 
 function lambda(lambda_str)
-    arg_check_type("lambda / L / string:l()", 1, lambda_str, 'string')
+    arg_check_type("lambda / L / string:L()", 1, lambda_str, 'string')
 
     local firstChar = lambda_str:sub(1, 1)
     local function_string
@@ -54,11 +54,12 @@ function lambda(lambda_str)
     elseif firstChar == "." then
         function_string = "return function (it) return it" .. lambda_str .. " end"
     elseif firstChar == "(" then
-        local param, expression = lambda_str:match("(%(.+%))%s*%->%s*(.*)")
+        local param, expression = lambda_str:match("(%(.*%))%s*%->%s*(.*)")
         if param ~= nil then
             function_string = "return function " .. param .. " return " .. expression .. " end"
         else
-            function_string = "return function " .. lambda_str .. " end"
+            error("error parsing lambda '" .. lambda_str ..
+                "': expected format '(arg1,arg2,argn) -> statement' or '() -> statement")
         end
     elseif lambda_str:sub(1, 2) == "->" then
         function_string = "return function (it) return " .. lambda_str:sub(3) .. " end"
@@ -313,7 +314,7 @@ function string.starts_with(self, str)
 end
 
 function string.ends_with(self, str)
-    if self:sub(#str) == str then
+    if self:sub(#str * -1) == str then
         return true
     else
         return false
@@ -321,7 +322,7 @@ function string.ends_with(self, str)
 end
 
 function string.contains(self, str)
-    if self:find(#str, 1, true) then
+    if self:find(str, 1, true) then
         return true
     else
         return false
