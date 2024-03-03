@@ -71,7 +71,7 @@ pub fn build(b: *std.Build) void {
     const test_cmd = b.addRunArtifact(exe);
 
     test_cmd.step.dependOn(b.getInstallStep());
-    test_cmd.addArgs(&[_][]const u8{ "--test", "test.lua" });
+    test_cmd.addArgs(&[_][]const u8{"./test/test.lua"});
 
     const test_step = b.step("test", "Test the app");
     test_step.dependOn(&test_cmd.step);
