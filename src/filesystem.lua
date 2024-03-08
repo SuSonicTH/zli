@@ -240,6 +240,21 @@ local function tree(path, dir_first)
     return ret;
 end
 
+local function tree_size(path)
+    local size = 0
+    walk(path, function(file)
+        if file:is_file() then
+            size = size + file:size()
+        end
+    end)
+    return size;
+end
+
+local function tree_size_hr(path)
+    return fs.size_to_hr(tree_size(path));
+end
+
+
 local function stream_tree(path, dir_first)
     if stream == nil then
         stream = require "stream"
@@ -291,6 +306,8 @@ return function(filesystem)
     fs.stream = stream_dir
     fs.stream_tree = stream_tree
     fs.tree = tree
+    fs.tree_size = tree_size
+    fs.tree_size_hr = tree_size_hr
     fs.read_all = read_all
     fs.read_lines = read_lines
     fs.lines = lines

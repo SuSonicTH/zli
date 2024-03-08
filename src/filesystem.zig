@@ -15,6 +15,7 @@ const filesystem = [_]ziglua.FnReg{
 
     .{ .name = "create_path", .func = ziglua.wrap(create_path) },
     .{ .name = "absolute", .func = ziglua.wrap(absolute) },
+    .{ .name = "size_to_hr", .func = ziglua.wrap(size_to_hr) },
 };
 
 const filesystem_path = [_]ziglua.FnReg{
@@ -423,6 +424,13 @@ pub fn size_human_readable(file_size: u64) ![:0]u8 {
     } else {
         return std.fmt.bufPrintZ(&size_hr_buffer, "{d} B", .{@as(u64, @intCast(file_size))});
     }
+}
+
+fn size_to_hr(lua: *Lua) i32 {
+    const size_b = lua.toNumber(1) catch luax.raiseError(lua, "internal error: could not format human readable size");
+    const sizehr = size_human_readable(@as(u64, @intFromFloat(size_b))) catch luax.raiseError(lua, "internal error: could not format human readable size");
+    _ = lua.pushString(sizehr);
+    return 1;
 }
 
 fn size_hr(lua: *Lua) i32 {
