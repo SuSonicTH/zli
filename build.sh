@@ -5,9 +5,11 @@ function print_help() {
     echo "usage ./build.sh [OPTIONs]"
     echo ""
     echo "options:"
-    echo "        --help  print this help"
-    echo "        --all   build for all platforms (output in bin with platform suffix)"
-    echo "        --upx   compress binary with upx"
+    echo "        --help   print this help"
+    echo "        --all    build for all platforms (output in bin with platform suffix)"
+    echo "        --upx    compress binary with upx"
+    echo "        --test   run tests"
+    echo "        --clean  delete zig-cache and zig-out"
     echo ""
 }
 
@@ -30,24 +32,41 @@ function exit_argument_error() {
 
 ALL="false"
 UPX="false"
+TEST="false"
+CLEAN="false"
 
 while (( "$#" )); do
     case "$1" in
         -h | --help )   print_help; exit 0;;
         --all )         ALL="true"; shift;;
         --upx )         UPX="true"; shift;;
+        --test )        TEST="true"; shift;;
+        --clean )       CLEAN="true"; shift;;
         * ) print_help; exit_argument_error "unknown command $1";;
     esac
 done
 
+if [ "$CLEAN" == "true" ]; then
+    echo cleaning
+    rm -fr zig-out zig-cache
+fi
+
 # check if zig is available
-if ! [ -x "$(command -v zig)" ]; then 
-    exit_argument_error "zig not found on path"
+ZIG_BIN="zig"
+if ! [ -x "$(command -v $ZIG_BIN)" ]; then 
+    ZIG_BIN="zig/zig"
+    if ! [ -x "$(command -v $ZIG_BIN)" ]; then 
+        exit_argument_error "zig not found in ./zig or on path"
+    fi
 fi
 
 # check if upx is available if to be used
-if [ "$UPX" = "true" ] && ! [ -x "$(command -v upx)" ]; then
-    exit_argument_error "upx not found on path"
+UPX_BIN="upx"
+if [ "$UPX" = "true" ] && ! [ -x "$(command -v $UPX_BIN)" ]; then
+    UPX_BIN="upx/upx"
+    if ! [ -x "$(command -v $UPX_BIN)" ]; then 
+        exit_argument_error "upx not found in ./upx or on path"
+    fi
 fi
 
 NATIVE_SUFFIX=""
@@ -55,34 +74,38 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     NATIVE_SUFFIX=".exe"
 fi
 
-# native build
-echo building zli native
-rm -f bin/zli${NATIVE_SUFFIX}
-
-zig build -Doptimize=ReleaseFast || exit_on_error
-
-if [ "$UPX" = "true" ]; then
-    echo compressing binary with upx
-    upx -qq --ultra-brute --lzma -o bin/zli${NATIVE_SUFFIX} zig-out/bin/zli${NATIVE_SUFFIX}
-else
-    cp zig-out/bin/zli${NATIVE_SUFFIX} bin/zli_no_upx${NATIVE_SUFFIX}
-fi
-
 function build_platform() {
     PLAT=$1
     SUFFIX=$2
-    echo building ${PLAT}
-    rm -f bin/zli-${PLAT}${SUFFIX}
+    COMPILED_BIN=zig-out/bin/zli${SUFFIX}
 
-    zig build -Doptimize=ReleaseFast -Dtarget=${PLAT}
+    EXE_NAME=bin/zli-${PLAT}${SUFFIX}
+    if [ "$PLAT" == "native" ]; then
+        EXE_NAME=bin/zli${SUFFIX}
+    fi
+    
+    #compile
+    echo building $PLAT
+    rm -f $EXE_NAME
+    $ZIG_BIN build -Doptimize=ReleaseFast -Dtarget=${PLAT}
 
+    #run tests
+    if [ "$PLAT" == "native" ] && [ "$TEST" == "true" ]; then
+        echo testing $PLAT
+        $COMPILED_BIN ./test/test.lua
+    fi
+
+    #compress with UPX if requested, else copy
     if [ "$UPX" = "true" ]; then
-        echo compressing ${PLAT}
-        upx -qq --ultra-brute --lzma -o bin/zli-${PLAT}${SUFFIX} zig-out/bin/zli${SUFFIX}
+        echo compressing $PLAT
+        $UPX_BIN -qq --ultra-brute --lzma -o $EXE_NAME $COMPILED_BIN
     else
-        cp zig-out/bin/zli${SUFFIX} bin/zli-${PLAT}_no_upx${SUFFIX}
+        cp $COMPILED_BIN $EXE_NAME
     fi
 }
+
+# build native
+build_platform "native" $NATIVE_SUFFIX
 
 # build all
 if [ "$ALL" = "true" ]; then
