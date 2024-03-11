@@ -52,18 +52,18 @@ if [ "$CLEAN" == "true" ]; then
 fi
 
 # check if zig is available
-ZIG_BIN="zig"
+ZIG_BIN="zig/zig"
 if ! [ -x "$(command -v $ZIG_BIN)" ]; then 
-    ZIG_BIN="zig/zig"
+    ZIG_BIN="zig"
     if ! [ -x "$(command -v $ZIG_BIN)" ]; then 
         exit_argument_error "zig not found in ./zig or on path"
     fi
 fi
 
 # check if upx is available if to be used
-UPX_BIN="upx"
+UPX_BIN="upx/upx"
 if [ "$UPX" = "true" ] && ! [ -x "$(command -v $UPX_BIN)" ]; then
-    UPX_BIN="upx/upx"
+    UPX_BIN="upx"
     if ! [ -x "$(command -v $UPX_BIN)" ]; then 
         exit_argument_error "upx not found in ./upx or on path"
     fi

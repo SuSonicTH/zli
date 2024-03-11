@@ -3,8 +3,7 @@
 zig-cache/
 zig-out/
 zig/
+upx/
 zli
 zli.exe
-ziglua.zig
 tst.lua
-

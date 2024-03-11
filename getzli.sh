@@ -1,4 +1,14 @@
 #!/bin/bash
+function print_help() {
+    echo "get-zli"
+    echo ""
+    echo "usage ./build.sh [OPTIONs]"
+    echo ""
+    echo "options:"
+    echo "        --help   print this help"
+    echo "        --force  force downloading of zig and upx"
+    echo ""
+}
 
 function exit_on_error() {
     if [ $? -ne 0 ]; then
@@ -9,20 +19,46 @@ function exit_on_error() {
     fi
 }
 
-echo downloading zli repository from https://github.com/SuSonicTH/zli.git
-git clone --quiet --recurse-submodules https://github.com/SuSonicTH/zli.git > /dev/null || exit_on_error
-cd zli || exit_on_error
-chmod +x build.sh
+function exit_argument_error() {
+    error=$1
+    print_help
+    >&2 echo "error: $error"
+    >&2 echo ""
+    exit 1
+}
+
+FORCE="false"
+
+while (( "$#" )); do
+    case "$1" in
+        -h | --help )   print_help; exit 0;;
+        --force )       FORCE="true"; shift;;
+        * ) print_help; exit_argument_error "unknown command $1";;
+    esac
+done
+
+#clone repository if curretn directory is not a clone
+if ! [ -f "./build.sh" ]; then
+    echo downloading zli repository from https://github.com/SuSonicTH/zli.git
+    git clone --quiet --recurse-submodules https://github.com/SuSonicTH/zli.git > /dev/null || exit_on_error
+    cd zli || exit_on_error
+    chmod +x build.sh
+fi
+
+if [ "$FORCE" == "true" ]; then
+    echo deleting local zig and upx
+    rm -fr upx zig
+fi
 
 # check if zig needs to be downloaded
-GET_ZIG=false
-if ! [ -x "$(command -v zig)" ]; then 
+GET_ZIG=$FORCE
+if ! [ -x "$(command -v zig)" ] && ! [ -d "zig" ]; then 
     GET_ZIG="true"
 fi
 
 # check if upx needs to be downloaded
-GET_UPX=false
-if ! [ -x "$(command -v upx)" ]; then
+GET_UPX=$FORCE
+if ! [ -x "$(command -v upx)" ] && ! [ -d "upx" ]; then
     GET_UPX="true"
 fi
 

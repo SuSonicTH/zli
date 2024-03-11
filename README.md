@@ -31,9 +31,11 @@ Tests can be executed by calling
 ./build.shj --test
 ```
 ## Easymode
-You can also use the fully automated `get-zig.sh` script to do everything above and dowload the zig compiler and upx binary for the build if needed.
+You can also use the fully automated `get-zig.sh` script to do everything above and dowload the zig compiler and upx binary for the build if needed. *only on x86_64 on windows or linux*
 All you need to have is **git**, **bash** and **curl**. (works on gitbash in windows)
 Paste the following into your bash terminal. No sudo, no installation, everything happens in the zli directory created in the current directory
 ```bash
 curl -s https://raw.githubusercontent.com/SuSonicTH/zli/master/getzli.sh | bash && cd zli
 ```
+
+`get-zig.sh` can also be used in a cloned repository to download the zig compiler and upx binary if they are not on the path, or with option --force it doloads zig and upx anyway.
