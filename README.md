@@ -18,14 +18,22 @@ git clone --recurse-submodules https://github.com/SuSonicTH/zli.git
 cd zli
 ./build.sh
 ```
-If you want to compile for all the supported platforms call `./build.sh --all` the binaries are saved to the bin directory. 
-If you want to have a substentially smaller binary you also have to have upx on the path and call `./build.sh --upx`
-Tests can be executed by balling `./build.shj --test`
-
+If you want to compile for all the supported platforms use the `--all` switch, all binaries are saved to the bin directory with the platform suffix. 
+```bash
+./build.sh --all
+```
+If you want to have a substentially smaller binary you also have to have upx on the path and call:
+```bash
+./build.sh --upx
+```
+Tests can be executed by calling 
+```bash
+./build.shj --test
+```
 ## Easymode
 You can also use the fully automated `get-zig.sh` script to do everything above and dowload the zig compiler and upx binary for the build if needed.
 All you need to have is **git**, **bash** and **curl**. (works on gitbash in windows)
-Paste the following into your bash terminal (no sudo no installation, everything happens in the zli directory created in the current directory):
+Paste the following into your bash terminal. No sudo, no installation, everything happens in the zli directory created in the current directory
 ```bash
 curl -s https://raw.githubusercontent.com/SuSonicTH/zli/master/getzli.sh | bash && cd zli
 ```
