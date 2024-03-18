@@ -25,13 +25,9 @@ function list:clear(size)
     if type(size) == 'nil' then
         self._items = {}
     elseif type(size) == 'number' then
-        self._items = table.create(size, 0)
+        self._items = {}
     elseif type(size) == 'table' then
-        if type(size.size) == 'function' then
-            self._items = table.create(size:size(), 0)
-        else
-            self._items = table.create(#size, 0)
-        end
+        self._items={}
         self:add_all(size)
     else
         arg_error("list:clear", 1, "expecting size or no argument", 2)

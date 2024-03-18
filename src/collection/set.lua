@@ -35,8 +35,8 @@ function set:clear(size)
     end
 
     if init_size then
-        self._items = table.create(0, init_size)
-        if self._order then self._order = table.create(init_size, 0) end
+        self._items = {}
+        if self._order then self._order = {} end
     end
     if items then self:add_all(items) end
     return self

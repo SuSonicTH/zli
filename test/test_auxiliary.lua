@@ -61,18 +61,6 @@ function Test_auxiliary.Test_table_next()
     lu.assertEquals(tbl, actual)
 end
 
-function Test_auxiliary.Test_table_create()
-    local tbl = table.create(5, 0)
-    for i = 1, 5 do
-        tbl[i] = i
-    end
-
-    lu.assertEquals({ 1, 2, 3, 4, 5 }, tbl)
-    lu.assertError(table.create)
-    lu.assertError(table.create, 1)
-    lu.assertError(table.create, "1", 2)
-end
-
 function Test_auxiliary.Test_sorted_pairs()
     local tbl = { Z = 6, B = 2, A = 1, C = 3, Y = 5, X = 4 }
     local expected = "A=1,B=2,C=3,X=4,Y=5,Z=6"

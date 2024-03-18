@@ -36,10 +36,10 @@ function map:clear(size)
     end
 
     if init_size then
-        self._items = table.create(0, init_size)
+        self._items = {}
         if self._order then
-            self._order = table.create(init_size, 0)
-            self._order_key = table.create(0, init_size)
+            self._order = {}
+            self._order_key = {}
         end
     end
     if items then self:put_all(items) end

@@ -103,7 +103,7 @@ function base:difference(...)
 end
 
 function base:to_array()
-    local array = table.create(self._size, 0)
+    local array = {}
 
     for index, item in self:iterate_indexed() do
         array[index] = item

@@ -20,7 +20,6 @@ const string_functions = [_]ziglua.FnReg{
 
 const table_functions = [_]ziglua.FnReg{
     .{ .name = "next", .func = ziglua.wrap(next) },
-    .{ .name = "create", .func = ziglua.wrap(table_create) },
 };
 
 const os_functions = [_]ziglua.FnReg{
@@ -129,13 +128,6 @@ fn next_function(lua: *Lua) i32 {
     _ = lua.getIndex(Lua.upvalueIndex(1), @intCast(index));
     lua.pushInteger(index + 1);
     lua.replace(Lua.upvalueIndex(2));
-    return 1;
-}
-
-fn table_create(lua: *Lua) i32 {
-    const num_arr: i32 = @intCast(luax.getArgIntegerOrError(lua, 1, "expecting number of array items"));
-    const num_rec: i32 = @intCast(luax.getArgIntegerOrError(lua, 2, "expecting number of record items"));
-    lua.createTable(num_arr, num_rec);
     return 1;
 }
 
