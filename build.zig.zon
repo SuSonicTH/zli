@@ -1,14 +1,15 @@
 .{
     .name = "zli",
-    .version = "0.0.1",
+    .version = "0.0.2",
+    .paths = .{""},
     .dependencies = .{
-        .ziglua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/b3f0d75b1815789be542001d8f12a2017b859538.tar.gz",
-            .hash = "1220d14df5c57d4c3fafe26191fcc3b32c23ffd319e7f5d839d2ace030372f1f85b4",
-        },
         .zigLuaStrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/f3926b7822e417eb87bf5f7949c263e3984e3b0b.tar.gz",
-            .hash = "12203c199e8ccf586845749a765d4ea2550e11ce7363642f1646547be3ee38603a73",
+            .url = "https://github.com/SuSonicTH/zigluastrip/archive/7f8aaac5bd62b7c56c8ad06ed18685599f948d50.tar.gz",
+            .hash = "1220f3a40896acfdf242b6d7d16e0658282b1ae708b5cde7ff2eab6fcc96b7e8be24",
+        },
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/ac577d622333f1695922f2974e81c503edb306ca.tar.gz",
+            .hash = "12208b6cc8a794f8e743b592500a9f1220f041fb454c7e9fba939cfa0d06b1026657",
         },
     },
 }
