@@ -24,13 +24,12 @@ const zip = [_]ziglua.FnReg{
 
 const zli_zip = "zli_zip";
 
-pub export fn luaopen_zip(state: ?*ziglua.LuaState) callconv(.C) c_int {
-    var lua: Lua = .{ .state = state.? };
-    ZipUdata.register(&lua);
+pub fn luaopen_zip(lua: *Lua) i32 {
+    ZipUdata.register(lua);
     lua.newLib(&zip);
 
     const exteded = @embedFile("stripped/zip.lua");
-    luax.registerExtended(&lua, exteded, "zip", zli_zip);
+    luax.registerExtended(lua, exteded, "zip", zli_zip);
     return 1;
 }
 
@@ -133,7 +132,7 @@ const ZipUdata = struct {
         c.systemtime_to_ziptime(&zfi);
 
         if (c.zipOpenNewFileInZip(ud.zfh, path, &zfi, null, 0, null, 0, path, c.Z_DEFLATED, 6) != c.ZIP_OK) {
-            luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{path});
+            luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{&path});
         }
         _ = c.zipCloseFileInZip(ud.zfh);
 
@@ -156,7 +155,7 @@ const ZipUdata = struct {
         c.systemtime_to_ziptime(&zfi);
 
         if (c.zipOpenNewFileInZip(ud.zfh, path, &zfi, null, 0, null, 0, path, c.Z_DEFLATED, compression) != c.ZIP_OK) {
-            luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{path});
+            luax.raiseFormattedError(lua, "could not create directory '%s' in zip ", .{&path});
         }
 
         lua.pushValue(1);
@@ -169,7 +168,7 @@ const ZipUdata = struct {
         var argument: i32 = 2;
 
         while (argument <= top) : (argument += 1) {
-            const data = lua.toBytes(argument) catch lua.argError(argument, "expecting string or number");
+            const data = lua.toString(argument) catch lua.argError(argument, "expecting string or number");
             _ = c.zipWriteInFileInZip(ud.zfh, data.ptr, @intCast(data.len));
         }
 

@@ -71,7 +71,7 @@ fn split(lua: *Lua) i32 {
     var count: i32 = 0;
     var it = std.mem.splitSequence(u8, str, delim);
     while (it.next()) |item| {
-        _ = lua.pushBytes(item);
+        _ = lua.pushString(item);
         count += 1;
     }
     return count;
@@ -87,7 +87,7 @@ fn to_table(lua: *Lua) i32 {
     var index: i32 = 1;
     var it = std.mem.splitSequence(u8, str, delim);
     while (it.next()) |item| {
-        _ = lua.pushBytes(item);
+        _ = lua.pushString(item);
         lua.rawSetIndex(table, index);
         index += 1;
     }
@@ -99,19 +99,19 @@ const char_to_strip = " \t\r\n\x00";
 fn trim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
     const ltrimmed = std.mem.trimLeft(u8, str, char_to_strip);
-    _ = lua.pushBytes(std.mem.trimRight(u8, ltrimmed, char_to_strip));
+    _ = lua.pushString(std.mem.trimRight(u8, ltrimmed, char_to_strip));
     return 1;
 }
 
 fn ltrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    _ = lua.pushBytes(std.mem.trimLeft(u8, str, char_to_strip));
+    _ = lua.pushString(std.mem.trimLeft(u8, str, char_to_strip));
     return 1;
 }
 
 fn rtrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    _ = lua.pushBytes(std.mem.trimRight(u8, str, char_to_strip));
+    _ = lua.pushString(std.mem.trimRight(u8, str, char_to_strip));
     return 1;
 }
 
