@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(.{ .path = "src/lib/zlib/" });
 
     exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
-    exe.linkLibrary(ziglua.artifact("lua"));
+    //exe.linkLibrary(ziglua.artifact("lua"));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
