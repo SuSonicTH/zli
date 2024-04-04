@@ -111,8 +111,8 @@ fn registerColors(lua: *Lua) void {
 const bufferSize: i32 = 4096;
 
 fn crossline_readline(lua: *Lua) i32 {
-    const prompt = lua.optString(1, "> ");
-    const init = lua.optString(2, "");
+    const prompt = lua.optString(1) orelse "> ";
+    const init = lua.optString(2) orelse "";
     var buffer: [bufferSize]u8 = undefined;
 
     @memcpy(buffer[0..], init);
@@ -126,15 +126,15 @@ fn crossline_readline(lua: *Lua) i32 {
 }
 
 fn crossline_prompt_color_set(lua: *Lua) i32 {
-    const fg = lua.optInteger(1, 0);
-    const bg = lua.optInteger(2, 0);
+    const fg = lua.optInteger(1) orelse 0;
+    const bg = lua.optInteger(2) orelse 0;
     c.crossline_prompt_color_set(@intCast(fg | bg));
     return 0;
 }
 
 fn crossline_color_set(lua: *Lua) i32 {
-    const fg = lua.optInteger(1, 0);
-    const bg = lua.optInteger(2, 0);
+    const fg = lua.optInteger(1) orelse 0;
+    const bg = lua.optInteger(2) orelse 0;
     c.crossline_color_set(@intCast(fg | bg));
     return 0;
 }

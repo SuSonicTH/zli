@@ -89,7 +89,7 @@ const ZipUdata = struct {
         const ud: *ZipUdata = luax.getUserData(lua, name, ZipUdata);
         const source_name = filesystem.get_path_index(lua, 2);
         const destination_name = filesystem.get_path_index(lua, 3);
-        const compression: i32 = @intCast(lua.optInteger(4, 6));
+        const compression: i32 = @intCast(lua.optInteger(4) orelse 6);
         var comment: ?[*:0]const u8 = null;
 
         if (lua.typeOf(5) == .string) {
@@ -142,7 +142,7 @@ const ZipUdata = struct {
     fn open(lua: *Lua) i32 {
         const ud: *ZipUdata = luax.getUserData(lua, name, ZipUdata);
         const path = lua.toString(2) catch unreachable;
-        const compression: i32 = @intCast(lua.optInteger(3, 6));
+        const compression: i32 = @intCast(lua.optInteger(3) orelse 6);
         var comment: ?[*:0]const u8 = null;
 
         if (lua.typeOf(4) == .string) {

@@ -66,7 +66,7 @@ fn nanotime(lua: *Lua) i32 {
 
 fn split(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    const delim = std.mem.sliceTo(lua.optString(2, ","), 0);
+    const delim = std.mem.sliceTo(lua.optString(2) orelse ",", 0);
 
     var count: i32 = 0;
     var it = std.mem.splitSequence(u8, str, delim);
@@ -79,7 +79,7 @@ fn split(lua: *Lua) i32 {
 
 fn to_table(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    const delim = std.mem.sliceTo(lua.optString(2, ","), 0);
+    const delim = std.mem.sliceTo(lua.optString(2) orelse ",", 0);
 
     lua.newTable();
     const table = lua.getTop();
