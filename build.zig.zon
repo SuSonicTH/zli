@@ -11,5 +11,25 @@
             .url = "https://github.com/natecraddock/ziglua/archive/af8f7780c8763a69507d890873bd6d37f2b47947.tar.gz",
             .hash = "1220a3fe591e1ae8bf828923f3f2d248eedd99341e35e8d9c04e915dee44bf137a1e",
         },
+        .argparse = .{
+            .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
+            .hash = "12202cfaa36e10fa343d729002ec273175485b8f4c634b58c280d0e7a13f0e22b70a",
+        },
+        .fstring = .{
+            .url = "https://github.com/hishamhm/f-strings/archive/0f623a323b7c37c9b6c94357c929069278b95ef0.tar.gz",
+            .hash = "122072c6d8966baad3189029fdbe27d019ca3822a76360ba917ad590bdce6f359fa9",
+        },
+        .luaunit = .{
+            .url = "https://github.com/bluebird75/luaunit/archive/6f526f85faabdca7cad893ff4d5f61e4af5d0dd5.tar.gz",
+            .hash = "1220e60ad16844c000da746f19bdae56c1ecf643315226a07b2d23e456b2aaeeaac0",
+        },
+        .serpent = .{
+            .url = "https://github.com/pkulchenko/serpent/archive/139fc18263bc5ffecc1729147891f1eb383046bf.tar.gz",
+            .hash = "1220b9fdf4733552ea20acfa5fab5d6f567019b1b7ac71c0781ffabfe56d7ce37381",
+        },
+        .ftcsv = .{
+            .url = "https://github.com/FourierTransformer/ftcsv/archive/527620af3d220c09fa8d6a537bf79f93d9ef2f15.tar.gz",
+            .hash = "1220c0bc4736fac67ef247d8af4eba2cfbe802cd47374747db038ad366ce2f56dbc2",
+        },
     },
 }

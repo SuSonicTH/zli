@@ -27,7 +27,6 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(.{ .path = "src/lib/zlib/" });
 
     exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
-    //exe.linkLibrary(ziglua.artifact("lua"));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
@@ -47,7 +46,13 @@ pub fn build(b: *std.Build) void {
         }
     } else {
         inline for (luastrip_list) |script| {
-            copyFile(script.input, script.output) catch unreachable;
+            if (script.dependency[0] == 0) {
+                copyFile(script.input, script.output) catch unreachable;
+            } else {
+                const dependency = b.dependency(script.dependency, .{});
+                const source = dependency.path(script.input).getPath(b);
+                copyFile(source, script.output) catch unreachable;
+            }
         }
     }
 
@@ -77,18 +82,20 @@ pub fn build(b: *std.Build) void {
 const luastrip_entry = struct {
     input: [:0]const u8,
     output: [:0]const u8,
+    dependency: [:0]const u8 = "",
 };
 
 const luastrip_list = [_]luastrip_entry{
+    .{ .input = "src/argparse.lua", .output = "src/stripped/argparse.lua", .dependency = "argparse" },
+    .{ .input = "F.lua", .output = "src/stripped/F.lua", .dependency = "fstring" },
+    .{ .input = "luaunit.lua", .output = "src/stripped/luaunit.lua", .dependency = "luaunit" },
+    .{ .input = "src/serpent.lua", .output = "src/stripped/serpent.lua", .dependency = "serpent" },
+    .{ .input = "ftcsv.lua", .output = "src/stripped/ftcsv.lua", .dependency = "ftcsv" },
+
     .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
-    .{ .input = "src/lib/argparse/src/argparse.lua", .output = "src/stripped/argparse.lua" },
-    .{ .input = "src/lib/f-string/F.lua", .output = "src/stripped/F.lua" },
-    .{ .input = "src/lib/ftcsv/ftcsv.lua", .output = "src/stripped/ftcsv.lua" },
     .{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
-    .{ .input = "src/lib/luaunit/luaunit.lua", .output = "src/stripped/luaunit.lua" },
-    .{ .input = "src/lib/serpent/src/serpent.lua", .output = "src/stripped/serpent.lua" },
     .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
     .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
     .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
@@ -106,7 +113,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
 };
 
-fn copyFile(input_path: [:0]const u8, output_path: [:0]const u8) !void {
+fn copyFile(input_path: []const u8, output_path: []const u8) !void {
     const input = try std.fs.cwd().openFile(input_path, .{});
     defer input.close();
 

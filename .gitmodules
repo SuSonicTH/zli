@@ -1,27 +1,15 @@
-[submodule "luaunit"]
-	path = src/lib/luaunit
-	url = https://github.com/bluebird75/luaunit.git
 [submodule "lua-zlib"]
 	path = src/lib/lua-zlib
 	url = https://github.com/brimworks/lua-zlib
 [submodule "lua-cjson"]
 	path = src/lib/lua-cjson
 	url = https://github.com/openresty/lua-cjson.git
-[submodule "argparse"]
-	path = src/lib/argparse
-	url = https://github.com/luarocks/argparse.git
 [submodule "Crossline"]
 	path = src/lib/Crossline
 	url = https://github.com/SuSonicTH/Crossline.git
 [submodule "serpent"]
 	path = serpent
 	url = https://github.com/pkulchenko/serpent.git
-[submodule "src/lib/serpent"]
-	path = src/lib/serpent
-	url = https://github.com/pkulchenko/serpent.git
-[submodule "src/lib/ftcsv"]
-	path = src/lib/ftcsv
-	url = https://github.com/FourierTransformer/ftcsv.git
 [submodule "src/lib/zlib"]
 	path = src/lib/zlib
 	url = https://github.com/madler/zlib.git
