@@ -1,5 +1,6 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
+var luaPath: std.Build.LazyPath = undefined; //.{ .path = "src/lib/lua/" };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -9,6 +10,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    luaPath = b.dependency("lua54", .{}).path("src/");
 
     const zigLuaStrip = b.dependency("zigLuaStrip", .{
         .optimize = std.builtin.OptimizeMode.Debug,
@@ -22,26 +24,33 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.addIncludePath(.{ .path = "src/" });
-    exe.addIncludePath(.{ .path = "src/lib/Crossline/" });
-    exe.addIncludePath(.{ .path = "src/lib/zlib/contrib/minizip/" });
-    exe.addIncludePath(.{ .path = "src/lib/zlib/" });
-
     exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
+
+    //zlib and zip libraries
+    const zlib_dep = b.dependency("zlib", .{});
+    exe.addIncludePath(zlib_dep.path(""));
+    exe.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    exe.linkLibrary(zlib(b, target, optimize, zlib_dep));
+    exe.linkLibrary(luaZlib(b, target, optimize, zlib_dep));
+    exe.linkLibrary(miniZip(b, target, optimize, zlib_dep));
 
     exe.linkLibrary(lsqlite3(b, target, optimize));
     exe.linkLibrary(lpeg(b, target, optimize));
-    exe.linkLibrary(zlib(b, target, optimize));
-    exe.linkLibrary(luaZlib(b, target, optimize));
     exe.linkLibrary(luaCJson(b, target, optimize));
-    exe.linkLibrary(crossline(b, target, optimize));
-    exe.linkLibrary(miniZip(b, target, optimize));
+    exe.linkLibrary(crossline(b, target, optimize, exe));
     exe.linkLibrary(timer(b, target, optimize));
 
     if (optimize != .Debug) {
         exe.root_module.strip = true;
         inline for (luastrip_list) |script| {
             var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
-            run_step.addArgs(&.{ script.input, script.output });
+            if (script.dependency[0] == 0) {
+                run_step.addArgs(&.{ script.input, script.output });
+            } else {
+                const dependency = b.dependency(script.dependency, .{});
+                const source = dependency.path(script.input).getPath(b);
+                run_step.addArgs(&.{ source, script.output });
+            }
             exe.step.dependOn(&run_step.step);
         }
     } else {
@@ -86,31 +95,32 @@ const luastrip_entry = struct {
 };
 
 const luastrip_list = [_]luastrip_entry{
-    .{ .input = "src/argparse.lua", .output = "src/stripped/argparse.lua", .dependency = "argparse" },
     .{ .input = "F.lua", .output = "src/stripped/F.lua", .dependency = "fstring" },
-    .{ .input = "luaunit.lua", .output = "src/stripped/luaunit.lua", .dependency = "luaunit" },
-    .{ .input = "src/serpent.lua", .output = "src/stripped/serpent.lua", .dependency = "serpent" },
     .{ .input = "ftcsv.lua", .output = "src/stripped/ftcsv.lua", .dependency = "ftcsv" },
+    .{ .input = "lua/cjson/util.lua", .output = "src/stripped/cjson.util.lua", .dependency = "cjson" },
+    .{ .input = "luaunit.lua", .output = "src/stripped/luaunit.lua", .dependency = "luaunit" },
+    .{ .input = "re.lua", .output = "src/stripped/re.lua", .dependency = "lpeg" },
+    .{ .input = "src/argparse.lua", .output = "src/stripped/argparse.lua", .dependency = "argparse" },
+    .{ .input = "src/serpent.lua", .output = "src/stripped/serpent.lua", .dependency = "serpent" },
 
     .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
+    .{ .input = "src/benchmark.lua", .output = "src/stripped/benchmark.lua" },
+    .{ .input = "src/collection/init.lua", .output = "src/stripped/collection.init.lua" },
+    .{ .input = "src/collection/list.lua", .output = "src/stripped/collection.list.lua" },
+    .{ .input = "src/collection/map.lua", .output = "src/stripped/collection.map.lua" },
+    .{ .input = "src/collection/set.lua", .output = "src/stripped/collection.set.lua" },
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
-    .{ .input = "src/lib/lpeg/re.lua", .output = "src/stripped/re.lua" },
+    .{ .input = "src/grid.lua", .output = "src/stripped/grid.lua" },
     .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
     .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
+    .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
     .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
     .{ .input = "src/timer.lua", .output = "src/stripped/timer.lua" },
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
     .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
-    .{ .input = "src/collection/init.lua", .output = "src/stripped/collection.init.lua" },
-    .{ .input = "src/collection/set.lua", .output = "src/stripped/collection.set.lua" },
-    .{ .input = "src/collection/list.lua", .output = "src/stripped/collection.list.lua" },
-    .{ .input = "src/collection/map.lua", .output = "src/stripped/collection.map.lua" },
-    .{ .input = "src/benchmark.lua", .output = "src/stripped/benchmark.lua" },
-    .{ .input = "src/grid.lua", .output = "src/stripped/grid.lua" },
-    .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
 };
 
 fn copyFile(input_path: []const u8, output_path: []const u8) !void {
@@ -131,8 +141,6 @@ fn copyFile(input_path: []const u8, output_path: []const u8) !void {
     }
 }
 
-const luaPath: std.Build.LazyPath = .{ .path = "src/lib/lua/" };
-
 fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "lsqlite3",
@@ -140,8 +148,9 @@ fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "src/lib/lsqlite3/" });
-    lib.addCSourceFiles(.{ .root = .{ .path = "src/lib/lsqlite3/" }, .files = &[_][]const u8{
+    const dependency = b.dependency("lsqlite3", .{});
+    lib.addIncludePath(dependency.path(""));
+    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "sqlite3.c",
         "lsqlite3.c",
     }, .flags = flags_c99 });
@@ -156,10 +165,12 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.M
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "lpeg/" });
-    lib.addCSourceFiles(.{ .root = .{ .path = "src/lib/lpeg/" }, .files = &[_][]const u8{
+    const dependency = b.dependency("lpeg", .{});
+    lib.addIncludePath(dependency.path(""));
+    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "lpcap.c",
         "lpcode.c",
+        "lpcset.c",
         "lpprint.c",
         "lptree.c",
         "lpvm.c",
@@ -168,14 +179,14 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.M
     return lib;
 }
 
-fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode) *std.Build.Step.Compile {
+fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "zlib",
         .target = target,
         .optimize = optimize,
     });
-    lib.addIncludePath(.{ .path = "src/lib/zlib/" });
-    lib.addCSourceFiles(.{ .root = .{ .path = "src/lib/zlib/" }, .files = &[_][]const u8{
+    lib.addIncludePath(zlib_deb.path(""));
+    lib.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
         "adler32.c",
         "crc32.c",
         "gzclose.c",
@@ -196,37 +207,38 @@ fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.M
     return lib;
 }
 
-fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode) *std.Build.Step.Compile {
+fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "lua_zlib",
         .target = target,
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "src/lib/zlib/" });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/lib/lua-zlib/lua_zlib.c" }, .flags = &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" } });
+    lib.addIncludePath(zlib_deb.path(""));
+    const dependency = b.dependency("lua_zlib", .{});
+    lib.addCSourceFile(.{ .file = dependency.path("lua_zlib.c"), .flags = &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" } });
     lib.linkLibC();
     return lib;
 }
 
-fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode) *std.Build.Step.Compile {
+fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "miniZip",
         .target = target,
         .optimize = optimize,
     });
     lib.addIncludePath(.{ .path = "src/" });
-    lib.addIncludePath(.{ .path = "src/lib/zlib/" });
-    lib.addIncludePath(.{ .path = "src/lib/zlib/contrib/minizip/" });
-    lib.addCSourceFiles(.{ .files = &[_][]const u8{
-        "src/lib/zlib/contrib/minizip/zip.c",
-        "src/lib/zlib/contrib/minizip/unzip.c",
-        "src/lib/zlib/contrib/minizip/ioapi.c",
-        "src/zip_util.c",
+    lib.addIncludePath(zlib_deb.path(""));
+    lib.addIncludePath(zlib_deb.path("contrib/minizip/"));
+    lib.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
+        "contrib/minizip/zip.c",
+        "contrib/minizip/unzip.c",
+        "contrib/minizip/ioapi.c",
     }, .flags = flags_c99 });
+    lib.addCSourceFile(.{ .file = .{ .path = "src/zip_util.c" }, .flags = flags_c99 });
     switch (target.result.os.tag) {
         .windows => {
-            lib.addCSourceFile(.{ .file = .{ .path = "src/lib/zlib/contrib/minizip/iowin32.c" }, .flags = flags_c99 });
+            lib.addCSourceFile(.{ .file = zlib_deb.path("contrib/minizip/iowin32.c"), .flags = flags_c99 });
         },
         else => {},
     }
@@ -241,8 +253,9 @@ fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         .optimize = optimize,
     });
     lib.addIncludePath(luaPath);
-    lib.addIncludePath(.{ .path = "src/lib/lua-cjson/" });
-    lib.addCSourceFiles(.{ .root = .{ .path = "src/lib/lua-cjson/" }, .files = &[_][]const u8{
+    const dependency = b.dependency("cjson", .{});
+    lib.addIncludePath(dependency.path(""));
+    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "fpconv.c",
         "g_fmt.c",
         "lua_cjson.c",
@@ -252,14 +265,16 @@ fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
     return lib;
 }
 
-fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode) *std.Build.Step.Compile {
+fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.Mode, exe: *std.Build.Step.Compile) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "crossline",
         .target = target,
         .optimize = optimize,
     });
-    lib.addIncludePath(.{ .path = "src/lib/Crossline/" });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/lib/Crossline/crossline.c" }, .flags = flags_c99 });
+    const dependency = b.dependency("crossline", .{});
+    lib.addIncludePath(dependency.path(""));
+    exe.addIncludePath(dependency.path(""));
+    lib.addCSourceFile(.{ .file = dependency.path("crossline.c"), .flags = flags_c99 });
     lib.linkLibC();
     return lib;
 }
