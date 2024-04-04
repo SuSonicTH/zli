@@ -65,7 +65,7 @@ fi
 # download dependencies if needed
 if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-windows-x86_64-0.11.0"
+        ZIG_NAME="zig-windows-x86_64-0.12.0-dev.3533+e5d900268"
         echo downloading $ZIG_NAME
         curl -s https://ziglang.org/download/0.11.0/${ZIG_NAME}.zip --output zig.zip || exit_on_error
         echo "unzipping..."
@@ -84,7 +84,7 @@ if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
     fi
 else
     if [ "$GET_ZIG" == "true" ]; then
-        ZIG_NAME="zig-linux-x86_64-0.11.0"
+        ZIG_NAME="zig-linux-x86_64-0.12.0-dev.3533+e5d900268"
         echo downloading $ZIG_NAME
         curl -s https://ziglang.org/download/0.11.0/${ZIG_NAME}.tar.xz | tar -xJ || exit_on_error
         mv $ZIG_NAME zig || exit_on_error

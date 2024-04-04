@@ -1,14 +1,63 @@
 .{
     .name = "zli",
-    .version = "0.0.1",
+    .version = "0.0.2",
+    .paths = .{""},
     .dependencies = .{
         .ziglua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/b3f0d75b1815789be542001d8f12a2017b859538.tar.gz",
-            .hash = "1220d14df5c57d4c3fafe26191fcc3b32c23ffd319e7f5d839d2ace030372f1f85b4",
+            .url = "https://github.com/natecraddock/ziglua/archive/af8f7780c8763a69507d890873bd6d37f2b47947.tar.gz",
+            .hash = "1220a3fe591e1ae8bf828923f3f2d248eedd99341e35e8d9c04e915dee44bf137a1e",
+        },
+        .lua54 = .{
+            .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
+            .hash = "1220f93ada1fa077ab096bf88a5b159ad421dbf6a478edec78ddb186d0c21d3476d9",
         },
         .zigLuaStrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/f3926b7822e417eb87bf5f7949c263e3984e3b0b.tar.gz",
-            .hash = "12203c199e8ccf586845749a765d4ea2550e11ce7363642f1646547be3ee38603a73",
+            .url = "https://github.com/SuSonicTH/zigluastrip/archive/7f8aaac5bd62b7c56c8ad06ed18685599f948d50.tar.gz",
+            .hash = "1220f3a40896acfdf242b6d7d16e0658282b1ae708b5cde7ff2eab6fcc96b7e8be24",
+        },
+        .argparse = .{
+            .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
+            .hash = "12202cfaa36e10fa343d729002ec273175485b8f4c634b58c280d0e7a13f0e22b70a",
+        },
+        .fstring = .{
+            .url = "https://github.com/hishamhm/f-strings/archive/0f623a323b7c37c9b6c94357c929069278b95ef0.tar.gz",
+            .hash = "122072c6d8966baad3189029fdbe27d019ca3822a76360ba917ad590bdce6f359fa9",
+        },
+        .luaunit = .{
+            .url = "https://github.com/bluebird75/luaunit/archive/6f526f85faabdca7cad893ff4d5f61e4af5d0dd5.tar.gz",
+            .hash = "1220e60ad16844c000da746f19bdae56c1ecf643315226a07b2d23e456b2aaeeaac0",
+        },
+        .serpent = .{
+            .url = "https://github.com/pkulchenko/serpent/archive/139fc18263bc5ffecc1729147891f1eb383046bf.tar.gz",
+            .hash = "1220b9fdf4733552ea20acfa5fab5d6f567019b1b7ac71c0781ffabfe56d7ce37381",
+        },
+        .ftcsv = .{
+            .url = "https://github.com/FourierTransformer/ftcsv/archive/527620af3d220c09fa8d6a537bf79f93d9ef2f15.tar.gz",
+            .hash = "1220c0bc4736fac67ef247d8af4eba2cfbe802cd47374747db038ad366ce2f56dbc2",
+        },
+        .crossline = .{
+            .url = "https://github.com/jcwangxp/Crossline/archive/60b4bb5b2adb4eb9f83654dc983a191048250b2e.tar.gz",
+            .hash = "1220d819de325674bc3faec1ea2815c71def55394a5998e222f67c9872bc7232c1e8",
+        },
+        .cjson = .{
+            .url = "https://github.com/openresty/lua-cjson/archive/881accc8fadca5ec02aa34d364df2a1aa25cd2f9.tar.gz",
+            .hash = "1220fd3ca532df3c0f548776f781251fc93187b587ff84e28b91dca6be835f97dbec",
+        },
+        .lua_zlib = .{
+            .url = "https://github.com/brimworks/lua-zlib/archive/15d4bc84b0ad3e4012d72ce18cfae58518ec13b.tar.gz",
+            .hash = "12209ac2104a10e6000fdeddcfab839d10ced6212429bc1a6785c282615f7a5d4f42",
+        },
+        .zlib = .{
+            .url = "https://github.com/madler/zlib/archive/643e17b7498d12ab8d15565662880579692f769d.tar.gz",
+            .hash = "1220fcc34731cc792808d74583a8b581bff8b58aea1c8ab839b8889e96982ab1fdde",
+        },
+        .lpeg = .{
+            .url = "https://github.com/roberto-ieru/LPeg/archive/e58f9bb289b1aa5cd4c96c26cccd0f69461e8436.tar.gz",
+            .hash = "1220a5b347bdf4339ea6e181caad70b1910112e86eb298b3b4a8f53f2472a9ea1720",
+        },
+        .lsqlite3 = .{
+            .url = "https://github.com/SuSonicTH/lsqlite3/archive/c19ef2d599a7b349adb8361b7fea3228e0891e4a.tar.gz",
+            .hash = "12206b1cdaade65681617d33f66f1cb81ac679aac8fa2eaa0de8fe0f28c1568bb47b",
         },
     },
 }

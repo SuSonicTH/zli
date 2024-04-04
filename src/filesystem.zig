@@ -82,16 +82,15 @@ const separator_string = switch (builtin.os.tag) {
 const zli_filesystem = "zli_filesystem";
 const zli_mt_path = "zli_mt_path";
 
-pub export fn luaopen_filesystem(state: ?*ziglua.LuaState) callconv(.C) c_int {
-    var lua: Lua = .{ .state = state.? };
+pub fn luaopen_filesystem(lua: *Lua) i32 {
     lua.newLib(&filesystem);
     lua.setFuncs(&filesystem_path, 0);
     _ = lua.pushString("separator");
     _ = lua.pushString(separator_string);
     lua.setTable(-3);
 
-    register_path_mt(&lua);
-    luax.registerExtended(&lua, @embedFile("stripped/filesystem.lua"), "filesytem", zli_filesystem);
+    register_path_mt(lua);
+    luax.registerExtended(lua, @embedFile("stripped/filesystem.lua"), "filesytem", zli_filesystem);
     return 1;
 }
 
@@ -138,7 +137,7 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
     } else {
         path = "./";
     }
-    var directory = std.fs.cwd().openIterableDir(path, .{}) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
+    var directory = std.fs.cwd().openDir(path, .{ .iterate = true }) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
     defer directory.close();
 
     const fullPath = lua.pushString(getRealPath(lua, std.mem.sliceTo(path, 0)));
@@ -147,14 +146,14 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
     const table = lua.getTop();
     var iterator = directory.iterate();
     if (keyValue) {
-        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s", .{path.ptr})) |entry| {
+        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
             const name = lua.pushString(pathToString(entry.name));
             create_path_sub(lua, fullPath, name);
             lua.setTable(table);
         }
     } else {
         var index: i32 = 1;
-        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s", .{path.ptr})) |entry| {
+        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
             const name = pathToString(entry.name);
             create_path_sub(lua, fullPath, name);
             lua.rawSetIndex(table, index);
@@ -165,8 +164,8 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
 }
 
 fn create_path(lua: *Lua) i32 {
-    var path = std.mem.sliceTo(lua.checkString(1), 0);
-    var name = std.mem.sliceTo(lua.checkString(2), 0);
+    const path = std.mem.sliceTo(lua.checkString(1), 0);
+    const name = std.mem.sliceTo(lua.checkString(2), 0);
     create_path_sub(lua, path, name);
     return 1;
 }
@@ -220,7 +219,11 @@ fn current_directory(lua: *Lua) i32 {
 }
 
 fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.fs.File.Stat {
-    const file = open_file_or_directory(std.fs.cwd(), fullpath) catch luax.raiseFormattedError(lua, "Could not open file '%s", .{fullpath.ptr});
+    const file = std.fs.cwd().openFile(fullpath, .{}) catch {
+        var directory = std.fs.cwd().openDir(fullpath, .{}) catch luax.raiseFormattedError(lua, "Could not get stats for '%s", .{fullpath.ptr});
+        defer directory.close();
+        return directory.stat() catch luax.raiseFormattedError(lua, "Could not get directory stats for '%s'", .{fullpath.ptr});
+    };
     defer file.close();
     return file.stat() catch luax.raiseFormattedError(lua, "Could not get file stats for '%s'", .{fullpath.ptr});
 }
@@ -484,8 +487,14 @@ fn open(lua: *Lua) i32 {
 
 fn exists(lua: *Lua) i32 {
     const path = get_path(lua);
-    const file = open_file_or_directory(fs.cwd(), path) catch {
-        lua.pushBoolean(false);
+
+    const file = std.fs.cwd().openFile(path, .{}) catch {
+        var directory = std.fs.cwd().openDir(path, .{}) catch {
+            lua.pushBoolean(false);
+            return 1;
+        };
+        defer directory.close();
+        lua.pushBoolean(true);
         return 1;
     };
     file.close();
@@ -516,26 +525,4 @@ fn create_directory(lua: *Lua) i32 {
     const path = get_path(lua);
     std.fs.cwd().makeDir(path) catch luax.raiseFormattedError(lua, "Could not create directory '%s", .{path.ptr});
     return 0;
-}
-
-fn open_file_or_directory(dire: std.fs.Dir, path: []const u8) !std.fs.File {
-    if (builtin.os.tag == .windows) {
-        const path_w = try std.os.windows.sliceToPrefixedFileW(path);
-        return std.fs.File{
-            .handle = try std.os.windows.OpenFile(path_w.span(), .{
-                .dir = dire.fd,
-                .access_mask = std.os.windows.SYNCHRONIZE | std.os.windows.GENERIC_READ,
-                .creation = std.os.windows.FILE_OPEN,
-                .io_mode = .blocking,
-                .filter = .any,
-            }),
-            .capable_io_mode = std.io.default_mode,
-            .intended_io_mode = .blocking,
-        };
-    }
-    return std.fs.File{
-        .handle = try std.os.openat(dire.fd, path, std.os.O.RDONLY, 0),
-        .capable_io_mode = std.io.default_mode,
-        .intended_io_mode = .blocking,
-    };
 }

@@ -21,14 +21,13 @@ const unzip = [_]ziglua.FnReg{
 
 const zli_unzip = "zli_unzip";
 
-pub export fn luaopen_unzip(state: ?*ziglua.LuaState) callconv(.C) c_int {
-    var lua: Lua = .{ .state = state.? };
-    UnzipUdata.register(&lua);
-    UnzipFile.register(&lua);
+pub fn luaopen_unzip(lua: *Lua) i32 {
+    UnzipUdata.register(lua);
+    UnzipFile.register(lua);
     lua.newLib(&unzip);
 
     const exteded = @embedFile("stripped/unzip.lua");
-    luax.registerExtended(&lua, exteded, "zip", zli_unzip);
+    luax.registerExtended(lua, exteded, "zip", zli_unzip);
     return 1;
 }
 
@@ -127,7 +126,7 @@ const UnzipUdata = struct {
             _ = lua.pushString("");
         } else {
             var lua_buffer: ziglua.Buffer = undefined;
-            var buffer = lua_buffer.initSize(lua.*, uzgi.size_comment);
+            const buffer = lua_buffer.initSize(lua, uzgi.size_comment);
             _ = c.unzGetGlobalComment(ud.uzfh, buffer.ptr, uzgi.size_comment);
             lua_buffer.addSize(@intCast(uzgi.size_comment));
             lua_buffer.pushResult();
@@ -382,7 +381,7 @@ const UnzipFile = struct {
 
         if (uzf.pos == uzf.end) {
             var lua_buffer: ziglua.Buffer = undefined;
-            var buffer = lua_buffer.initSize(lua.*, len);
+            const buffer = lua_buffer.initSize(lua, len);
             const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, len);
             lua_buffer.addSize(@intCast(bytes_read));
             lua_buffer.pushResult();
@@ -391,13 +390,13 @@ const UnzipFile = struct {
             }
             return 1;
         } else if (uzf.end - uzf.pos >= len) {
-            _ = lua.pushBytes(uzf.buffer[uzf.pos .. uzf.pos + len]);
+            _ = lua.pushString(uzf.buffer[uzf.pos .. uzf.pos + len]);
             uzf.pos += len;
             return 1;
         } else {
             var lua_buffer: ziglua.Buffer = undefined;
-            lua_buffer.init(lua.*);
-            lua_buffer.addBytes(uzf.buffer[uzf.pos..uzf.end]);
+            lua_buffer.init(lua);
+            lua_buffer.addString(uzf.buffer[uzf.pos..uzf.end]);
             var size = len - (uzf.end - uzf.pos);
             while (true) {
                 fillBuffer(uzf);
@@ -406,12 +405,12 @@ const UnzipFile = struct {
                     return 1;
                 }
                 if (uzf.end - uzf.pos >= size) {
-                    lua_buffer.addBytes(uzf.buffer[0..size]);
+                    lua_buffer.addString(uzf.buffer[0..size]);
                     lua_buffer.pushResult();
                     uzf.pos += size;
                     return 1;
                 } else {
-                    lua_buffer.addBytes(uzf.buffer[0..uzf.end]);
+                    lua_buffer.addString(uzf.buffer[0..uzf.end]);
                     size -= uzf.end;
                 }
             }
@@ -422,7 +421,7 @@ const UnzipFile = struct {
     fn read_all(lua: *Lua, uzf: *UnzipFile) i32 {
         var lua_buffer: ziglua.Buffer = undefined;
         const size = uzf.size - uzf.fpos + uzf.end;
-        var buffer = lua_buffer.initSize(lua.*, size);
+        const buffer = lua_buffer.initSize(lua, size);
         const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, size);
         lua_buffer.addSize(@intCast(bytes_read));
         lua_buffer.pushResult();
@@ -440,10 +439,10 @@ const UnzipFile = struct {
         var start = uzf.pos;
 
         var lua_buffer: ziglua.Buffer = undefined;
-        lua_buffer.init(lua.*);
+        lua_buffer.init(lua);
         while (uzf.buffer[uzf.pos] != '\r' and uzf.buffer[uzf.pos] != '\n') {
             if (uzf.pos == uzf.end - 1) {
-                lua_buffer.addBytes(uzf.buffer[start..uzf.end]);
+                lua_buffer.addString(uzf.buffer[start..uzf.end]);
                 uzf.fillBuffer();
                 start = 0;
                 if (uzf.eof) {
@@ -455,9 +454,9 @@ const UnzipFile = struct {
             }
         }
         if (include_eol) {
-            lua_buffer.addBytes(uzf.buffer[start .. uzf.pos + 1]);
+            lua_buffer.addString(uzf.buffer[start .. uzf.pos + 1]);
         } else {
-            lua_buffer.addBytes(uzf.buffer[start..uzf.pos]);
+            lua_buffer.addString(uzf.buffer[start..uzf.pos]);
         }
 
         if (uzf.buffer[uzf.pos] == '\r') {

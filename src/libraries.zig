@@ -43,19 +43,19 @@ const preload = [_]ziglua.FnReg{
     },
     .{
         .name = "crossline",
-        .func = crossline.luaopen_crossline,
+        .func = ziglua.wrap(crossline.luaopen_crossline),
     },
     .{
         .name = "filesystem",
-        .func = filesystem.luaopen_filesystem,
+        .func = ziglua.wrap(filesystem.luaopen_filesystem),
     },
     .{
         .name = "unzip",
-        .func = unzip.luaopen_unzip,
+        .func = ziglua.wrap(unzip.luaopen_unzip),
     },
     .{
         .name = "zip",
-        .func = zip.luaopen_zip,
+        .func = ziglua.wrap(zip.luaopen_zip),
     },
 };
 
@@ -107,7 +107,7 @@ pub fn openlibs(lua: *Lua) i32 {
 }
 
 fn luaopen_luascript(lua: *Lua) i32 {
-    const modname = lua.toBytes(1) catch unreachable;
+    const modname = lua.toString(1) catch unreachable;
     for (luascripts) |script| {
         if (strcmp(modname, script.name) == 0) {
             lua.loadBuffer(script.source, modname, ziglua.Mode.text) catch lua.raiseError();
@@ -115,7 +115,5 @@ fn luaopen_luascript(lua: *Lua) i32 {
             return 1;
         }
     }
-
-    const modname1 = lua.toString(1) catch unreachable; //todo: fix: is there a way to not get the string twice, once with toBytes and once with toString
-    return lua.raiseErrorStr("unknown module \"%s\"", .{modname1});
+    return lua.raiseErrorStr("unknown module \"%s\"", .{&modname});
 }

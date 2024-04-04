@@ -15,13 +15,13 @@ var uzfh: c.unzFile = undefined;
 const allocator = std.heap.c_allocator;
 
 pub fn main() !void {
-    var lua = try Lua.init(allocator);
+    var lua = try Lua.init(&allocator);
     defer lua.deinit();
 
-    try createArgTable(&lua);
+    try createArgTable(lua);
     _ = lua.gcSetGenerational(0, 0);
-    _ = libraries.openlibs(&lua);
-    try create_payload_searcher(&lua);
+    _ = libraries.openlibs(lua);
+    try create_payload_searcher(lua);
 
     lua.pushFunction(ziglua.wrap(messageHandler));
     try lua.loadBuffer(main_lua, prog_name, .binary_text);
@@ -46,7 +46,7 @@ fn createArgTable(lua: *Lua) !void {
 
 fn messageHandler(lua: *Lua) i32 {
     if (lua.toString(1)) |message| {
-        lua.traceback(lua, message[0..std.mem.len(message) :0], 1);
+        lua.traceback(lua, message, 1);
         return 1;
     } else |_| {
         if (lua.callMeta(1, "__tostring")) {
@@ -90,7 +90,7 @@ fn payload_searcher(lua: *Lua) i32 {
         defer allocator.free(initName);
 
         if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
-            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ arg, arg, prog_name.ptr });
+            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ &arg, &arg, prog_name.ptr });
             return 1;
         }
     }
