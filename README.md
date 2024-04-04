@@ -3,8 +3,18 @@
 ZLI is a portable lua interpreter statically compiled (on non windows with musl) with additional libraries.
 The binary can be moved from system to system without any dependencies on installed ibraries.
 
+Currently supported platforms
+* Windows on x86_64
+* linux on x86_64
+* linux on aarch64
+
+Other platforms that are supported by zig could work but are untested
+* Windows on x86 and aarch64
+* linux on x86, armv7a, riscv64 and powerpc64le
+* macOS on aarch64 and x86_64
+
 ## Batteries included
-There are many libraries included in the ZIL binary. Some 3rd party lua libraries and some developed for ZIL.
+There are many libraries included in the ZIL binary, some 3rd party lua libraries and some developed specifically for ZIL.
 
 ### included lua libraries
 3rd party lua libraries included in zli
@@ -35,11 +45,11 @@ libraries developed specifically for ZLI that don't use any external libraries
 | library    | description                                                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
 | auxiliary  | some auxiliary functions to improve the string, table and file handling                                                  |
-| collection | a collection library simmilar to javas collection. Currently only (Hash)Set is implemented, more to come                 |
+| collection | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                 |
 | filesystem | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories. |
 | logger     | a very simple logging library                                                                                            |
 | stream     | a stream library enspired by the java stream library that brings the functional style programming to lua.                |
-| timer      | a nanosecont timer for high precision timings available as os.nanotime                                                   |
+| timer      | a nanosecond timer for high precision timings available as os.nanotime                                                   |
 
 ### Included tools
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
