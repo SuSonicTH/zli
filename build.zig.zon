@@ -12,8 +12,8 @@
             .hash = "1220f93ada1fa077ab096bf88a5b159ad421dbf6a478edec78ddb186d0c21d3476d9",
         },
         .zigLuaStrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/7f8aaac5bd62b7c56c8ad06ed18685599f948d50.tar.gz",
-            .hash = "1220f3a40896acfdf242b6d7d16e0658282b1ae708b5cde7ff2eab6fcc96b7e8be24",
+            .url = "https://github.com/SuSonicTH/zigluastrip/archive/f15849639709da4dbb94100e7102119a60d01039.tar.gz",
+            .hash = "1220f018347bd9cb2631b2b0f347a0c7f87dbd1e66805a8aef212018ead8289b75c1",
         },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
