@@ -115,7 +115,8 @@ fn crossline_readline(lua: *Lua) i32 {
     const init = lua.optString(2) orelse "";
     var buffer: [bufferSize]u8 = undefined;
 
-    @memcpy(buffer[0..], init);
+    @memcpy(buffer[0..init.len], init);
+    buffer[init.len] = 0;
     if (c.crossline_readline2(prompt, &buffer, bufferSize)) |line| {
         _ = lua.pushString(line[0..std.mem.len(line) :0]);
     } else {
