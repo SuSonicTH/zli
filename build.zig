@@ -117,6 +117,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
     .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
     .{ .input = "src/timer.lua", .output = "src/stripped/timer.lua" },
+    .{ .input = "src/tools/compile.lua", .output = "src/stripped/compile.lua" },
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },

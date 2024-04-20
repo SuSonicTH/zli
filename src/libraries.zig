@@ -70,6 +70,7 @@ const luascripts = [_]luascript{
     .{ .name = "collection.set", .source = @embedFile("stripped/collection.set.lua") },
     .{ .name = "collection.list", .source = @embedFile("stripped/collection.list.lua") },
     .{ .name = "collection.map", .source = @embedFile("stripped/collection.map.lua") },
+    .{ .name = "compile", .source = @embedFile("stripped/compile.lua") },
     .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
     .{ .name = "F", .source = @embedFile("stripped/F.lua") },
     .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
