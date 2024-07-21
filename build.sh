@@ -48,7 +48,7 @@ done
 
 if [ "$CLEAN" == "true" ]; then
     echo cleaning
-    rm -fr zig-out zig-cache
+    rm -fr zig-out .zig-cache
 fi
 
 # check if zig is available

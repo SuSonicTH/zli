@@ -4,16 +4,16 @@
     .paths = .{""},
     .dependencies = .{
         .ziglua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/486f51d3acc61d805783f5f07aee34c75ab59a25.tar.gz",
-            .hash = "12208603e0f51fa6ce7201d8e851c5979b6b78887434623ac87a0f2a5a3dd3e75130",
+            .url = "https://github.com/natecraddock/ziglua/archive/refs/tags/0.3.0.tar.gz",
+            .hash = "122069f4b75c946c705c0ed3218f52e0917ca361f55cebf3fb1c66a431a88ccc87b3",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
             .hash = "1220f93ada1fa077ab096bf88a5b159ad421dbf6a478edec78ddb186d0c21d3476d9",
         },
         .zigLuaStrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/f15849639709da4dbb94100e7102119a60d01039.tar.gz",
-            .hash = "1220f018347bd9cb2631b2b0f347a0c7f87dbd1e66805a8aef212018ead8289b75c1",
+            .url = "https://github.com/SuSonicTH/zigluastrip/archive/c5b05512e700ace1f6b4af72c0d18c1751d6f314.tar.gz",
+            .hash = "122008b4b502fcc28fa01c3565cb4f9e0c0707d86b7b41728c834ef245fc2292cd1a",
         },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
