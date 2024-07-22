@@ -1,6 +1,6 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
-var luaPath: std.Build.LazyPath = undefined; //.{ .path = "src/lib/lua/" };
+var luaPath: std.Build.LazyPath = undefined;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
