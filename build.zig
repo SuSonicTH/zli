@@ -1,6 +1,6 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
-var luaPath: std.Build.LazyPath = undefined; //.{ .path = "src/lib/lua/" };
+var luaPath: std.Build.LazyPath = undefined;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -19,11 +19,11 @@ pub fn build(b: *std.Build) void {
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
-    exe.addIncludePath(.{ .path = "src/" });
+    exe.addIncludePath(b.path("src/"));
     exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
 
     //zlib and zip libraries
@@ -228,7 +228,7 @@ fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builti
         .target = target,
         .optimize = optimize,
     });
-    lib.addIncludePath(.{ .path = "src/" });
+    lib.addIncludePath(b.path("src/"));
     lib.addIncludePath(zlib_deb.path(""));
     lib.addIncludePath(zlib_deb.path("contrib/minizip/"));
     lib.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
@@ -236,7 +236,7 @@ fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builti
         "contrib/minizip/unzip.c",
         "contrib/minizip/ioapi.c",
     }, .flags = flags_c99 });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/zip_util.c" }, .flags = flags_c99 });
+    lib.addCSourceFile(.{ .file = b.path("src/zip_util.c"), .flags = flags_c99 });
     switch (target.result.os.tag) {
         .windows => {
             lib.addCSourceFile(.{ .file = zlib_deb.path("contrib/minizip/iowin32.c"), .flags = flags_c99 });
@@ -286,8 +286,8 @@ fn timer(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.
         .target = target,
         .optimize = optimize,
     });
-    lib.addIncludePath(.{ .path = "src/" });
-    lib.addCSourceFile(.{ .file = .{ .path = "src/timer.c" }, .flags = flags_c99 });
+    lib.addIncludePath(b.path("src/"));
+    lib.addCSourceFile(.{ .file = b.path("src/timer.c"), .flags = flags_c99 });
     lib.linkLibC();
     return lib;
 }
