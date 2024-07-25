@@ -44,7 +44,7 @@ else
                 script = name
             else
                 script = name .. ".lua"
-                if files[script] then
+                if not files[script] then
                     print("Error: executable script '" .. name .. "' not found")
                     os.exit(1)
                 end
@@ -69,7 +69,6 @@ else
                 os.exit(1)
             end
         end
-        print("loading " .. script)
         assert(load(payload:read_all(script), script))()
         os.exit(0)
     end
@@ -104,11 +103,7 @@ elseif arg[1] == '--test' then
         os.exit(1)
     end
 
-    local script = io.open(arg[2], 'r')
-    local source = script:read('a')
-    script:close()
-
-    source = source .. [[
+    local source = io.read_file(arg[2]) .. [[
         local luaunit = require 'luaunit'
         os.exit(luaunit.LuaUnit.run('--pattern', 'Test'))
     ]]
