@@ -38,13 +38,13 @@ else
         local script
         local files = payload:dir()
         if arg[1] and arg[1]:sub(1, 1) == "@" then
-            --scriptname given wiht @scriptname
+            --scriptname given with @scriptname
             local name = table.remove(arg, 1):sub(2, -1);
             if files[name] then
                 script = name
             else
                 script = name .. ".lua"
-                if files[script] then
+                if not files[script] then
                     print("Error: executable script '" .. name .. "' not found")
                     os.exit(1)
                 end
@@ -69,7 +69,6 @@ else
                 os.exit(1)
             end
         end
-        print("loading " .. script)
         assert(load(payload:read_all(script), script))()
         os.exit(0)
     end
@@ -78,7 +77,7 @@ end
 local function print_usage()
     print [[
 
-Usage: zli [-h|--help] [--test <test>] [--repl] [--sqlite] [<script>]
+Usage: zli [-h|--help] [--test <test>] [--repl] [--sqlite] [--compile <config>] [<script>]
 
 Zig Lua Interpreter - A cross platform interpreter with batteries included
 
@@ -90,6 +89,7 @@ Options:
     --test <test>         run unit tests in file <test>
     --repl                run Read Print Eval Loop.
     --sqlite              run sqlite cli tool
+    --compile <config>    create an exectable compile from <config>
 ]]
 end
 
@@ -100,13 +100,10 @@ elseif arg[1] == '--test' then
     if not test then
         print_usage()
         print("error missing script argument to test")
+        os.exit(1)
     end
 
-    local script = io.open(arg[2], 'r')
-    local source = script:read('a')
-    script:close()
-
-    source = source .. [[
+    local source = io.read_file(arg[2]) .. [[
         local luaunit = require 'luaunit'
         os.exit(luaunit.LuaUnit.run('--pattern', 'Test'))
     ]]
@@ -115,6 +112,15 @@ elseif arg[1] == '--repl' then
     require("repl").execute()
 elseif arg[1] == '--sqlite' then
     require("sqlite_cli").execute()
+elseif arg[1] == '--compile' then
+    local config_name = arg[2]
+    if not config_name then
+        print_usage()
+        print("error missing config argument to compile")
+        os.exit(1)
+    end
+    local config = assert(load("return {" .. io.read_file(config_name) .. "}", config_name))()
+    require("compile").execute(config)
 else
     local script = arg[1]
     table.remove(arg, 1)

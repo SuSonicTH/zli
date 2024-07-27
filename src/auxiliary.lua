@@ -102,14 +102,14 @@ function io.write_lines(filename, tbl, eol)
 end
 
 function io.read_file(filename)
-    local fh = assert(io.open(filename, "r"))
+    local fh = assert(io.open(filename, "rb"))
     local str = fh:read("a")
     fh:close()
     return str
 end
 
 function io.write_file(filename, data)
-    local fh = assert(io.open(filename, "w+"))
+    local fh = assert(io.open(filename, "wb"))
     fh:write(data)
     fh:close()
 end
