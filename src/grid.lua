@@ -85,7 +85,7 @@ function grid:add_rows(rows)
 end
 
 local function columns_from_arg(...)
-    local row={...}
+    local row = { ... }
     if type(row[1]) == 'table' then
         row = row[1]
     end
@@ -127,7 +127,7 @@ local function calculate_templates(self)
 
     for i, width in ipairs(self.widths) do
         spaces[i] = string.rep(" ", width)
-        lines[i] = string.rep("-", width + extra_padd)
+        lines[i] = string.rep(border.horizontal, width + extra_padd)
     end
 
     self.spaces = spaces
@@ -137,7 +137,7 @@ local function calculate_templates(self)
 end
 
 
-function grid:get_header() 
+function grid:get_header()
     local tbl = {}
     calculate_templates(self)
     tbl[1] = borders(self, border.top)
@@ -147,14 +147,14 @@ function grid:get_header()
     return tbl
 end
 
-function grid:row(...) 
+function grid:row(...)
     local row = columns_from_arg(...)
     local tbl = {}
     if not self.spaces then
-        table.add_all(tbl,self:get_header())
+        table.add_all(tbl, self:get_header())
     end
-    tbl[#tbl+1] = borders(self, border.center)
-    tbl[#tbl+1] = padd(self, self.align, row)
+    tbl[#tbl + 1] = borders(self, border.center)
+    tbl[#tbl + 1] = padd(self, self.align, row)
     return tbl
 end
 
@@ -165,7 +165,7 @@ end
 function grid:row_string(...)
     return table.concat(self:row(...), "\n")
 end
-   
+
 function grid:last_string()
     return borders(self, border.bottom)
 end
@@ -185,7 +185,7 @@ end
 function grid:tostring()
     local tbl = {}
     for _, row in ipairs(self.rows) do
-        table.add_all(tbl,self:row(row,self.align))
+        table.add_all(tbl, self:row(row, self.align))
     end
     tbl[#tbl + 1] = self:last_string()
     return table.concat(tbl, "\n")
