@@ -98,7 +98,7 @@ function build_platform() {
     #compress with UPX if requested, else copy
     if [ "$UPX" = "true" ]; then
         echo compressing $PLAT
-        $UPX_BIN -qq --ultra-brute --lzma -o $EXE_NAME $COMPILED_BIN
+        $UPX_BIN -qq --lzma -o $EXE_NAME $COMPILED_BIN
     else
         cp $COMPILED_BIN $EXE_NAME
     fi

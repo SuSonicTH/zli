@@ -102,7 +102,7 @@ fn register_path_mt(lua: *Lua) void {
     lua.pop(1);
 }
 
-var path_buffer: [fs.MAX_PATH_BYTES]u8 = undefined;
+var path_buffer: [fs.max_path_bytes]u8 = undefined;
 
 fn path__tostring(lua: *Lua) i32 {
     const path = get_path(lua);
