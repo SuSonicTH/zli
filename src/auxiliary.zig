@@ -33,7 +33,7 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "os", &os_functions);
 
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
-    lua.callCont(0, 0, 0, null);
+    lua.call(.{ .args = 0, .results = 0 });
 }
 
 fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.FnReg) void {

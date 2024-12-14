@@ -32,10 +32,10 @@ pub fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) v
 
 pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, module: [:0]const u8) void {
     lua.loadBuffer(source, name, ziglua.Mode.text) catch lua.raiseError();
-    lua.callCont(0, 1, 0, null);
+    lua.call(.{ .args = 0, .results = 1 });
     lua.checkType(-1, ziglua.LuaType.function);
     lua.pushValue(-2);
-    lua.callCont(1, 1, 0, null);
+    lua.call(.{ .args = 1, .results = 1 });
     if (lua.typeOf(-1) == .table) {
         _ = lua.pushString(module);
         lua.pushValue(-2);

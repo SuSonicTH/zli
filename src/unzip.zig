@@ -146,7 +146,7 @@ const UnzipUdata = struct {
         luax.pushRegistryFunction(lua, zli_unzip, "path_to_path_and_name");
         _ = lua.pushString("/");
         _ = lua.pushString(zfname[0..uzfi.size_filename :0]);
-        lua.call(2, 2);
+        lua.call(.{ .args = 2, .results = 2 });
 
         luax.setTableValue(lua, table, "name", -1, true);
         luax.setTableValue(lua, table, "path", -1, true);
@@ -213,7 +213,7 @@ const UnzipUdata = struct {
         _ = lua.pushString("lines");
         _ = lua.getTable(3);
         lua.replace(2);
-        lua.call(1, 4);
+        lua.call(.{ .args = 1, .results = 4 });
         return 4;
     }
 

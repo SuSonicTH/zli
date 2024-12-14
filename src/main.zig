@@ -15,7 +15,7 @@ var uzfh: c.unzFile = undefined;
 const allocator = std.heap.c_allocator;
 
 pub fn main() !void {
-    var lua = try Lua.init(&allocator);
+    var lua = try Lua.init(allocator);
     defer lua.deinit();
 
     try createArgTable(lua);
@@ -25,11 +25,11 @@ pub fn main() !void {
 
     lua.pushFunction(ziglua.wrap(messageHandler));
     try lua.loadBuffer(main_lua, prog_name, .binary_text);
-    if (lua.protectedCall(0, 0, 1)) {} else |_| {
+    lua.protectedCall(.{ .args = 0, .results = 0, .msg_handler = 1 }) catch {
         const message = lua.toString(-1) catch "Unknown error";
         std.log.err("{s}: {s}", .{ prog_name, message });
         lua.pop(1);
-    }
+    };
 }
 
 fn createArgTable(lua: *Lua) !void {
@@ -118,6 +118,6 @@ fn payload_reder(state: ?*ziglua.LuaState, data: ?*anyopaque, size: [*c]usize) c
 fn payload_loader(lua: *Lua) i32 {
     const name: [*:0]const u8 = lua.toString(2) catch unreachable;
     lua.load(payload_reder, undefined, name[0..std.mem.len(name) :0], .binary_text) catch lua.raiseError();
-    lua.call(0, -1);
+    lua.call(.{ .args = 0, .results = -1 });
     return 1;
 }

@@ -351,7 +351,7 @@ fn push_time_stamp(lua: *Lua, time: i128) void {
     luax.pushLibraryFunction(lua, "os", "date");
     _ = lua.pushString(TIMESTAMP_FORMAT);
     lua.pushInteger(@intCast(@divTrunc(time, SECONDS_DENOMINATOR)));
-    lua.call(2, 1);
+    lua.call(.{ .args = 2, .results = 1 });
 }
 
 fn create_time_stamp(lua: *Lua) i32 {
@@ -481,7 +481,7 @@ fn open(lua: *Lua) i32 {
         lua.pushValue(2);
     }
 
-    lua.call(args, 2);
+    lua.call(.{ .args = args, .results = 2 });
     return 2;
 }
 

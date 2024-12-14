@@ -89,7 +89,7 @@ const luascripts = [_]luascript{
 pub fn openlibs(lua: *Lua) i32 {
     lua.openLibs();
 
-    lua.getSubtable(ziglua.registry_index, "_PRELOAD") catch unreachable; //todo: fix: no LUA_PRELOAD_TABLE in ziglua
+    _ = lua.getSubtable(ziglua.registry_index, "_PRELOAD");
     for (preload) |lib| {
         if (lib.func) |func| {
             lua.pushClosure(func, 0);
@@ -112,7 +112,7 @@ fn luaopen_luascript(lua: *Lua) i32 {
     for (luascripts) |script| {
         if (strcmp(modname, script.name) == 0) {
             lua.loadBuffer(script.source, modname, ziglua.Mode.text) catch lua.raiseError();
-            lua.callCont(0, 1, 0, null);
+            lua.call(.{ .args = 0, .results = 1 });
             return 1;
         }
     }
