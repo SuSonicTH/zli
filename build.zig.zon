@@ -4,8 +4,8 @@
     .paths = .{""},
     .dependencies = .{
         .ziglua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/bcbfe40acd7218430b5fb7a880615b2bf15c02ac.tar.gz",
-            .hash = "1220a7983916ac2bcba3ded67174ef354012da525c7f85b0e48a416368a637012d78",
+            .url = "https://github.com/natecraddock/ziglua/archive/90dab7e72173709353dcaaa6d911bed7655c030d.tar.gz",
+            .hash = "12205923460670d52fb29fc74ec920d283dbe629a256787a54f4290748c05bee6ae1",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
@@ -58,6 +58,10 @@
         .lsqlite3 = .{
             .url = "https://github.com/SuSonicTH/lsqlite3/archive/c19ef2d599a7b349adb8361b7fea3228e0891e4a.tar.gz",
             .hash = "12206b1cdaade65681617d33f66f1cb81ac679aac8fa2eaa0de8fe0f28c1568bb47b",
+        },
+        .smtp_client = .{
+            .url = "https://github.com/karlseguin/smtp_client.zig/archive/3cbe8f269e4c3a6bce407e7ae48b2c76307c559f.tar.gz",
+            .hash = "1220de146446d0cae4396e346cb8283dd5e086491f8577ddbd5e03ad0928111d8bc6",
         },
     },
 }

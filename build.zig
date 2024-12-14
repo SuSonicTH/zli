@@ -16,6 +16,11 @@ pub fn build(b: *std.Build) void {
         .optimize = std.builtin.OptimizeMode.Debug,
     });
 
+    const smtp_client = b.dependency("smtp_client", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     //zli exe
     const exe = b.addExecutable(.{
         .name = "zli",
@@ -25,6 +30,7 @@ pub fn build(b: *std.Build) void {
     });
     exe.addIncludePath(b.path("src/"));
     exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
+    exe.root_module.addImport("smtp_client", smtp_client.module("smtp_client"));
 
     //zlib and zip libraries
     const zlib_dep = b.dependency("zlib", .{});
