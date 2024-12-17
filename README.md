@@ -55,7 +55,7 @@ libraries developed specifically for ZLI that don't use any external libraries
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
 
 ## Clone & Build
-This works under linux and windows(under gitbash) for x86_64 platforms and on linux arm all it needs git and zig version 0.13.0 on the path
+This works under linux and windows(under gitbash) for x86_64 platforms and on linux arm all it needs git and zig version 0.14.0-dev on the path
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli
