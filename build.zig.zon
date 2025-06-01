@@ -26,15 +26,15 @@
         },
         .luaunit = .{
             .url = "https://github.com/bluebird75/luaunit/archive/0e0d3dd06fe1955a01f0e6763bc8dc6847ee3e8d.tar.gz",
-            .hash = "122078f68c2d415da5e3b9c996f01f6bc8bee89c00bc565b8a0afd5f7798cfc7406c",
+            .hash = "N-V-__8AAP7fCgB49owtQV2l47nJlvAfa8i-6JwAvFZbigr9",
         },
         .serpent = .{
             .url = "https://github.com/pkulchenko/serpent/archive/139fc18263bc5ffecc1729147891f1eb383046bf.tar.gz",
-            .hash = "1220b9fdf4733552ea20acfa5fab5d6f567019b1b7ac71c0781ffabfe56d7ce37381",
+            .hash = "N-V-__8AAF6tAAC5_fRzNVLqIKz6X6tdb1ZwGbG3rHHAeB_6",
         },
         .ftcsv = .{
             .url = "https://github.com/FourierTransformer/ftcsv/archive/e6324c401454891aafdf2ca94e8c9609a881258e.tar.gz",
-            .hash = "12206dd895e16d1612f4e7f39b86e923a0c43fba54e5828b117617058417648677d7",
+            .hash = "N-V-__8AALSMAQBt2JXhbRYS9Ofzm4bpI6DEP7pU5YKLEXYX",
         },
         .crossline = .{
             .url = "https://github.com/jcwangxp/Crossline/archive/60b4bb5b2adb4eb9f83654dc983a191048250b2e.tar.gz",
@@ -42,19 +42,19 @@
         },
         .cjson = .{
             .url = "https://github.com/openresty/lua-cjson/archive/91ca29db9a4a4fd0eedaebcd5d5f3ba2ace5ae63.tar.gz",
-            .hash = "1220dbedce233832772b475d2942f03152367000b0b4683e9c115dbbbd342780e303",
+            .hash = "N-V-__8AADU5BQDb7c4jODJ3K0ddKULwMVI2cACwtGg-nBFd",
         },
         .lua_zlib = .{
-            .url = "https://github.com/brimworks/lua-zlib/archive/15d4bc84b0ad3e4012d72ce18cfae58518ec13b.tar.gz",
-            .hash = "12209ac2104a10e6000fdeddcfab839d10ced6212429bc1a6785c282615f7a5d4f42",
+            .url = "https://github.com/brimworks/lua-zlib/archive/4027a3fc5f8892fe1851e0a4487ccd0912a1d94e.tar.gz",
+            .hash = "N-V-__8AALgfAQA5-402vJ1L-vPqmDmkfelBqHyULF4vgJFb",
         },
         .zlib = .{
-            .url = "https://github.com/madler/zlib/archive/ef24c4c7502169f016dcd2a26923dbaf3216748c.tar.gz",
-            .hash = "122083886bb4615148b01ac724a66429eb7deaf1985bb567698562ee0aacad05b1f1",
+            .url = "https://zlib.net/zlib-1.3.1.tar.gz",
+            .hash = "N-V-__8AAJj_QgDBhU17TCtcvdjOZZPDfkvxrEAyZkc14VN8",
         },
         .lpeg = .{
             .url = "https://github.com/roberto-ieru/LPeg/archive/80ec9f932aa01d445e86c699523265359055e1bd.tar.gz",
-            .hash = "12204d8f7381f61c5283fef2bd968e834819585ac351403b354b8a4f3710c7d3e8e3",
+            .hash = "N-V-__8AAFnuAwBNj3OB9hxSg_7yvZaOg0gZWFrDUUA7NUuK",
         },
         .lsqlite3 = .{
             .url = "https://github.com/SuSonicTH/lsqlite3/archive/c19ef2d599a7b349adb8361b7fea3228e0891e4a.tar.gz",
