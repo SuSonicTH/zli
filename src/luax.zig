@@ -1,13 +1,13 @@
 const std = @import("std");
-const ziglua = @import("ziglua");
-const Lua = ziglua.Lua;
+const zlua = @import("zlua");
+const Lua = zlua.Lua;
 
 pub const NamedConstantInteger = struct {
     name: [:0]const u8,
-    number: ziglua.Integer,
+    number: zlua.Integer,
 };
 
-pub fn createFunctionSubTable(lua: *Lua, functions: []const ziglua.FnReg, table_name: [:0]const u8) void {
+pub fn createFunctionSubTable(lua: *Lua, functions: []const zlua.FnReg, table_name: [:0]const u8) void {
     _ = lua.pushString(table_name);
     lua.newTable();
     lua.setFuncs(functions, 0);
@@ -31,15 +31,15 @@ pub fn createConstantTable(lua: *Lua, constants: []const NamedConstantInteger) v
 }
 
 pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, module: [:0]const u8) void {
-    lua.loadBuffer(source, name, ziglua.Mode.text) catch lua.raiseError();
+    lua.loadBuffer(source, name, zlua.Mode.text) catch lua.raiseError();
     lua.call(.{ .args = 0, .results = 1 });
-    lua.checkType(-1, ziglua.LuaType.function);
+    lua.checkType(-1, zlua.LuaType.function);
     lua.pushValue(-2);
     lua.call(.{ .args = 1, .results = 1 });
     if (lua.typeOf(-1) == .table) {
         _ = lua.pushString(module);
         lua.pushValue(-2);
-        lua.setTable(ziglua.registry_index);
+        lua.setTable(zlua.registry_index);
     }
     lua.pop(1);
 }
@@ -53,7 +53,7 @@ pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const 
 
 pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.pushString(module);
-    _ = lua.getTable(ziglua.registry_index);
+    _ = lua.getTable(zlua.registry_index);
     if (lua.isNil(-1)) {
         raiseFormattedError(lua, "internal error: could not get module '%s' from registry", .{module.ptr});
     }
@@ -87,7 +87,7 @@ pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32
     return 2;
 }
 
-pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: ziglua.CFn) void {
+pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: zlua.CFn) void {
     lua.newMetatable(name) catch raiseError(lua, "could not register userData");
     _ = lua.pushString("__gc");
     lua.pushFunction(function);
@@ -110,7 +110,7 @@ pub fn createUserDataTable(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
     return userData;
 }
 
-pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const ziglua.FnReg) *T {
+pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const zlua.FnReg) *T {
     const userData: *T = createUserDataTable(lua, name, T);
     lua.setFuncs(functions, 0);
     return userData;
@@ -168,7 +168,7 @@ pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]co
     return std.mem.sliceTo(value, 0);
 }
 
-pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: ziglua.Integer) ziglua.Integer {
+pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: zlua.Integer) zlua.Integer {
     getTable(lua, key, index);
     if (lua.isNil(-1)) {
         lua.pop(1);
@@ -194,14 +194,14 @@ pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: [:0]const
     lua.setTable(table_index);
 }
 
-pub fn setTableNumber(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.Number) void {
+pub fn setTableNumber(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.Number) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushNumber(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableInteger(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.Integer) void {
+pub fn setTableInteger(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.Integer) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushInteger(value);
@@ -222,7 +222,7 @@ pub fn setTableUserData(lua: *Lua, index: i32, key: [:0]const u8, value: *anyopa
     lua.setTable(table_index);
 }
 
-pub fn setTableFunction(lua: *Lua, index: i32, key: [:0]const u8, value: ziglua.CFn) void {
+pub fn setTableFunction(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.CFn) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushFunction(value);
@@ -252,12 +252,12 @@ pub fn getArgStringOrError(lua: *Lua, index: i32, message: [:0]const u8) [:0]con
     return lua.toString(index);
 }
 
-pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) ziglua.Integer {
+pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Integer {
     lua.argCheck(lua.typeOf(index) == .number, index, message);
     return lua.toInteger(index) catch unreachable;
 }
 
-pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) ziglua.Number {
+pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Number {
     lua.argCheck(lua.typeOf(index) == .number, index, message);
     return lua.toNumber(index) catch unreachable;
 }

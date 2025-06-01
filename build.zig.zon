@@ -1,11 +1,12 @@
 .{
-    .name = "zli",
-    .version = "0.0.2",
+    .name = .zli,
+    .fingerprint = 0x5b01c9c323f5e672,
+    .version = "0.1.0",
     .paths = .{""},
     .dependencies = .{
-        .ziglua = .{
-            .url = "https://github.com/nurpax/ziglua/archive/3d36e37662af64022e0e47ae4108d227aca7eb76.tar.gz",
-            .hash = "12209aaa81bf69dd5a5aa48f8f59f74c2bc9967029574920b01cba58674b087385f7",
+        .zlua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/f7b3c90d026afd33b0a70debfd54ea50f1acfc1b.tar.gz",
+            .hash = "zlua-0.1.0-hGRpC-IZBQDD9MfKTbeRE3z_Qg-kI2SqnT1JaRl9W9Sq",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",

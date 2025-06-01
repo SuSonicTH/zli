@@ -1,45 +1,45 @@
 const std = @import("std");
-const ziglua = @import("ziglua");
+const zlua = @import("zlua");
 const luax = @import("luax.zig");
 
-const Lua = ziglua.Lua;
+const Lua = zlua.Lua;
 
 const c = @cImport({
     @cInclude("crossline.h");
 });
 
-const crossline = [_]ziglua.FnReg{
-    .{ .name = "readline", .func = ziglua.wrap(crossline_readline) },
-    .{ .name = "set_prompt_color", .func = ziglua.wrap(crossline_prompt_color_set) },
-    .{ .name = "set_color", .func = ziglua.wrap(crossline_color_set) },
-    .{ .name = "print_paged", .func = ziglua.wrap(crossline_paging_print_paged) },
+const crossline = [_]zlua.FnReg{
+    .{ .name = "readline", .func = zlua.wrap(crossline_readline) },
+    .{ .name = "set_prompt_color", .func = zlua.wrap(crossline_prompt_color_set) },
+    .{ .name = "set_color", .func = zlua.wrap(crossline_color_set) },
+    .{ .name = "print_paged", .func = zlua.wrap(crossline_paging_print_paged) },
 };
 
-const crossline_screen = [_]ziglua.FnReg{
-    .{ .name = "dimentions", .func = ziglua.wrap(crossline_screen_get) },
-    .{ .name = "clear", .func = ziglua.wrap(crossline_screen_clear) },
+const crossline_screen = [_]zlua.FnReg{
+    .{ .name = "dimentions", .func = zlua.wrap(crossline_screen_get) },
+    .{ .name = "clear", .func = zlua.wrap(crossline_screen_clear) },
 };
 
-const crossline_cursor = [_]ziglua.FnReg{
-    .{ .name = "get", .func = ziglua.wrap(crossline_cursor_get) },
-    .{ .name = "set", .func = ziglua.wrap(crossline_cursor_set) },
-    .{ .name = "move", .func = ziglua.wrap(crossline_cursor_move) },
-    .{ .name = "hide", .func = ziglua.wrap(crossline_cursor_hide) },
-    .{ .name = "show", .func = ziglua.wrap(crossline_cursor_show) },
+const crossline_cursor = [_]zlua.FnReg{
+    .{ .name = "get", .func = zlua.wrap(crossline_cursor_get) },
+    .{ .name = "set", .func = zlua.wrap(crossline_cursor_set) },
+    .{ .name = "move", .func = zlua.wrap(crossline_cursor_move) },
+    .{ .name = "hide", .func = zlua.wrap(crossline_cursor_hide) },
+    .{ .name = "show", .func = zlua.wrap(crossline_cursor_show) },
 };
 
-const crossline_history = [_]ziglua.FnReg{
-    .{ .name = "save", .func = ziglua.wrap(crossline_history_save) },
-    .{ .name = "load", .func = ziglua.wrap(crossline_history_load) },
-    .{ .name = "show", .func = ziglua.wrap(crossline_history_show) },
-    .{ .name = "clear", .func = ziglua.wrap(crossline_history_clear) },
+const crossline_history = [_]zlua.FnReg{
+    .{ .name = "save", .func = zlua.wrap(crossline_history_save) },
+    .{ .name = "load", .func = zlua.wrap(crossline_history_load) },
+    .{ .name = "show", .func = zlua.wrap(crossline_history_show) },
+    .{ .name = "clear", .func = zlua.wrap(crossline_history_clear) },
 };
 
-const crossline_paging = [_]ziglua.FnReg{
-    .{ .name = "start", .func = ziglua.wrap(crossline_paging_start) },
-    .{ .name = "stop", .func = ziglua.wrap(crossline_paging_stop) },
-    .{ .name = "check", .func = ziglua.wrap(crossline_paging_check) },
-    .{ .name = "print", .func = ziglua.wrap(crossline_paging_print) },
+const crossline_paging = [_]zlua.FnReg{
+    .{ .name = "start", .func = zlua.wrap(crossline_paging_start) },
+    .{ .name = "stop", .func = zlua.wrap(crossline_paging_stop) },
+    .{ .name = "check", .func = zlua.wrap(crossline_paging_check) },
+    .{ .name = "print", .func = zlua.wrap(crossline_paging_print) },
 };
 
 const fg_colors = [_]luax.NamedConstantInteger{

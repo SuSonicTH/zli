@@ -1,11 +1,11 @@
 const std = @import("std");
-const ziglua = @import("ziglua");
+const zlua = @import("zlua");
 const libraries = @import("libraries.zig");
 const c = @cImport({
     @cInclude("unzip.h");
 });
 
-const Lua = ziglua.Lua;
+const Lua = zlua.Lua;
 const debug = std.log.debug;
 
 const main_lua: [:0]const u8 = @embedFile("stripped/main.lua");
@@ -23,7 +23,7 @@ pub fn main() !void {
     _ = libraries.openlibs(lua);
     try create_payload_searcher(lua);
 
-    lua.pushFunction(ziglua.wrap(messageHandler));
+    lua.pushFunction(zlua.wrap(messageHandler));
     try lua.loadBuffer(main_lua, prog_name, .binary_text);
     lua.protectedCall(.{ .args = 0, .results = 0, .msg_handler = 1 }) catch {
         const message = lua.toString(-1) catch "Unknown error";
@@ -72,7 +72,7 @@ fn create_payload_searcher(lua: *Lua) !void {
     _ = lua.pushString("searchers");
     _ = lua.getTable(package);
     const len = lua.rawLen(-1);
-    lua.pushFunction(ziglua.wrap(payload_searcher));
+    lua.pushFunction(zlua.wrap(payload_searcher));
     lua.rawSetIndex(-2, @intCast(len + 1));
     lua.setTop(top);
 }
@@ -100,7 +100,7 @@ fn payload_searcher(lua: *Lua) i32 {
         return 1;
     }
 
-    lua.pushFunction(ziglua.wrap(payload_loader));
+    lua.pushFunction(zlua.wrap(payload_loader));
     _ = lua.pushString(std.mem.sliceTo(arg, 0));
     return 2;
 }
@@ -108,7 +108,7 @@ fn payload_searcher(lua: *Lua) i32 {
 const BUFFER_SIZE: usize = 4096;
 var buffer: [BUFFER_SIZE]u8 = undefined;
 
-fn payload_reder(state: ?*ziglua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
+fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
     _ = data;
     _ = state;
     size.* = @intCast(c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));

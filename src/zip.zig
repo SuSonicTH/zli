@@ -3,8 +3,8 @@ const fs = std.fs;
 
 const builtin = @import("builtin");
 
-const ziglua = @import("ziglua");
-const Lua = ziglua.Lua;
+const zlua = @import("zlua");
+const Lua = zlua.Lua;
 const luax = @import("luax.zig");
 
 const allocator = std.heap.c_allocator;
@@ -16,10 +16,10 @@ const c = @cImport({
 
 const filesystem = @import("filesystem.zig");
 
-const zip = [_]ziglua.FnReg{
-    .{ .name = "create", .func = ziglua.wrap(ZipUdata.create) },
-    .{ .name = "open", .func = ziglua.wrap(ZipUdata.open) },
-    .{ .name = "create_after", .func = ziglua.wrap(ZipUdata.create_after) },
+const zip = [_]zlua.FnReg{
+    .{ .name = "create", .func = zlua.wrap(ZipUdata.create) },
+    .{ .name = "open", .func = zlua.wrap(ZipUdata.open) },
+    .{ .name = "create_after", .func = zlua.wrap(ZipUdata.create_after) },
 };
 
 const zli_zip = "zli_zip";
@@ -38,18 +38,18 @@ const ZipUdata = struct {
     path: [:0]const u8,
     const name = "_ZipUdata";
 
-    const functions = [_]ziglua.FnReg{
-        .{ .name = "add_file", .func = ziglua.wrap(add_file) },
-        .{ .name = "create_directory", .func = ziglua.wrap(create_directory) },
-        .{ .name = "mkdir", .func = ziglua.wrap(create_directory) },
-        .{ .name = "open", .func = ziglua.wrap(open) },
-        .{ .name = "write", .func = ziglua.wrap(write) },
-        .{ .name = "close", .func = ziglua.wrap(close) },
-        .{ .name = "close_zip", .func = ziglua.wrap(close_zip) },
+    const functions = [_]zlua.FnReg{
+        .{ .name = "add_file", .func = zlua.wrap(add_file) },
+        .{ .name = "create_directory", .func = zlua.wrap(create_directory) },
+        .{ .name = "mkdir", .func = zlua.wrap(create_directory) },
+        .{ .name = "open", .func = zlua.wrap(open) },
+        .{ .name = "write", .func = zlua.wrap(write) },
+        .{ .name = "close", .func = zlua.wrap(close) },
+        .{ .name = "close_zip", .func = zlua.wrap(close_zip) },
     };
 
     fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
     }
 
     fn garbageCollect(lua: *Lua) i32 {

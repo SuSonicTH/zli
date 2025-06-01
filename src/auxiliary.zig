@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const ziglua = @import("ziglua");
+const zlua = @import("zlua");
 const luax = @import("luax.zig");
-const Lua = ziglua.Lua;
+const Lua = zlua.Lua;
 
 const builtin = @import("builtin");
 
@@ -10,21 +10,21 @@ const timer = @cImport({
     @cInclude("timer.h");
 });
 
-const string_functions = [_]ziglua.FnReg{
-    .{ .name = "split", .func = ziglua.wrap(split) },
-    .{ .name = "to_table", .func = ziglua.wrap(to_table) },
-    .{ .name = "trim", .func = ziglua.wrap(trim) },
-    .{ .name = "ltrim", .func = ziglua.wrap(ltrim) },
-    .{ .name = "rtrim", .func = ziglua.wrap(rtrim) },
+const string_functions = [_]zlua.FnReg{
+    .{ .name = "split", .func = zlua.wrap(split) },
+    .{ .name = "to_table", .func = zlua.wrap(to_table) },
+    .{ .name = "trim", .func = zlua.wrap(trim) },
+    .{ .name = "ltrim", .func = zlua.wrap(ltrim) },
+    .{ .name = "rtrim", .func = zlua.wrap(rtrim) },
 };
 
-const table_functions = [_]ziglua.FnReg{
-    .{ .name = "next", .func = ziglua.wrap(next) },
+const table_functions = [_]zlua.FnReg{
+    .{ .name = "next", .func = zlua.wrap(next) },
 };
 
-const os_functions = [_]ziglua.FnReg{
-    .{ .name = "get_name", .func = ziglua.wrap(os_get_name) },
-    .{ .name = "nanotime", .func = ziglua.wrap(nanotime) },
+const os_functions = [_]zlua.FnReg{
+    .{ .name = "get_name", .func = zlua.wrap(os_get_name) },
+    .{ .name = "nanotime", .func = zlua.wrap(nanotime) },
 };
 
 pub fn register(lua: *Lua) void {
@@ -32,11 +32,11 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "table", &table_functions);
     register_module(lua, "os", &os_functions);
 
-    lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", ziglua.Mode.text) catch lua.raiseError();
+    lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", zlua.Mode.text) catch lua.raiseError();
     lua.call(.{ .args = 0, .results = 0 });
 }
 
-fn register_module(lua: *Lua, module: [:0]const u8, functions: []const ziglua.FnReg) void {
+fn register_module(lua: *Lua, module: [:0]const u8, functions: []const zlua.FnReg) void {
     _ = lua.getGlobal(module) catch unreachable;
     for (functions) |function| {
         _ = lua.pushString(function.name);
@@ -119,7 +119,7 @@ fn next(lua: *Lua) i32 {
     lua.checkType(1, .table);
     lua.pushValue(1);
     lua.pushInteger(1);
-    lua.pushClosure(ziglua.wrap(next_function), 2);
+    lua.pushClosure(zlua.wrap(next_function), 2);
     return 1;
 }
 

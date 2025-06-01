@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const ziglua = b.dependency("ziglua", .{
+    const zlua = b.dependency("zlua", .{
         .target = target,
         .optimize = optimize,
     });
@@ -24,7 +24,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.addIncludePath(b.path("src/"));
-    exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
+    exe.root_module.addImport("zlua", zlua.module("zlua"));
 
     //zlib and zip libraries
     const zlib_dep = b.dependency("zlib", .{});

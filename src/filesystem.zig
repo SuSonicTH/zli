@@ -3,54 +3,54 @@ const fs = std.fs;
 
 const builtin = @import("builtin");
 
-const ziglua = @import("ziglua");
-const Lua = ziglua.Lua;
+const zlua = @import("zlua");
+const Lua = zlua.Lua;
 const luax = @import("luax.zig");
 
 const allocator = std.heap.c_allocator;
 
-const filesystem = [_]ziglua.FnReg{
-    .{ .name = "cwd", .func = ziglua.wrap(current_directory) },
-    .{ .name = "current_directory", .func = ziglua.wrap(current_directory) },
+const filesystem = [_]zlua.FnReg{
+    .{ .name = "cwd", .func = zlua.wrap(current_directory) },
+    .{ .name = "current_directory", .func = zlua.wrap(current_directory) },
 
-    .{ .name = "create_path", .func = ziglua.wrap(create_path) },
-    .{ .name = "absolute", .func = ziglua.wrap(absolute) },
-    .{ .name = "size_to_hr", .func = ziglua.wrap(size_to_hr) },
+    .{ .name = "create_path", .func = zlua.wrap(create_path) },
+    .{ .name = "absolute", .func = zlua.wrap(absolute) },
+    .{ .name = "size_to_hr", .func = zlua.wrap(size_to_hr) },
 };
 
-const filesystem_path = [_]ziglua.FnReg{
-    .{ .name = "dir", .func = ziglua.wrap(dir) },
-    .{ .name = "list", .func = ziglua.wrap(list) },
-    .{ .name = "stat", .func = ziglua.wrap(stat) },
-    .{ .name = "is_file", .func = ziglua.wrap(is_file) },
-    .{ .name = "is_directory", .func = ziglua.wrap(is_directory) },
-    .{ .name = "size", .func = ziglua.wrap(size) },
-    .{ .name = "size_hr", .func = ziglua.wrap(size_hr) },
-    .{ .name = "access_time", .func = ziglua.wrap(access_time) },
-    .{ .name = "create_time", .func = ziglua.wrap(create_time) },
-    .{ .name = "modify_time", .func = ziglua.wrap(modify_time) },
-    .{ .name = "access_time_ms", .func = ziglua.wrap(access_time_ms) },
-    .{ .name = "create_time_ms", .func = ziglua.wrap(create_time_ms) },
-    .{ .name = "modify_time_ms", .func = ziglua.wrap(modify_time_ms) },
-    .{ .name = "access_time_stamp", .func = ziglua.wrap(access_time_stamp) },
-    .{ .name = "create_time_stamp", .func = ziglua.wrap(create_time_stamp) },
-    .{ .name = "modify_time_stamp", .func = ziglua.wrap(modify_time_stamp) },
-    .{ .name = "mode", .func = ziglua.wrap(mode) },
-    .{ .name = "mode_flags", .func = ziglua.wrap(mode_flags) },
-    .{ .name = "open", .func = ziglua.wrap(open) },
-    .{ .name = "exists", .func = ziglua.wrap(exists) },
+const filesystem_path = [_]zlua.FnReg{
+    .{ .name = "dir", .func = zlua.wrap(dir) },
+    .{ .name = "list", .func = zlua.wrap(list) },
+    .{ .name = "stat", .func = zlua.wrap(stat) },
+    .{ .name = "is_file", .func = zlua.wrap(is_file) },
+    .{ .name = "is_directory", .func = zlua.wrap(is_directory) },
+    .{ .name = "size", .func = zlua.wrap(size) },
+    .{ .name = "size_hr", .func = zlua.wrap(size_hr) },
+    .{ .name = "access_time", .func = zlua.wrap(access_time) },
+    .{ .name = "create_time", .func = zlua.wrap(create_time) },
+    .{ .name = "modify_time", .func = zlua.wrap(modify_time) },
+    .{ .name = "access_time_ms", .func = zlua.wrap(access_time_ms) },
+    .{ .name = "create_time_ms", .func = zlua.wrap(create_time_ms) },
+    .{ .name = "modify_time_ms", .func = zlua.wrap(modify_time_ms) },
+    .{ .name = "access_time_stamp", .func = zlua.wrap(access_time_stamp) },
+    .{ .name = "create_time_stamp", .func = zlua.wrap(create_time_stamp) },
+    .{ .name = "modify_time_stamp", .func = zlua.wrap(modify_time_stamp) },
+    .{ .name = "mode", .func = zlua.wrap(mode) },
+    .{ .name = "mode_flags", .func = zlua.wrap(mode_flags) },
+    .{ .name = "open", .func = zlua.wrap(open) },
+    .{ .name = "exists", .func = zlua.wrap(exists) },
 
-    .{ .name = "rename", .func = ziglua.wrap(rename) },
-    .{ .name = "mv", .func = ziglua.wrap(rename) },
+    .{ .name = "rename", .func = zlua.wrap(rename) },
+    .{ .name = "mv", .func = zlua.wrap(rename) },
 
-    .{ .name = "delete", .func = ziglua.wrap(delete) },
-    .{ .name = "rm", .func = ziglua.wrap(delete) },
+    .{ .name = "delete", .func = zlua.wrap(delete) },
+    .{ .name = "rm", .func = zlua.wrap(delete) },
 
-    .{ .name = "change_directory", .func = ziglua.wrap(change_directory) },
-    .{ .name = "cd", .func = ziglua.wrap(change_directory) },
+    .{ .name = "change_directory", .func = zlua.wrap(change_directory) },
+    .{ .name = "cd", .func = zlua.wrap(change_directory) },
 
-    .{ .name = "create_directory", .func = ziglua.wrap(create_directory) },
-    .{ .name = "mkdir", .func = ziglua.wrap(create_directory) },
+    .{ .name = "create_directory", .func = zlua.wrap(create_directory) },
+    .{ .name = "mkdir", .func = zlua.wrap(create_directory) },
 };
 
 const filesystem_path_lua = [_][:0]const u8{
@@ -97,7 +97,7 @@ pub fn luaopen_filesystem(lua: *Lua) i32 {
 fn register_path_mt(lua: *Lua) void {
     lua.newMetatable(zli_mt_path) catch luax.raiseError(lua, "register_path_mt internal error: could not crete metatable");
     _ = lua.pushString("__tostring");
-    lua.pushFunction(ziglua.wrap(path__tostring));
+    lua.pushFunction(zlua.wrap(path__tostring));
     lua.setTable(-3);
     lua.pop(1);
 }

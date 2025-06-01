@@ -3,8 +3,8 @@ const fs = std.fs;
 
 const builtin = @import("builtin");
 
-const ziglua = @import("ziglua");
-const Lua = ziglua.Lua;
+const zlua = @import("zlua");
+const Lua = zlua.Lua;
 const luax = @import("luax.zig");
 
 const allocator = std.heap.c_allocator;
@@ -15,8 +15,8 @@ const c = @cImport({
 
 const filesystem = @import("filesystem.zig");
 
-const unzip = [_]ziglua.FnReg{
-    .{ .name = "open", .func = ziglua.wrap(UnzipUdata.new) },
+const unzip = [_]zlua.FnReg{
+    .{ .name = "open", .func = zlua.wrap(UnzipUdata.new) },
 };
 
 const zli_unzip = "zli_unzip";
@@ -35,23 +35,23 @@ const UnzipUdata = struct {
     uzfh: ?*anyopaque = undefined,
     path: [:0]const u8,
     const name = "_UnzipUdata";
-    const functions = [_]ziglua.FnReg{
-        .{ .name = "list", .func = ziglua.wrap(list) },
-        .{ .name = "dir", .func = ziglua.wrap(dir) },
-        .{ .name = "info", .func = ziglua.wrap(info) },
-        .{ .name = "extract", .func = ziglua.wrap(extract) },
-        .{ .name = "close", .func = ziglua.wrap(close) },
+    const functions = [_]zlua.FnReg{
+        .{ .name = "list", .func = zlua.wrap(list) },
+        .{ .name = "dir", .func = zlua.wrap(dir) },
+        .{ .name = "info", .func = zlua.wrap(info) },
+        .{ .name = "extract", .func = zlua.wrap(extract) },
+        .{ .name = "close", .func = zlua.wrap(close) },
     };
 
-    const file_functions = [_]ziglua.FnReg{
-        .{ .name = "read_all", .func = ziglua.wrap(read_all) },
-        .{ .name = "open", .func = ziglua.wrap(UnzipFile.open) },
-        .{ .name = "lines", .func = ziglua.wrap(lines) },
-        .{ .name = "extract", .func = ziglua.wrap(extract) },
+    const file_functions = [_]zlua.FnReg{
+        .{ .name = "read_all", .func = zlua.wrap(read_all) },
+        .{ .name = "open", .func = zlua.wrap(UnzipFile.open) },
+        .{ .name = "lines", .func = zlua.wrap(lines) },
+        .{ .name = "extract", .func = zlua.wrap(extract) },
     };
 
     fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
     }
 
     fn garbageCollect(lua: *Lua) i32 {
@@ -125,7 +125,7 @@ const UnzipUdata = struct {
         if (uzgi.size_comment == 0) {
             _ = lua.pushString("");
         } else {
-            var lua_buffer: ziglua.Buffer = undefined;
+            var lua_buffer: zlua.Buffer = undefined;
             const buffer = lua_buffer.initSize(lua, uzgi.size_comment);
             _ = c.unzGetGlobalComment(ud.uzfh, buffer.ptr, uzgi.size_comment);
             lua_buffer.addSize(@intCast(uzgi.size_comment));
@@ -164,7 +164,7 @@ const UnzipUdata = struct {
             const compression_ratio: f64 = @as(f64, @floatFromInt(uzfi.compressed_size)) / @as(f64, @floatFromInt(uzfi.uncompressed_size));
             luax.setTableNumber(lua, table, "compression_ratio", compression_ratio);
 
-            luax.setTableFunction(lua, table, "extract", ziglua.wrap(extract));
+            luax.setTableFunction(lua, table, "extract", zlua.wrap(extract));
         }
 
         luax.setTableInteger(lua, table, "crc", @intCast(uzfi.crc));
@@ -275,16 +275,16 @@ const UnzipFile = struct {
     eof: bool = false,
 
     const name = "_UnzipFile";
-    const functions = [_]ziglua.FnReg{
-        .{ .name = "read", .func = ziglua.wrap(read) },
-        .{ .name = "close", .func = ziglua.wrap(close) },
-        .{ .name = "setvbuf", .func = ziglua.wrap(setvbuf) },
-        .{ .name = "seek", .func = ziglua.wrap(seek) },
-        .{ .name = "lines", .func = ziglua.wrap(lines) },
+    const functions = [_]zlua.FnReg{
+        .{ .name = "read", .func = zlua.wrap(read) },
+        .{ .name = "close", .func = zlua.wrap(close) },
+        .{ .name = "setvbuf", .func = zlua.wrap(setvbuf) },
+        .{ .name = "seek", .func = zlua.wrap(seek) },
+        .{ .name = "lines", .func = zlua.wrap(lines) },
     };
 
     fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, ziglua.wrap(garbageCollect));
+        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
     }
 
     fn garbageCollect(lua: *Lua) i32 {
@@ -331,7 +331,7 @@ const UnzipFile = struct {
     }
 
     fn lines(lua: *Lua) i32 {
-        lua.pushFunction(ziglua.wrap(lines_iterator));
+        lua.pushFunction(zlua.wrap(lines_iterator));
         lua.pushValue(1);
         lua.pushNil();
         lua.pushNil();
@@ -380,7 +380,7 @@ const UnzipFile = struct {
         }
 
         if (uzf.pos == uzf.end) {
-            var lua_buffer: ziglua.Buffer = undefined;
+            var lua_buffer: zlua.Buffer = undefined;
             const buffer = lua_buffer.initSize(lua, len);
             const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, len);
             lua_buffer.addSize(@intCast(bytes_read));
@@ -394,7 +394,7 @@ const UnzipFile = struct {
             uzf.pos += len;
             return 1;
         } else {
-            var lua_buffer: ziglua.Buffer = undefined;
+            var lua_buffer: zlua.Buffer = undefined;
             lua_buffer.init(lua);
             lua_buffer.addString(uzf.buffer[uzf.pos..uzf.end]);
             var size = len - (uzf.end - uzf.pos);
@@ -419,7 +419,7 @@ const UnzipFile = struct {
     }
 
     fn read_all(lua: *Lua, uzf: *UnzipFile) i32 {
-        var lua_buffer: ziglua.Buffer = undefined;
+        var lua_buffer: zlua.Buffer = undefined;
         const size = uzf.size - uzf.fpos + uzf.end;
         const buffer = lua_buffer.initSize(lua, size);
         const bytes_read = c.unzReadCurrentFile(uzf.uzfh, buffer.ptr, size);
@@ -438,7 +438,7 @@ const UnzipFile = struct {
         }
         var start = uzf.pos;
 
-        var lua_buffer: ziglua.Buffer = undefined;
+        var lua_buffer: zlua.Buffer = undefined;
         lua_buffer.init(lua);
         while (uzf.buffer[uzf.pos] != '\r' and uzf.buffer[uzf.pos] != '\n') {
             if (uzf.pos == uzf.end - 1) {
