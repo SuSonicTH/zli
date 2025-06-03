@@ -249,7 +249,7 @@ pub fn setTableRegistryFunction(lua: *Lua, index: i32, key: [:0]const u8, module
 
 pub fn getArgStringOrError(lua: *Lua, index: i32, message: [:0]const u8) [:0]const u8 {
     lua.argCheck(lua.typeOf(index) == .string, index, message);
-    return lua.toString(index);
+    return lua.toString(index) catch unreachable;
 }
 
 pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Integer {
