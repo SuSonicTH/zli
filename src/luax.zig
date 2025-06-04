@@ -87,6 +87,13 @@ pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32
     return 2;
 }
 
+pub fn returnOrRaiseForamttedError(lua: *Lua, doRaiseError: bool, message: [:0]const u8, args: anytype) i32 {
+    if (doRaiseError) {
+        raiseFormattedError(lua, message, args);
+    }
+    return returnFormattedError(lua, message, args);
+}
+
 pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: zlua.CFn) void {
     lua.newMetatable(name) catch raiseError(lua, "could not register userData");
     _ = lua.pushString("__gc");
@@ -142,6 +149,10 @@ pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
     _ = lua.getTable(table_index);
 }
 
+pub fn getOptionalTable(lua: *Lua, key: [:0]const u8, index: i32) bool {
+    getTable(lua, key, index);
+    return lua.isTable(-1);
+}
 pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]const u8 {
     getTable(lua, key, index);
     if (lua.isNil(-1)) {
@@ -163,7 +174,7 @@ pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]co
         lua.pop(1);
         return default;
     }
-    const value = lua.toString(-1) catch raiseError(lua, "illegal option, expecting String");
+    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
     lua.pop(1);
     return std.mem.sliceTo(value, 0);
 }
@@ -174,7 +185,18 @@ pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: zlua.
         lua.pop(1);
         return default;
     }
-    const value = lua.toInteger(-1) catch raiseError(lua, "illegal option, expecting Integer");
+    const value = lua.toInteger(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting Integer", .{key.ptr});
+    lua.pop(1);
+    return value;
+}
+
+pub fn getOptionBool(lua: *Lua, key: [:0]const u8, index: i32, default: bool) bool {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return default;
+    }
+    const value = lua.toBoolean(-1);
     lua.pop(1);
     return value;
 }
