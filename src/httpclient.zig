@@ -40,15 +40,20 @@ fn get(lua: *Lua) i32 {
     defer client.deinit();
 
     var header_buffer: [4096]u8 = undefined;
-    var request = client.open(.GET, uri, .{
+    var request = client.open(.POST, uri, .{
         .server_header_buffer = &header_buffer,
         .headers = header.headers,
         .extra_headers = header.extra_headers.items,
         .privileged_headers = header.privileged_headers.items,
     }) catch return luax.returnOrRaiseForamttedError(lua, raiseError, "could not open connection to '%s'", .{url.ptr});
     defer request.deinit();
+    request.transfer_encoding = .chunked;
 
     request.send() catch return luax.returnOrRaiseForamttedError(lua, raiseError, "could not send to '%s'", .{url.ptr});
+    if (luax.getOptionalString(lua, "body", optionIndex)) |body| {
+        std.io.getStdOut().writer().print("BODY:{any}", .{body}) catch unreachable;
+        _ = request.write(body) catch return luax.returnOrRaiseForamttedError(lua, raiseError, "could not send body to '%s'", .{url.ptr});
+    }
     request.finish() catch return luax.returnOrRaiseForamttedError(lua, raiseError, "could not send to '%s'", .{url.ptr});
     request.wait() catch return luax.returnOrRaiseForamttedError(lua, raiseError, "could not get response from '%s'", .{url.ptr});
 
@@ -81,12 +86,12 @@ const Header = struct {
     extra_headers: std.ArrayList(std.http.Header),
     privileged_headers: std.ArrayList(std.http.Header),
 
-    host: ?[]const u8 = undefined,
-    authorization: ?[]const u8 = undefined,
-    user_agent: ?[]const u8 = undefined,
-    connection: ?[]const u8 = undefined,
-    accept_encoding: ?[]const u8 = undefined,
-    content_type: ?[]const u8 = undefined,
+    host: ?[]const u8 = null,
+    authorization: ?[]const u8 = null,
+    user_agent: ?[]const u8 = null,
+    connection: ?[]const u8 = null,
+    accept_encoding: ?[]const u8 = null,
+    content_type: ?[]const u8 = null,
 
     fn init(allocator: std.mem.Allocator) Header {
         return .{
@@ -102,7 +107,11 @@ const Header = struct {
     }
 
     fn parseHeader(self: *Header, lua: *Lua) !void {
-        if (!luax.getOptionalTable(lua, "header", 2)) return;
+        if (!luax.getOptionalTable(lua, "header", 2)) {
+            self.headers = .{};
+            return;
+        }
+
         lua.pushNil();
         while (lua.next(-2)) {
             lua.pushValue(-2);

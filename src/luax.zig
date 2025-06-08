@@ -153,6 +153,7 @@ pub fn getOptionalTable(lua: *Lua, key: [:0]const u8, index: i32) bool {
     getTable(lua, key, index);
     return lua.isTable(-1);
 }
+
 pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]const u8 {
     getTable(lua, key, index);
     if (lua.isNil(-1)) {
@@ -173,6 +174,17 @@ pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]co
     if (lua.isNil(-1)) {
         lua.pop(1);
         return default;
+    }
+    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
+}
+
+pub fn getOptionalString(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return null;
     }
     const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
     lua.pop(1);
