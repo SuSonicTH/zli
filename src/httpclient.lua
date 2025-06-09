@@ -12,11 +12,9 @@ local function sanitise_args(func, url, options, body)
         body = json.encode(body)
         if options.header == nil then
             options.header = {}
-            print "YES"
         end
         if options.header.content_type == nil then
             options.header.content_type = "application/json"
-            print "YES2"
         end
     end
     return url, options, body
@@ -30,7 +28,6 @@ end
 
 local function post(url, options, body)
     local url, options, body = sanitise_args("post", url, options, body)
-    table.print(options, "options")
     return http.call("POST", url, options, body)
 end
 
