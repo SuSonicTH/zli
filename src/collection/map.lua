@@ -111,10 +111,10 @@ function map:get_or_default(key, default)
 end
 
 function map:put_all(tbl)
-    arg_check_type("map:add", 1, tbl, "table")
+    arg_check_type("map:add", 1, tbl, 3, "table")
     if tbl._is_collection then
         if tbl._type ~= 'map' then
-            arg_error("map:put_all", 1, "expecting a key value table or map", 2)
+            arg_error("map:put_all", 1, "expecting a key value table or map")
         end
         tbl = tbl._items
     end
@@ -228,7 +228,7 @@ function map:values()
 end
 
 function map:equals(other)
-    arg_check_type("map:equals", 1, other, "table")
+    arg_check_type("map:equals", 1, other, 3, "table")
     if other._is_collection then
         if other._type ~= 'map' or self:size() ~= other:size() then
             return false

@@ -125,7 +125,7 @@ function set:contains(item)
 end
 
 function set:retain_all(items)
-    arg_check_type("base:retain_all", 1, items, 'table')
+    arg_check_type("base:retain_all", 1, items, 3, 'table')
     local keep = {}
     local size = 0
 
