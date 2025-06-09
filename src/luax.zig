@@ -87,13 +87,6 @@ pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32
     return 2;
 }
 
-pub fn returnOrRaiseForamttedError(lua: *Lua, doRaiseError: bool, message: [:0]const u8, args: anytype) i32 {
-    if (doRaiseError) {
-        raiseFormattedError(lua, message, args);
-    }
-    return returnFormattedError(lua, message, args);
-}
-
 pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: zlua.CFn) void {
     lua.newMetatable(name) catch raiseError(lua, "could not register userData");
     _ = lua.pushString("__gc");
