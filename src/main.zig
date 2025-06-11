@@ -1,6 +1,7 @@
 const std = @import("std");
 const zlua = @import("zlua");
 const libraries = @import("libraries.zig");
+const Utf8Output = @import("Utf8Output.zig");
 const c = @cImport({
     @cInclude("unzip.h");
 });
@@ -15,6 +16,9 @@ var uzfh: c.unzFile = undefined;
 const allocator = std.heap.c_allocator;
 
 pub fn main() !void {
+    Utf8Output.init();
+    defer Utf8Output.deinit();
+
     var lua = try Lua.init(allocator);
     defer lua.deinit();
 

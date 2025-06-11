@@ -1,10 +1,5 @@
 local grid = {}
 
-if os.is_windows then
-    --set codepage of terminal to UTF8
-    os.execute("chcp.com 65001 > NUL")
-end
-
 local border = {
     top = { left = '┌', center = '┬', right = '┐' },
     center = { left = '├', center = '┼', right = '┤' },
