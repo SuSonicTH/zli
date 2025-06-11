@@ -18,6 +18,8 @@ const string_functions = [_]zlua.FnReg{
     .{ .name = "rtrim", .func = zlua.wrap(rtrim) },
     .{ .name = "base64encode", .func = zlua.wrap(base64encode) },
     .{ .name = "base64decode", .func = zlua.wrap(base64decode) },
+    .{ .name = "base64urlEncode", .func = zlua.wrap(base64urlEncode) },
+    .{ .name = "base64urlDecode", .func = zlua.wrap(base64urlDecode) },
 };
 
 const table_functions = [_]zlua.FnReg{
@@ -118,7 +120,14 @@ fn rtrim(lua: *Lua) i32 {
 }
 
 fn base64encode(lua: *Lua) i32 {
-    const encoder = std.base64.standard.Encoder;
+    return base64enc(lua, std.base64.standard.Encoder);
+}
+
+fn base64urlEncode(lua: *Lua) i32 {
+    return base64enc(lua, std.base64.url_safe.Encoder);
+}
+
+fn base64enc(lua: *Lua, encoder: std.base64.Base64Encoder) i32 {
     const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
     const buffer = lua.allocator().alloc(u8, encoder.calcSize(string.len)) catch luax.raiseError(lua, "could not allocate memory");
     defer lua.allocator().free(buffer);
@@ -129,7 +138,14 @@ fn base64encode(lua: *Lua) i32 {
 }
 
 fn base64decode(lua: *Lua) i32 {
-    const decoder = std.base64.standard.Decoder;
+    return base64dec(lua, std.base64.standard.Decoder);
+}
+
+fn base64urlDecode(lua: *Lua) i32 {
+    return base64dec(lua, std.base64.url_safe.Decoder);
+}
+
+fn base64dec(lua: *Lua, decoder: std.base64.Base64Decoder) i32 {
     const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
     const bufferSize = decoder.calcSizeForSlice(string) catch luax.raiseError(lua, "could not decode string");
     const buffer = lua.allocator().alloc(u8, bufferSize) catch luax.raiseError(lua, "could not allocate memory");
