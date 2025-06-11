@@ -8,14 +8,25 @@ local function sanitise_args(func, url, options, body)
     options = options or {}
     arg_check_type("httpclient." .. func, 3, body, 5, "table", "string", "nil")
     body = body or ""
+
+    if options.header == nil then
+        options.header = {}
+    end
+
     if (type(body) == "table") then
         body = json.encode(body)
-        if options.header == nil then
-            options.header = {}
-        end
         if options.header.content_type == nil then
             options.header.content_type = "application/json"
         end
+    end
+    if options.basicAuth then
+        if type(options.basicAuth) == "table" then
+            local userpass = options.basicAuth.user ..':'..(options.basicAuth.pass or options.basicAuth.password)
+            options.header.authorization = "Basic ".. string.base64encode(userpass)
+        else
+            error("unexpected type for basicAuth expecting table got "..type(options.basicAuth))
+        end
+        
     end
     return url, options, body
 end

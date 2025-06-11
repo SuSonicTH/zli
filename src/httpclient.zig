@@ -54,7 +54,7 @@ fn call(lua: *Lua) i32 {
     }
 
     request.send() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
-    if (lua.typeOf(bodyIndex) != .nil) {
+    if (lua.typeOf(bodyIndex) != .nil and method == .POST) {
         const body = lua.toString(bodyIndex) catch return luax.returnError(lua, "could not get body ");
         _ = request.write(body) catch return luax.returnFormattedError(lua, "could not send body to '%s'", .{url.ptr});
     }
