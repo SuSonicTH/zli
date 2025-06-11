@@ -214,7 +214,7 @@ pub inline fn getAbsoluteIndex(lua: *Lua, index: i32) i32 {
     }
 }
 
-pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: [:0]const u8) void {
+pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: []const u8) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     _ = lua.pushString(value);
