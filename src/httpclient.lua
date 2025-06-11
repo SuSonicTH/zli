@@ -12,12 +12,24 @@ local function sanitise_args(func, url, options, body)
         options.header = {}
     end
 
+    if options.query then
+        if url:sub(-1) ~= '?' then
+            url = url .. '?'
+        end
+        local params = {}
+        for key, value in pairs(options.query) do
+            params[#params + 1] = key:urlEecode() .. '=' .. value:urlEecode()
+        end
+        url = url .. table.concat(params, '&')
+    end
+
     if (type(body) == "table") then
         body = json.encode(body)
         if options.header.content_type == nil then
             options.header.content_type = "application/json"
         end
     end
+
     if options.basicAuth then
         if type(options.basicAuth) == "table" then
             local userpass = options.basicAuth.user .. ':' .. (options.basicAuth.pass or options.basicAuth.password)
@@ -26,6 +38,7 @@ local function sanitise_args(func, url, options, body)
             error("unexpected type for basicAuth expecting table got " .. type(options.basicAuth))
         end
     end
+
     return url, options, body
 end
 
