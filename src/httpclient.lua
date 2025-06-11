@@ -2,11 +2,10 @@ local http
 local json = require "cjson"
 
 local function sanitise_args(func, url, options, body)
-    local is_json = false
-    arg_check_type("httpclient." .. func, 1, url, 5, "string")
-    arg_check_type("httpclient." .. func, 2, options, 5, "table", "nil")
+    arg_check_type(func, 1, url, 5, "string")
+    arg_check_type(func, 2, options, 5, "table", "nil")
     options = options or {}
-    arg_check_type("httpclient." .. func, 3, body, 5, "table", "string", "nil")
+    arg_check_type(func, 3, body, 5, "table", "string", "nil")
     body = body or ""
     if (type(body) == "table") then
         body = json.encode(body)
@@ -21,7 +20,7 @@ local function sanitise_args(func, url, options, body)
 end
 
 local function get(url, options, body)
-    if (body) then arg_error("httpclient.get", 1, "get does not support sending a body", 3) end
+    if (body) then arg_error("get", 1, "get does not support sending a body", 3) end
     local url, options = sanitise_args("get", url, options)
     return http.call("GET", url, options)
 end
