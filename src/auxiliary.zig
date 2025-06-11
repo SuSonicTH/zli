@@ -20,6 +20,7 @@ const string_functions = [_]zlua.FnReg{
     .{ .name = "base64decode", .func = zlua.wrap(base64decode) },
     .{ .name = "base64urlEncode", .func = zlua.wrap(base64urlEncode) },
     .{ .name = "base64urlDecode", .func = zlua.wrap(base64urlDecode) },
+    .{ .name = "urlEecode", .func = zlua.wrap(urlEecode) },
 };
 
 const table_functions = [_]zlua.FnReg{
@@ -153,6 +154,39 @@ fn base64dec(lua: *Lua, decoder: std.base64.Base64Decoder) i32 {
 
     decoder.decode(buffer, string) catch luax.raiseError(lua, "could not decode string");
     _ = lua.pushString(buffer[0..buffer.len]);
+    return 1;
+}
+
+fn urlEecodeisValidChar(char: u8) bool {
+    switch (char) {
+        'a' - 'z', 'A' - 'Z', '0' - '9' => return true,
+        else => return false,
+    }
+}
+
+fn urlEecode(lua: *Lua) i32 {
+    const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
+    var lua_buffer: zlua.Buffer = undefined;
+    var start: usize = 0;
+    var buffer: [3]u8 = undefined;
+
+    for (string, 0..) |char, index| {
+        switch (char) {
+            'a'...'z', 'A'...'Z', '0'...'9' => continue,
+            else => {
+                if (start == 0) {
+                    _ = lua_buffer.initSize(lua, @intFromFloat(@as(f64, @floatFromInt(string.len)) * 1.2));
+                }
+                lua_buffer.addString(string[start..index]);
+                lua_buffer.addString(std.fmt.bufPrint(&buffer, "%{X:0>2}", .{char}) catch luax.raiseError(lua, "could not urlEncode string"));
+                start = index + 1;
+            },
+        }
+    }
+    if (start > 0) {
+        lua_buffer.addString(string[start..string.len]);
+        lua_buffer.pushResult();
+    }
     return 1;
 }
 
