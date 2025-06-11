@@ -61,8 +61,25 @@ fn call(lua: *Lua) i32 {
     request.finish() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
     request.wait() catch return luax.returnFormattedError(lua, "could not get response from '%s'", .{url.ptr});
 
-    const status: i32 = @intFromEnum(request.response.status);
-    lua.pushInteger(status);
+    lua.newTable();
+    const responseIndex = lua.getTop();
+    luax.setTableString(lua, responseIndex, "version", @tagName(request.response.version));
+    luax.setTableInteger(lua, responseIndex, "status", @intFromEnum(request.response.status));
+    luax.setTableString(lua, responseIndex, "status_name", @tagName(request.response.status));
+    luax.setTableString(lua, responseIndex, "reason", request.response.reason);
+
+    if (request.response.location) |location| {
+        luax.setTableString(lua, responseIndex, "location", location);
+    }
+    if (request.response.content_type) |content_type| {
+        luax.setTableString(lua, responseIndex, "content_type", content_type);
+    }
+    if (request.response.content_disposition) |content_disposition| {
+        luax.setTableString(lua, responseIndex, "content_disposition", content_disposition);
+    }
+    if (request.response.content_length) |content_length| {
+        luax.setTableInteger(lua, responseIndex, "content_length", @bitCast(content_length));
+    }
 
     var lua_buffer: zlua.Buffer = undefined;
     lua_buffer.init(lua);
