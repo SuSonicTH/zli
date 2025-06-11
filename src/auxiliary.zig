@@ -21,6 +21,7 @@ const string_functions = [_]zlua.FnReg{
     .{ .name = "base64urlEncode", .func = zlua.wrap(base64urlEncode) },
     .{ .name = "base64urlDecode", .func = zlua.wrap(base64urlDecode) },
     .{ .name = "urlEecode", .func = zlua.wrap(urlEecode) },
+    .{ .name = "utf8len", .func = zlua.wrap(utf8len) },
 };
 
 const table_functions = [_]zlua.FnReg{
@@ -167,8 +168,8 @@ fn urlEecodeisValidChar(char: u8) bool {
 fn urlEecode(lua: *Lua) i32 {
     const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
     var lua_buffer: zlua.Buffer = undefined;
-    var start: usize = 0;
     var buffer: [3]u8 = undefined;
+    var start: usize = 0;
 
     for (string, 0..) |char, index| {
         switch (char) {
@@ -187,6 +188,13 @@ fn urlEecode(lua: *Lua) i32 {
         lua_buffer.addString(string[start..string.len]);
         lua_buffer.pushResult();
     }
+    return 1;
+}
+
+fn utf8len(lua: *Lua) i32 {
+    const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
+    const len = std.unicode.utf8CountCodepoints(string) catch luax.raiseError(lua, "could not count codepoints (invalid utf8?)");
+    lua.pushInteger(@bitCast(len));
     return 1;
 }
 
