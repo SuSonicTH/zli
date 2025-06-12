@@ -158,13 +158,6 @@ fn base64dec(lua: *Lua, decoder: std.base64.Base64Decoder) i32 {
     return 1;
 }
 
-fn urlEecodeisValidChar(char: u8) bool {
-    switch (char) {
-        'a' - 'z', 'A' - 'Z', '0' - '9' => return true,
-        else => return false,
-    }
-}
-
 fn urlEecode(lua: *Lua) i32 {
     const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
     var lua_buffer: zlua.Buffer = undefined;
