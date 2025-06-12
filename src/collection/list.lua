@@ -27,7 +27,7 @@ function list:clear(size)
     elseif type(size) == 'number' then
         self._items = {}
     elseif type(size) == 'table' then
-        self._items={}
+        self._items = {}
         self:add_all(size)
     else
         arg_error("list:clear", 1, "expecting size or no argument", 2)
@@ -51,7 +51,7 @@ function list:add(i, item, ...)
             self._items[index] = i
         end
     else
-        arg_check_type("list:add", 2, i, "number")
+        arg_check_type("list:add", 2, i, 3, "number")
         if self._sort then
             arg_error("list:add", 2, "you may not insert by index in a sorted list")
         end
@@ -119,7 +119,7 @@ function list:remove(item)
 end
 
 function list:remove_index(index)
-    arg_check_type("list:remove_index", 1, index, "number")
+    arg_check_type("list:remove_index", 1, 3, index, "number")
     table.remove(self._items, index)
     self._size = self._size - 1
     return self
@@ -135,12 +135,12 @@ function list:contains(item)
 end
 
 function list:get(index)
-    arg_check_type("list:get", 1, index, "number")
+    arg_check_type("list:get", 1, index, 3, "number")
     return self._items[index]
 end
 
 function list:set(index, item)
-    arg_check_type("list:get", 1, index, "number")
+    arg_check_type("list:get", 1, index, 3, "number")
     local old = self._items[index]
     self._items[index] = item
     return old
@@ -166,7 +166,7 @@ function list:last_index_of(item)
 end
 
 function list:retain_all(items)
-    arg_check_type("base:retain_all", 1, items, 'table')
+    arg_check_type("base:retain_all", 1, items, 3, 'table')
 
     if items.__index ~= 'key' then
         items = collection.set:new(items)
@@ -188,8 +188,8 @@ function list:retain_all(items)
 end
 
 function list:sublist(from, to)
-    arg_check_type("list:sublist", 1, from, "number")
-    arg_check_type("list:sublist", 2, to, "number")
+    arg_check_type("list:sublist", 1, from, 3, "number")
+    arg_check_type("list:sublist", 2, to, 3, "number")
     local size = to - from + 1
     local new = list:new(size)
     for i = from, to do

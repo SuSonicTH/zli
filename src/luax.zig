@@ -142,6 +142,11 @@ pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
     _ = lua.getTable(table_index);
 }
 
+pub fn getOptionalTable(lua: *Lua, key: [:0]const u8, index: i32) bool {
+    getTable(lua, key, index);
+    return lua.isTable(-1);
+}
+
 pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]const u8 {
     getTable(lua, key, index);
     if (lua.isNil(-1)) {
@@ -163,7 +168,18 @@ pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]co
         lua.pop(1);
         return default;
     }
-    const value = lua.toString(-1) catch raiseError(lua, "illegal option, expecting String");
+    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
+}
+
+pub fn getOptionalString(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return null;
+    }
+    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
     lua.pop(1);
     return std.mem.sliceTo(value, 0);
 }
@@ -174,7 +190,18 @@ pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: zlua.
         lua.pop(1);
         return default;
     }
-    const value = lua.toInteger(-1) catch raiseError(lua, "illegal option, expecting Integer");
+    const value = lua.toInteger(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting Integer", .{key.ptr});
+    lua.pop(1);
+    return value;
+}
+
+pub fn getOptionBool(lua: *Lua, key: [:0]const u8, index: i32, default: bool) bool {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return default;
+    }
+    const value = lua.toBoolean(-1);
     lua.pop(1);
     return value;
 }
@@ -187,7 +214,7 @@ pub inline fn getAbsoluteIndex(lua: *Lua, index: i32) i32 {
     }
 }
 
-pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: [:0]const u8) void {
+pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: []const u8) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     _ = lua.pushString(value);
@@ -249,7 +276,7 @@ pub fn setTableRegistryFunction(lua: *Lua, index: i32, key: [:0]const u8, module
 
 pub fn getArgStringOrError(lua: *Lua, index: i32, message: [:0]const u8) [:0]const u8 {
     lua.argCheck(lua.typeOf(index) == .string, index, message);
-    return lua.toString(index);
+    return lua.toString(index) catch unreachable;
 }
 
 pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Integer {

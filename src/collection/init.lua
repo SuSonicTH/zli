@@ -28,7 +28,7 @@ function base:tostring()
 end
 
 function base:add_all(items)
-    arg_check_type("collection:add_all", 1, items, 'table')
+    arg_check_type("collection:add_all", 1, items, 3, 'table')
     for item in base._iterate(items) do
         self:add(item)
     end
@@ -36,7 +36,7 @@ function base:add_all(items)
 end
 
 function base:remove_all(items)
-    arg_check_type("collection:remove_all", 1, items, 'table')
+    arg_check_type("collection:remove_all", 1, items, 3, 'table')
     local ret = false
     for item in base._iterate(items) do
         if not ret then
@@ -49,7 +49,7 @@ function base:remove_all(items)
 end
 
 function base:contains_all(items)
-    arg_check_type("set:contains_all", 1, items, 'table')
+    arg_check_type("set:contains_all", 1, items, 3, 'table')
     for item in base._iterate(items) do
         if not self:contains(item) then
             return false
@@ -59,7 +59,7 @@ function base:contains_all(items)
 end
 
 function base:equals(items)
-    arg_check_type("collection:equals", 1, items, 'table')
+    arg_check_type("collection:equals", 1, items, 3, 'table')
     local count = 0
     for item in base._iterate(items) do
         if not self:contains(item) then

@@ -2,7 +2,7 @@ local serpent = require "serpent"
 
 --[[ Globals ]]
 function arg_error(func, narg, message, level)
-    error("bad argument #" .. narg .. " to " .. func .. " (" .. message .. ")", level)
+    error("bad argument #" .. narg .. " to " .. func .. " (" .. message .. ")", level or 3)
 end
 
 function arg_check(func, narg, test, message)
@@ -11,16 +11,16 @@ function arg_check(func, narg, test, message)
     end
 end
 
-function arg_check_type(func, narg, arg, ...)
+function arg_check_type(func, narg, arg, level, ...)
     local types = { ... }
     local actual = type(arg)
     for _, expected in ipairs(types) do
         if actual == expected then return arg end
     end
     if #types == 1 then
-        arg_error(func, narg, types[1] .. " expected, got " .. type(arg), 3)
+        arg_error(func, narg, types[1] .. " expected, got " .. type(arg), level)
     else
-        arg_error(func, narg, "expected one of [" .. table.concat(types, ',') .. "], got " .. type(arg), 3)
+        arg_error(func, narg, "expected one of [" .. table.concat(types, ', ') .. "], got " .. type(arg), level)
     end
     return arg
 end
@@ -45,7 +45,7 @@ function sorted_pairs(tbl, func)
 end
 
 function lambda(lambda_str)
-    arg_check_type("lambda / L / string:L()", 1, lambda_str, 'string')
+    arg_check_type("lambda / L / string:L()", 1, lambda_str, 3, 'string')
 
     local firstChar = lambda_str:sub(1, 1)
     local function_string
@@ -142,8 +142,8 @@ function table.copy(orig, copies)
 end
 
 function table.tostring(tbl, name)
-    arg_check_type("table.tostring", 1, tbl, 'table')
-    arg_check_type("table.tostring", 2, name, 'string', 'nil')
+    arg_check_type("table.tostring", 1, tbl, 3, 'table')
+    arg_check_type("table.tostring", 2, name, 3, 'string', 'nil')
 
     local str = serpent.block(tbl, {
         sortkeys = true,
@@ -160,14 +160,14 @@ function table.tostring(tbl, name)
 end
 
 function table.print(tbl, name)
-    arg_check_type("table.print", 1, tbl, 'table')
-    arg_check_type("table.print", 2, name, 'string', 'nil')
+    arg_check_type("table.print", 1, tbl, 3, 'table')
+    arg_check_type("table.print", 2, name, 3, 'string', 'nil')
     print(table.tostring(tbl, name))
 end
 
 function table.remove_if(tbl, func)
-    arg_check_type("table.remove", 1, tbl, 'table')
-    arg_check_type("table.remove", 2, func, 'function')
+    arg_check_type("table.remove", 1, tbl, 3, 'table')
+    arg_check_type("table.remove", 2, func, 3, 'function')
     local remove = {}
     for i, item in ipairs(tbl) do
         if (func(item)) then
@@ -182,8 +182,8 @@ function table.remove_if(tbl, func)
 end
 
 function table.filter(tbl, func)
-    arg_check_type("table.filter", 1, tbl, 'table')
-    arg_check_type("table.filter", 2, func, 'function')
+    arg_check_type("table.filter", 1, tbl, 3, 'table')
+    arg_check_type("table.filter", 2, func, 3, 'function')
     local ret = {}
     for i, item in ipairs(tbl) do
         if (func(item)) then
@@ -194,7 +194,7 @@ function table.filter(tbl, func)
 end
 
 function table.add_all(tbl, ...)
-    arg_check_type("table.add_all", 1, tbl, 'table')
+    arg_check_type("table.add_all", 1, tbl, 3, 'table')
     for _, arg in ipairs { ... } do
         if type(arg) == 'table' then
             for _, item in ipairs(arg) do
@@ -208,8 +208,8 @@ function table.add_all(tbl, ...)
 end
 
 function table.insert_all(tbl, index, ...)
-    arg_check_type("table.insert_all", 1, tbl, 'table')
-    arg_check_type("table.insert_all", 2, index, 'number')
+    arg_check_type("table.insert_all", 1, tbl, 3, 'table')
+    arg_check_type("table.insert_all", 2, index, 3, 'number')
     for _, arg in ipairs { ... } do
         if type(arg) == 'table' then
             for _, item in ipairs(arg) do
@@ -225,7 +225,7 @@ function table.insert_all(tbl, index, ...)
 end
 
 function table.load_file(filename, options)
-    arg_check_type("table.load_file", 1, filename, 'string')
+    arg_check_type("table.load_file", 1, filename, 3, 'string')
     return serpent.load(io_read_file(filename), options)
 end
 
@@ -327,6 +327,14 @@ function string.contains(self, str)
     else
         return false
     end
+end
+
+function string.is_empty(self)
+    return self == nil or self == ''
+end
+
+function string.is_not_empty(self)
+    return self ~= nil and self ~= ''
 end
 
 --[[ math ]]
