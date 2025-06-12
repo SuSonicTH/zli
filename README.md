@@ -50,6 +50,7 @@ libraries developed specifically for ZLI that don't use any external libraries
 | logger     | a very simple logging library                                                                                            |
 | stream     | a stream library enspired by the java stream library that brings the functional style programming to lua.                |
 | timer      | a nanosecond timer for high precision timings available as os.nanotime                                                   |
+| httpclient | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options          |
 
 ### Included tools
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
