@@ -18,12 +18,16 @@ const readLength = 4096;
 const RequestHeaders = std.http.Client.Request.Headers;
 const Method = std.http.Method;
 
+const methodNameIndex = 1;
+const urlIndex = 2;
+const optionIndex = 3;
+const bodyIndex = 4;
+
 fn call(lua: *Lua) i32 {
-    const methodName = luax.getArgStringOrError(lua, 1, "expecting http method string of [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]");
+    const methodName = luax.getArgStringOrError(lua, methodNameIndex, "expecting http method string of [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]");
     const method = std.meta.stringToEnum(Method, methodName) orelse luax.raiseFormattedError(lua, "expecting http method [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH] got '%s'", .{methodName.ptr});
-    const url = luax.getArgStringOrError(lua, 2, "expecting url string");
-    const optionIndex = 3;
-    const bodyIndex = 4;
+    const url = luax.getArgStringOrError(lua, urlIndex, "expecting url string");
+
     lua.argCheck(lua.typeOf(optionIndex) == .table, optionIndex, "expecting table with options");
 
     var arena = std.heap.ArenaAllocator.init(lua.allocator());
@@ -48,44 +52,56 @@ fn call(lua: *Lua) i32 {
     }) catch return luax.returnFormattedError(lua, "could not open connection to '%s'", .{url.ptr});
     defer request.deinit();
 
-    switch (method) {
-        .POST => request.transfer_encoding = .chunked,
-        else => {},
-    }
+    const writeBody = switch (method) {
+        .POST, .PUT, .DELETE => true,
+        else => false,
+    };
+    if (writeBody) request.transfer_encoding = .chunked;
 
     request.send() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
-    if (lua.typeOf(bodyIndex) != .nil and method == .POST) {
+    if (lua.typeOf(bodyIndex) != .nil and writeBody) {
         const body = lua.toString(bodyIndex) catch return luax.returnError(lua, "could not get body ");
         _ = request.write(body) catch return luax.returnFormattedError(lua, "could not send body to '%s'", .{url.ptr});
     }
     request.finish() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
     request.wait() catch return luax.returnFormattedError(lua, "could not get response from '%s'", .{url.ptr});
 
+    pushResponse(lua, &request.response);
+    readAndPushBody(lua, &request);
+    return 2;
+}
+
+fn pushResponse(lua: *Lua, response: *const std.http.Client.Response) void {
     lua.newTable();
     const responseIndex = lua.getTop();
-    luax.setTableString(lua, responseIndex, "version", @tagName(request.response.version));
-    luax.setTableInteger(lua, responseIndex, "status", @intFromEnum(request.response.status));
-    luax.setTableString(lua, responseIndex, "status_name", @tagName(request.response.status));
-    luax.setTableString(lua, responseIndex, "reason", request.response.reason);
+    const status = @intFromEnum(response.status);
+    luax.setTableString(lua, responseIndex, "version", @tagName(response.version));
+    luax.setTableInteger(lua, responseIndex, "status", status);
+    luax.setTableString(lua, responseIndex, "status_name", @tagName(response.status));
+    luax.setTableString(lua, responseIndex, "reason", response.reason);
+    luax.setTableBoolean(lua, responseIndex, "success", status >= 200 and status < 300);
 
-    if (request.response.location) |location| {
+    if (response.location) |location| {
         luax.setTableString(lua, responseIndex, "location", location);
     }
-    if (request.response.content_type) |content_type| {
+    if (response.content_type) |content_type| {
         luax.setTableString(lua, responseIndex, "content_type", content_type);
     }
-    if (request.response.content_disposition) |content_disposition| {
+    if (response.content_disposition) |content_disposition| {
         luax.setTableString(lua, responseIndex, "content_disposition", content_disposition);
     }
-    if (request.response.content_length) |content_length| {
+    if (response.content_length) |content_length| {
         luax.setTableInteger(lua, responseIndex, "content_length", @bitCast(content_length));
     }
+}
 
+fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) void {
     var lua_buffer: zlua.Buffer = undefined;
     lua_buffer.init(lua);
     var buffer = lua_buffer.prepSize(readLength);
+
     while (true) {
-        const length = request.readAll(buffer) catch luax.raiseFormattedError(lua, "could not read from '%s'", .{url.ptr});
+        const length = request.readAll(buffer) catch luax.raiseError(lua, "could not read response");
         lua_buffer.addSize(length);
         if (length == readLength) {
             buffer = lua_buffer.prepSize(readLength);
@@ -95,7 +111,6 @@ fn call(lua: *Lua) i32 {
     }
 
     lua_buffer.pushResult();
-    return 2;
 }
 
 const Header = struct {

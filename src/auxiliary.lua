@@ -329,6 +329,14 @@ function string.contains(self, str)
     end
 end
 
+function string.is_empty(self)
+    return self == nil or self == ''
+end
+
+function string.is_not_empty(self)
+    return self ~= nil and self ~= ''
+end
+
 --[[ math ]]
 
 math.maxdouble = 1.7976931348623158e+308

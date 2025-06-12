@@ -1,12 +1,16 @@
 local http
 local json = require "cjson"
 
-local function sanitise_args(func, url, options, body)
-    arg_check_type(func, 1, url, 5, "string")
-    arg_check_type(func, 2, options, 5, "table", "nil")
+local function call(func, url, options, body)
+    arg_check_type(func, 1, url, 4, "string")
+    arg_check_type(func, 2, options, 4, "table", "nil")
     options = options or {}
-    arg_check_type(func, 3, body, 5, "table", "string", "nil")
-    body = body or ""
+    if (func == 'get' or func == 'head' or func == 'delete') and body ~= nil then
+        arg_error(func, 4, func .. " does not support sending a body", 3)
+    else
+        arg_check_type(func, 3, body, 4, "table", "string", "nil")
+        body = body or ""
+    end
 
     if options.header == nil then
         options.header = {}
@@ -33,43 +37,34 @@ local function sanitise_args(func, url, options, body)
     if options.basicAuth then
         if type(options.basicAuth) == "table" then
             local userpass = options.basicAuth.user .. ':' .. (options.basicAuth.pass or options.basicAuth.password)
-            options.header.authorization = "Basic " .. string.base64encode(userpass)
+            options.header.authorization = "Basic " .. userpass:base64encode()
         else
-            error("unexpected type for basicAuth expecting table got " .. type(options.basicAuth))
+            error("unexpected type for basicAuth expecting table with user and password, got " .. type(options.basicAuth))
         end
     end
 
-    return url, options, body
-end
+    local response, body = http.call(func:upper(), url, options, body)
 
-local function processResult(options, response, body)
     if response == nil then
         if options.raiseError then
             error(body, 2)
         else
-            return response, body
+            return nil, body
         end
     end
-    if options.parseJson and response.status >= 200 and response.status < 300 then
+
+    if options.parseJson and response.success and body:is_not_empty() then
         return response, json.decode(body)
     end
     return response, body
 end
 
-local function get(url, options, body)
-    if (body) then arg_error("get", 1, "get does not support sending a body", 3) end
-    local url, options = sanitise_args("get", url, options)
-    return processResult(options, http.call("GET", url, options))
-end
-
-local function post(url, options, body)
-    local url, options, body = sanitise_args("post", url, options, body)
-    return processResult(options, http.call("POST", url, options, body))
-end
-
-
 return function(httpclient)
     http = httpclient
-    httpclient.get = get
-    httpclient.post = post
+    httpclient.get = function(url, options, body) return call("get", url, options, body) end
+    httpclient.head = function(url, options, body) return call("head", url, options, body) end
+    httpclient.post = function(url, options, body) return call("post", url, options, body) end
+    httpclient.put = function(url, options, body) return call("put", url, options, body) end
+    httpclient.patch = function(url, options, body) return call("patch", url, options, body) end
+    httpclient.delete = function(url, options, body) return call("delete", url, options, body) end
 end
