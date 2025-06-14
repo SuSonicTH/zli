@@ -1,5 +1,6 @@
 local http
 local json = require "cjson"
+local fs = require "filesystem"
 
 local function call(func, url, options, body)
     arg_check_type(func, 1, url, 4, "string")
@@ -56,6 +57,32 @@ local function call(func, url, options, body)
     if options.parseJson and response.success and body:is_not_empty() then
         return response, json.decode(body)
     end
+
+    if func == 'get' and options.save then
+        local path = type(options.save) == 'boolean' and fs.path("./") or fs.ensure_path(options.save)
+        if path:exists() and path:is_directory() then
+            if response.content_disposition then
+                for _, value in ipairs(response.content_disposition:to_table(";")) do
+                    if value:trim():starts_with("filename") then
+                        local _, filename = value:split("=")
+                        path = fs.path(path, filename)
+                    end
+                end
+            end
+        end
+        local fh = io.open(path.full_path, "w")
+        if fh == nil then
+            if options.raiseError then
+                error("could not write to file '" .. path.full_path .. "'", 2)
+            else
+                return nil, "could not write to file '" .. path.full_path .. "'"
+            end
+        end
+        fh:write(body)
+        fh:close()
+        return response, path
+    end
+
     return response, body
 end
 

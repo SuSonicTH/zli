@@ -4,12 +4,12 @@ const zlua = @import("zlua");
 const luax = @import("luax.zig");
 const Lua = zlua.Lua;
 
-const crossline = [_]zlua.FnReg{
+const httpclient = [_]zlua.FnReg{
     .{ .name = "call", .func = zlua.wrap(call) },
 };
 
 pub fn luaopen_httpclient(lua: *Lua) i32 {
-    lua.newLib(&crossline);
+    lua.newLib(&httpclient);
     luax.registerExtended(lua, @embedFile("stripped/httpclient.lua"), "httpclient", "zli_httpclient");
     return 1;
 }
@@ -43,7 +43,7 @@ fn call(lua: *Lua) i32 {
     var client = std.http.Client{ .allocator = allocator };
     defer client.deinit();
 
-    var header_buffer: [4096]u8 = undefined;
+    var header_buffer: [32 * 1024]u8 = undefined;
     var request = client.open(method, uri, .{
         .server_header_buffer = &header_buffer,
         .headers = header.headers,
@@ -53,7 +53,7 @@ fn call(lua: *Lua) i32 {
     defer request.deinit();
 
     const writeBody = switch (method) {
-        .POST, .PUT, .DELETE => true,
+        .POST, .PUT, .PATCH => true,
         else => false,
     };
     if (writeBody) request.transfer_encoding = .chunked;
