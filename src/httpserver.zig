@@ -10,13 +10,18 @@ const httpserver = [_]zlua.FnReg{
 
 pub fn luaopen_httpserver(lua: *Lua) i32 {
     lua.newLib(&httpserver);
-    //luax.registerExtended(lua, @embedFile("stripped/httpserver.lua"), "httpserver", "zli_httpserver");
+    luax.registerExtended(lua, @embedFile("stripped/httpserver.lua"), "httpserver", "zli_httpserver");
     return 1;
 }
 
+const addressIndex = 1;
+const portIndex = 2;
+const handlerIndex = 3;
+const optionsIndex = 4;
+
 fn listen(lua: *Lua) i32 {
-    const address = luax.getArgStringOrError(lua, 1, "expecting address to listen on");
-    const port = luax.getArgIntegerOrError(lua, 2, "expecting port to listen on");
+    const address = luax.getArgStringOrError(lua, addressIndex, "expecting address to listen on");
+    const port = luax.getArgIntegerOrError(lua, portIndex, "expecting port to listen on");
     const addr = std.net.Address.parseIp4(address, @intCast(port)) catch |err| {
         return luax.returnFormattedError(lua, "could not resolve ip '%s' error: %s", .{ address.ptr, @errorName(err).ptr });
     };
@@ -37,8 +42,28 @@ fn listen(lua: *Lua) i32 {
             std.debug.print("Could not read head: {}", .{err});
             continue;
         };
-        lua.pushValue(3);
-        lua.call(.{ .args = 0, .results = 1 });
+
+        lua.pushValue(handlerIndex);
+        lua.pushValue(optionsIndex);
+        lua.newTable();
+
+        luax.setTableString(lua, -1, "method", @tagName(request.head.method));
+        luax.setTableString(lua, -1, "target", request.head.target);
+        luax.setTableString(lua, -1, "version", @tagName(request.head.version));
+        luax.setTableString(lua, -1, "expect", request.head.expect orelse "");
+        luax.setTableString(lua, -1, "content_type", request.head.content_type orelse "");
+        luax.setTableInteger(lua, -1, "content_length", @intCast(request.head.content_length orelse 0));
+        luax.setTableString(lua, -1, "transfer_encoding", @tagName(request.head.transfer_encoding));
+        luax.setTableString(lua, -1, "transfer_compression", @tagName(request.head.transfer_compression));
+        luax.setTableBoolean(lua, -1, "keep_alive", request.head.keep_alive);
+        luax.setTableString(lua, -1, "compression", @tagName(request.head.compression));
+
+        var headerIter = request.iterateHeaders();
+        while (headerIter.next()) |header| {
+            luax.setTableString(lua, -1, header.name, header.value);
+        }
+
+        lua.call(.{ .args = 2, .results = 1 });
         defer lua.pop(1);
         const body = lua.toString(-1) catch {
             std.debug.print("Could not get string", .{});
