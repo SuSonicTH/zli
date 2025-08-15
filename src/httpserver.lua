@@ -1,5 +1,6 @@
 local http
 local json = require "cjson"
+local fs = require "filesystem"
 
 --file extension to content type mapping, initialized below, taken from http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
 local mime
@@ -64,14 +65,38 @@ local function content_type_from_file_name(path)
     end
 end
 
-local function serve_file(path)
+local serve_file
+
+local function serve_directory(path)
+    if path:sub(-1) ~= '/' then
+        path = path .. '/'
+    end
+    for _, file in ipairs({ 'index.html', 'index.htm' }) do
+        if fs.exists(path .. file) then
+            --todo: should redirect 302 - location/new/url
+            return serve_file(path .. file)
+        end
+    end
+
+    local ret = { "<html><head><title>index of ", path, "</title></head><body><h1>index of " .. path .. "</h1>" }
+    for name, file in sorted_pairs(fs.dir(path)) do
+        ret[#ret + 1] = '<a href ="' .. path .. name .. '">' .. name .. "</a><br>"
+    end
+    ret[#ret + 1] = "</body></html>"
+    return { status = status.ok, body = table.concat(ret), header = { content_type = mime.html } }
+end
+
+serve_file = function(path)
+    if fs.exists(path) and fs.is_directory(path) then
+        return serve_directory(path)
+    end
     local fh = io.open(path, "rb")
     if fh == nil then
         return { status = status.not_found }
     end
     local content = fh:read("a")
     fh:close()
-    return { status = status.ok, body = content, header = { content_type = content_type_from_file_name(path), lala = "haha" } }
+    return { status = status.ok, body = content, header = { content_type = content_type_from_file_name(path) } }
 end
 
 local function match_path(paths, target)

@@ -30,7 +30,6 @@ fn listen(lua: *Lua) i32 {
     defer extra_headers.deinit();
 
     var server = addr.listen(.{}) catch return luax.returnFormattedError(lua, "could not listen to %s:%d", .{ address.ptr, port });
-    std.debug.print("listening http://{s}:{d}\n", .{ address, port });
     while (true) {
         var connection = server.accept() catch |err| {
             std.debug.print("Connection to client interrupted: {}\n", .{err});

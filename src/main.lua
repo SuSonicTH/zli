@@ -95,7 +95,27 @@ Options:
     --repl                run Read Print Eval Loop.
     --sqlite              run sqlite cli tool
     --compile <config>    create an stand-alone exectable from <config>
+    --manual              serve the lua manual to be read in a browser
+    --serve [directory]   serve a directory over http, defaults to ./
 ]])
+end
+
+local function serve(dir)
+    local dir = dir or "./"
+    local server = require "httpserver"
+
+    print("serving manual http://127.0.0.1:8080/")
+    print("your browser should automatically open")
+    if os.is_windows then
+        os.execute("start http://127.0.0.1:8080/")
+    elseif os.is_linux then
+        os.execute("xdg-open http://127.0.0.1:8080/")
+    end
+
+    server.serve {
+        web_root = dir,
+        cache_web_root = false,
+    }
 end
 
 if arg[1] == '-h' or arg[1] == '--help' then
@@ -128,6 +148,10 @@ elseif arg[1] == '--compile' then
     end
     local config = assert(load("return {" .. io.read_file(config_name) .. "}", config_name))()
     require("compile").execute(config)
+elseif arg[1] == '--manual' then
+    serve("./doc/lua_53_manual/")
+elseif arg[1] == '--serve' then
+    serve(arg[2])
 else
     local script = arg[1]
     table.remove(arg, 1)
