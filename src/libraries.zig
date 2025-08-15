@@ -7,6 +7,7 @@ const filesystem = @import("filesystem.zig");
 const unzip = @import("unzip.zig");
 const zip = @import("zip.zig");
 const httpclient = @import("httpclient.zig");
+const httpserver = @import("httpserver.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.C) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.C) c_int;
@@ -61,6 +62,10 @@ const preload = [_]zlua.FnReg{
     .{
         .name = "httpclient",
         .func = zlua.wrap(httpclient.luaopen_httpclient),
+    },
+    .{
+        .name = "httpserver",
+        .func = zlua.wrap(httpserver.luaopen_httpserver),
     },
 };
 

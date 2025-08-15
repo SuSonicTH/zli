@@ -214,49 +214,49 @@ pub inline fn getAbsoluteIndex(lua: *Lua, index: i32) i32 {
     }
 }
 
-pub fn setTableString(lua: *Lua, index: i32, key: [:0]const u8, value: []const u8) void {
+pub fn setTableString(lua: *Lua, index: i32, key: []const u8, value: []const u8) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     _ = lua.pushString(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableNumber(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.Number) void {
+pub fn setTableNumber(lua: *Lua, index: i32, key: []const u8, value: zlua.Number) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushNumber(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableInteger(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.Integer) void {
+pub fn setTableInteger(lua: *Lua, index: i32, key: []const u8, value: zlua.Integer) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushInteger(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableBoolean(lua: *Lua, index: i32, key: [:0]const u8, value: bool) void {
+pub fn setTableBoolean(lua: *Lua, index: i32, key: []const u8, value: bool) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushBoolean(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableUserData(lua: *Lua, index: i32, key: [:0]const u8, value: *anyopaque) void {
+pub fn setTableUserData(lua: *Lua, index: i32, key: []const u8, value: *anyopaque) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushLightUserdata(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableFunction(lua: *Lua, index: i32, key: [:0]const u8, value: zlua.CFn) void {
+pub fn setTableFunction(lua: *Lua, index: i32, key: []const u8, value: zlua.CFn) void {
     const table_index = getAbsoluteIndex(lua, index);
     _ = lua.pushString(key);
     lua.pushFunction(value);
     lua.setTable(table_index);
 }
 
-pub fn setTableValue(lua: *Lua, index: i32, key: [:0]const u8, value: i32, remove: bool) void {
+pub fn setTableValue(lua: *Lua, index: i32, key: []const u8, value: i32, remove: bool) void {
     const table_index = getAbsoluteIndex(lua, index);
     const value_index = getAbsoluteIndex(lua, value);
     _ = lua.pushString(key);

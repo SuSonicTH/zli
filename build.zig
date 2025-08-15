@@ -123,6 +123,7 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
     .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
     .{ .input = "src/httpclient.lua", .output = "src/stripped/httpclient.lua" },
+    .{ .input = "src/httpserver.lua", .output = "src/stripped/httpserver.lua" },
 };
 
 fn copyFile(input_path: []const u8, output_path: []const u8) !void {
