@@ -114,6 +114,7 @@ fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) void {
 }
 
 const Header = struct {
+    arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     headers: std.http.Client.Request.Headers = undefined,
     extra_headers: std.ArrayList(std.http.Header),
@@ -127,16 +128,20 @@ const Header = struct {
     content_type: ?[]const u8 = null,
 
     fn init(allocator: std.mem.Allocator) Header {
+        var _arena = std.heap.ArenaAllocator.init(allocator);
+        const _allocator = _arena.allocator();
         return .{
-            .allocator = allocator,
-            .extra_headers = std.ArrayList(std.http.Header).init(allocator),
-            .privileged_headers = std.ArrayList(std.http.Header).init(allocator),
+            .arena = _arena,
+            .allocator = _allocator,
+            .extra_headers = std.ArrayList(std.http.Header).init(_allocator),
+            .privileged_headers = std.ArrayList(std.http.Header).init(_allocator),
         };
     }
 
     fn deinit(self: *Header) void {
         self.extra_headers.deinit();
         self.privileged_headers.deinit();
+        self.arena.deinit();
     }
 
     fn parseHeader(self: *Header, lua: *Lua, index: i32) !void {

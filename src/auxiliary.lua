@@ -6,7 +6,7 @@ function arg_error(func, narg, message, level)
 end
 
 function arg_check(func, narg, test, message)
-    if ~test then
+    if not test then
         arg_error(func, narg, message, 3)
     end
 end
