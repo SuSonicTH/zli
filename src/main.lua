@@ -1,3 +1,5 @@
+local version = "v0.1.2"
+local version_string = "zli - Zig Lua Interpreter " .. version
 local unzip = require "unzip"
 local fs = require "filesystem"
 
@@ -75,26 +77,31 @@ else
 end
 
 local function print_usage()
-    print [[
+    print([[
 
-Usage: zli [-h|--help] [--test <test>] [--repl] [--sqlite] [--compile <config>] [<script>]
+Usage: zli [-h|--help] [-v|--version] [--test <test>] [--repl] [--sqlite] [--compile <config>] [<script>]
 
-Zig Lua Interpreter - A cross platform interpreter with batteries included
+]] .. version_string .. [[
+
+A cross platform lua interpreter with batteries included
 
 Arguments:
     script                script to execute
 
 Options:
-    -h, --help            Show this help message and exit.
+    -h, --help            show this help message and exit.
+    -v, --version         prints the version and exits
     --test <test>         run unit tests in file <test>
     --repl                run Read Print Eval Loop.
     --sqlite              run sqlite cli tool
-    --compile <config>    create an exectable compile from <config>
-]]
+    --compile <config>    create an stand-alone exectable from <config>
+]])
 end
 
 if arg[1] == '-h' or arg[1] == '--help' then
     print_usage()
+elseif arg[1] == '-v' or arg[1] == '--version' then
+    print(version_string)
 elseif arg[1] == '--test' then
     local test = arg[2]
     if not test then
