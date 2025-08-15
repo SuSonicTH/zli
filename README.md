@@ -14,10 +14,10 @@ Other platforms that are supported by zig could work but are untested
 * macOS on aarch64 and x86_64
 
 ## Batteries included
-There are many libraries included in the ZIL binary, some 3rd party lua libraries and some developed specifically for ZIL.
+There are many libraries included in the ZLI binary, some 3rd party lua libraries and some developed specifically for ZLI.
 
 ### included lua libraries
-3rd party lua libraries included in zli
+3rd party lua libraries included in ZLI
 
 | library    | link                                        | licence | description                                                                                                                            |
 | ---------- | ------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
