@@ -5,12 +5,12 @@
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/9257242a6fea6069f06d0b831d22f8df47307bfa.tar.gz",
-            .hash = "zlua-0.4.0-hGRpC2rgBABehOIUe4yH9GhRxKvGBiHS25_ro61jFbTT",
+            .url = "https://github.com/natecraddock/ziglua/archive/ef5af101913979026c51911d87ca2bdde2a9add2.tar.gz",
+            .hash = "zlua-0.1.0-hGRpC5UtBQCL0ADhCU1qTH2x2QmRCizIb4-3fqfBQ9pJ",
         },
         .lua54 = .{
-            .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
-            .hash = "1220f93ada1fa077ab096bf88a5b159ad421dbf6a478edec78ddb186d0c21d3476d9",
+            .url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz",
+            .hash = "122000ebde5bf4b5c18544952b930057f54a4a6d66123dc071bcded47278b1af000c",
         },
         .zigLuaStrip = .{
             .url = "https://github.com/SuSonicTH/zigluastrip/archive/c5b05512e700ace1f6b4af72c0d18c1751d6f314.tar.gz",
@@ -33,8 +33,8 @@
             .hash = "N-V-__8AAF6tAAC5_fRzNVLqIKz6X6tdb1ZwGbG3rHHAeB_6",
         },
         .ftcsv = .{
-            .url = "https://github.com/FourierTransformer/ftcsv/archive/e6324c401454891aafdf2ca94e8c9609a881258e.tar.gz",
-            .hash = "N-V-__8AALSMAQBt2JXhbRYS9Ofzm4bpI6DEP7pU5YKLEXYX",
+            .url = "https://github.com/FourierTransformer/ftcsv/archive/75c204e9edd1fea269f8dbced0b9d7751f790348.tar.gz",
+            .hash = "N-V-__8AALibAQBT3ZRNmOPZ_93PikKyEn9sUqWAtcI5mdf6",
         },
         .crossline = .{
             .url = "https://github.com/jcwangxp/Crossline/archive/60b4bb5b2adb4eb9f83654dc983a191048250b2e.tar.gz",
