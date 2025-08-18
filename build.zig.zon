@@ -5,8 +5,8 @@
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/f7b3c90d026afd33b0a70debfd54ea50f1acfc1b.tar.gz",
-            .hash = "zlua-0.1.0-hGRpC-IZBQDD9MfKTbeRE3z_Qg-kI2SqnT1JaRl9W9Sq",
+            .url = "https://github.com/natecraddock/ziglua/archive/9257242a6fea6069f06d0b831d22f8df47307bfa.tar.gz",
+            .hash = "zlua-0.4.0-hGRpC2rgBABehOIUe4yH9GhRxKvGBiHS25_ro61jFbTT",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.6.tar.gz",
