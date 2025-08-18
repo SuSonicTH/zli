@@ -1,7 +1,7 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.1.2",
+    .version = "0.1.3",
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
