@@ -5,16 +5,16 @@
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/ef5af101913979026c51911d87ca2bdde2a9add2.tar.gz",
-            .hash = "zlua-0.1.0-hGRpC5UtBQCL0ADhCU1qTH2x2QmRCizIb4-3fqfBQ9pJ",
+            .url = "https://github.com/natecraddock/ziglua/archive/bf9fc6e6d9c24d5ba53b20acdab657f2fe6cb762.tar.gz",
+            .hash = "zlua-0.1.0-hGRpC444BQDrHc6QhcEeGh1eWMwFbl-c21vlGPWjKBfQ",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz",
             .hash = "122000ebde5bf4b5c18544952b930057f54a4a6d66123dc071bcded47278b1af000c",
         },
-        .zigLuaStrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/c5b05512e700ace1f6b4af72c0d18c1751d6f314.tar.gz",
-            .hash = "122008b4b502fcc28fa01c3565cb4f9e0c0707d86b7b41728c834ef245fc2292cd1a",
+        .zigluastrip = .{
+            .url = "git+https://github.com/SuSonicTH/zigluastrip?ref=HEAD#0909d25782f66d23894bf69fdc326c908bc9341f",
+            .hash = "zigluastrip-0.2.0-g5ETbGFIAAC0Afr2B3t5nIieR8qvgikgrPgv7qyu-mJ0",
         },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
