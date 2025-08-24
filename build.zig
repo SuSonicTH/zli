@@ -32,15 +32,31 @@ pub fn build(b: *std.Build) void {
     const zlib_dep = b.dependency("zlib", .{});
     exe.addIncludePath(zlib_dep.path(""));
     exe.addIncludePath(zlib_dep.path("contrib/minizip/"));
-    exe.linkLibrary(zlib(b, exe.root_module, zlib_dep));
-    exe.linkLibrary(luaZlib(b, exe.root_module, zlib_dep));
-    exe.linkLibrary(miniZip(b, exe.root_module, target, zlib_dep));
+    exe.linkLibrary(zlib(b, target, optimize, zlib_dep));
+    exe.linkLibrary(luaZlib(b, target, optimize, zlib_dep));
+    exe.linkLibrary(miniZip(b, target, optimize, zlib_dep));
 
-    exe.linkLibrary(lsqlite3(b, exe.root_module));
-    exe.linkLibrary(lpeg(b, exe.root_module));
-    exe.linkLibrary(luaCJson(b, exe.root_module));
-    exe.linkLibrary(crossline(b, exe));
-    exe.linkLibrary(timer(b, exe.root_module));
+    exe.linkLibrary(lsqlite3(
+        b,
+        target,
+        optimize,
+    ));
+    exe.linkLibrary(lpeg(
+        b,
+        target,
+        optimize,
+    ));
+    exe.linkLibrary(luaCJson(
+        b,
+        target,
+        optimize,
+    ));
+    exe.linkLibrary(crossline(b, target, optimize, exe));
+    exe.linkLibrary(timer(
+        b,
+        target,
+        optimize,
+    ));
 
     if (optimize != .Debug) {
         exe.root_module.strip = true;
@@ -146,10 +162,13 @@ fn copyFile(input_path: []const u8, output_path: []const u8) !void {
     }
 }
 
-fn lsqlite3(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
+fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lsqlite3",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(luaPath);
@@ -163,10 +182,13 @@ fn lsqlite3(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
     return lib;
 }
 
-fn lpeg(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
+fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lpeg",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(luaPath);
@@ -184,10 +206,13 @@ fn lpeg(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
     return lib;
 }
 
-fn zlib(b: *std.Build, root: *std.Build.Module, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
+fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "zlib",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(zlib_deb.path(""));
@@ -212,10 +237,13 @@ fn zlib(b: *std.Build, root: *std.Build.Module, zlib_deb: *std.Build.Dependency)
     return lib;
 }
 
-fn luaZlib(b: *std.Build, root: *std.Build.Module, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
+fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lua_zlib",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(luaPath);
@@ -226,10 +254,13 @@ fn luaZlib(b: *std.Build, root: *std.Build.Module, zlib_deb: *std.Build.Dependen
     return lib;
 }
 
-fn miniZip(b: *std.Build, root: *std.Build.Module, target: std.Build.ResolvedTarget, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
+fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "miniZip",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(b.path("src/"));
@@ -252,10 +283,13 @@ fn miniZip(b: *std.Build, root: *std.Build.Module, target: std.Build.ResolvedTar
     return lib;
 }
 
-fn luaCJson(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
+fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lua_cjson",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(luaPath);
@@ -271,10 +305,13 @@ fn luaCJson(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
     return lib;
 }
 
-fn crossline(b: *std.Build, exe: *std.Build.Step.Compile) *std.Build.Step.Compile {
+fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, exe: *std.Build.Step.Compile) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "crossline",
-        .root_module = exe.root_module,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     const dependency = b.dependency("crossline", .{});
@@ -285,10 +322,13 @@ fn crossline(b: *std.Build, exe: *std.Build.Step.Compile) *std.Build.Step.Compil
     return lib;
 }
 
-fn timer(b: *std.Build, root: *std.Build.Module) *std.Build.Step.Compile {
+fn timer(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "timer",
-        .root_module = root,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
         .linkage = .static,
     });
     lib.addIncludePath(b.path("src/"));

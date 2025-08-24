@@ -9,14 +9,18 @@ const zip = @import("zip.zig");
 const httpclient = @import("httpclient.zig");
 const httpserver = @import("httpserver.zig");
 
-pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_zlib(state: ?*zlua.LuaState) callconv(.C) c_int;
-pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.C) c_int;
+pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
+pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
+pub extern fn luaopen_zlib(state: ?*zlua.LuaState) callconv(.c) c_int;
+pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.c) c_int;
 
 const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
 const strlen = std.zig.c_builtins.__builtin_strlen;
+
+comptime {
+    @setEvalBranchQuota(20000);
+}
 
 const preload = [_]zlua.FnReg{
     .{

@@ -112,7 +112,7 @@ fn payload_searcher(lua: *Lua) i32 {
 const BUFFER_SIZE: usize = 4096;
 var buffer: [BUFFER_SIZE]u8 = undefined;
 
-fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
+fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.c) [*c]const u8 {
     _ = data;
     _ = state;
     size.* = @intCast(c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));

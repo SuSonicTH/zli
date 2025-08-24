@@ -3,8 +3,8 @@ const builtin = @import("builtin");
 
 const windows = std.os.windows;
 
-extern "kernel32" fn GetConsoleOutputCP() callconv(windows.WINAPI) windows.UINT;
-extern "kernel32" fn SetConsoleOutputCP(codepage: windows.UINT) callconv(windows.WINAPI) windows.BOOL;
+extern "kernel32" fn GetConsoleOutputCP() callconv(.winapi) windows.UINT;
+extern "kernel32" fn SetConsoleOutputCP(codepage: windows.UINT) callconv(.winapi) windows.BOOL;
 
 const utf8CodePage: windows.UINT = 65001;
 var oldCodePage: windows.UINT = 0;
