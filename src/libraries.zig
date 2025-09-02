@@ -18,10 +18,6 @@ const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
 const strlen = std.zig.c_builtins.__builtin_strlen;
 
-comptime {
-    @setEvalBranchQuota(20000);
-}
-
 const preload = [_]zlua.FnReg{
     .{
         .name = "sqlite3",

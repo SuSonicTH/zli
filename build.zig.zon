@@ -13,8 +13,8 @@
             .hash = "122000ebde5bf4b5c18544952b930057f54a4a6d66123dc071bcded47278b1af000c",
         },
         .zigluastrip = .{
-            .url = "git+https://github.com/SuSonicTH/zigluastrip?ref=HEAD#0909d25782f66d23894bf69fdc326c908bc9341f",
-            .hash = "zigluastrip-0.2.0-g5ETbGFIAAC0Afr2B3t5nIieR8qvgikgrPgv7qyu-mJ0",
+            .url = "https://github.com/SuSonicTH/zigluastrip/archive/b46037c42239bf2ab10bfd730f0727d541e80842.tar.gz",
+            .hash = "zigluastrip-0.2.0-g5ETbBVMAADVeaYBGFyLk2wvHB_IS5-qwVcdGRpy9GGt",
         },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
