@@ -86,11 +86,11 @@ const extention_init = "/init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
     const arg = lua.checkString(1);
-    const filename = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+    const filename = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
     defer allocator.free(filename);
 
     if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
-        const initName = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+        const initName = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
         defer allocator.free(initName);
 
         if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
