@@ -18,7 +18,7 @@ const std = @import("std");
 const strcmp = std.zig.c_builtins.__builtin_strcmp;
 const strlen = std.zig.c_builtins.__builtin_strlen;
 
-const preload = [_]zlua.FnReg{
+const preload: []const zlua.FnReg = &.{
     .{
         .name = "sqlite3",
         .func = &luaopen_lsqlite3,
@@ -74,7 +74,7 @@ const luascript = struct {
     source: [:0]const u8,
 };
 
-const luascripts = [_]luascript{
+const luascripts: []const luascript = &.{
     .{ .name = "argparse", .source = @embedFile("stripped/argparse.lua") },
     .{ .name = "collection", .source = @embedFile("stripped/collection.init.lua") },
     .{ .name = "collection.set", .source = @embedFile("stripped/collection.set.lua") },
