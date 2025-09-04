@@ -259,7 +259,7 @@ fn crossline_paging_stop(lua: *Lua) i32 {
 fn crossline_paging_check(lua: *Lua) i32 {
     const length = lua.checkInteger(1);
     const stop = c.crossline_paging_check(@truncate(length));
-    lua.pushBoolean(stop >= 0);
+    lua.pushBoolean(stop == 0);
     return 1;
 }
 
@@ -271,7 +271,7 @@ fn crossline_paging_print_output(lua: *Lua) c_int {
     }
     stdout.flush() catch {};
     lua.pop(1);
-    lua.pushBoolean(c.crossline_paging_check(@intCast(string.len)) >= 1);
+    lua.pushBoolean(c.crossline_paging_check(@intCast(string.len)) == 0);
     return 1;
 }
 
@@ -314,11 +314,11 @@ fn crossline_paging_print_string(lua: *Lua) i32 {
     while (it.next()) |item| {
         _ = lua.pushString(item);
         _ = crossline_paging_print_output(lua);
-        if (lua.toBoolean(-1)) {
+        if (!lua.toBoolean(-1)) {
             return 1;
         }
         lua.pop(1);
     }
-
+    lua.pushBoolean(true);
     return 1;
 }
