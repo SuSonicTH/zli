@@ -1,4 +1,4 @@
-local version = "v0.1.3"
+local version = "v0.1.4"
 local version_string = "zli - Zig Lua Interpreter " .. version
 local unzip = require "unzip"
 local fs = require "filesystem"

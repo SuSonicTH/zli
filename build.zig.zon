@@ -1,12 +1,13 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.1.3",
+    .version = "0.1.4",
+    .minimum_zig_version = "0.15.1",
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/dfe3b4dc0923685b0dda25651ac8ca4c9bfbb70b.tar.gz",
-            .hash = "zlua-0.1.0-hGRpCyA1BQC5LDdvAdbRfuYA4CGyCdsqypoTELxyMJoa",
+            .url = "https://github.com/natecraddock/ziglua/archive/31d1abd4c27a31d557d6feadb4520d661122afc6.tar.gz",
+            .hash = "zlua-0.1.0-hGRpC0Q1BQAzutKvY4BcmRioElQE5bU2VUSt9boEq2pD",
         },
         .lua54 = .{
             .url = "https://www.lua.org/ftp/lua-5.4.8.tar.gz",
