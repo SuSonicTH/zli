@@ -26,7 +26,7 @@ fn listen(lua: *Lua) i32 {
         return luax.returnFormattedError(lua, "could not resolve ip '%s' error: %s", .{ address.ptr, @errorName(err).ptr });
     };
 
-    var extra_headers = std.ArrayList(std.http.Header).init(lua.allocator());
+    var extra_headers = std.array_list.Managed(std.http.Header).init(lua.allocator());
     defer extra_headers.deinit();
 
     var server = addr.listen(.{}) catch return luax.returnFormattedError(lua, "could not listen to %s:%d", .{ address.ptr, port });
@@ -38,7 +38,10 @@ fn listen(lua: *Lua) i32 {
         defer connection.stream.close();
 
         var read_buffer: [1024 * 16]u8 = undefined;
-        var http_server = std.http.Server.init(connection, &read_buffer);
+        var write_buffer: [1024 * 16]u8 = undefined;
+        var reader = connection.stream.reader(&read_buffer);
+        var writer = connection.stream.writer(&write_buffer);
+        var http_server = std.http.Server.init(reader.interface(), &writer.interface);
 
         var request = http_server.receiveHead() catch |err| {
             std.debug.print("Could not read head: {}", .{err});
@@ -58,7 +61,6 @@ fn listen(lua: *Lua) i32 {
         luax.setTableString(lua, -1, "transfer_encoding", @tagName(request.head.transfer_encoding));
         luax.setTableString(lua, -1, "transfer_compression", @tagName(request.head.transfer_compression));
         luax.setTableBoolean(lua, -1, "keep_alive", request.head.keep_alive);
-        luax.setTableString(lua, -1, "compression", @tagName(request.head.compression));
 
         var headerIter = request.iterateHeaders();
         while (headerIter.next()) |header| {
@@ -89,7 +91,7 @@ fn listen(lua: *Lua) i32 {
     }
 }
 
-fn parseHeader(lua: *Lua, extra_headers: *std.ArrayList(std.http.Header), allocator: std.mem.Allocator) !void {
+fn parseHeader(lua: *Lua, extra_headers: *std.array_list.Managed(std.http.Header), allocator: std.mem.Allocator) !void {
     extra_headers.clearRetainingCapacity();
     defer lua.pop(1);
     if (luax.getOptionalTable(lua, "header", -1)) {

@@ -59,7 +59,7 @@ local function collect_result(result, columns, values, column_names)
         result.columns = columns
         result.column_names = column_names
     end
-    table.insert(result, table.copy(values))
+    table.insert(result, values)
     return 0
 end
 
@@ -78,7 +78,11 @@ local function print_result_csv(result, columns, values, column_names)
         cl.paging.print(table.concat(column_names, ","))
         result.header = true
     end
-    return cl.paging.print(table.concat(values, ",")) and 1 or 0;
+    if cl.paging.print(table.concat(values, ",")) then
+        return 0;
+    else
+        return 1;
+    end
 end
 
 local function print_result_table_get_line(widths, spaces, values)

@@ -43,9 +43,9 @@ fn call(lua: *Lua) i32 {
     var client = std.http.Client{ .allocator = allocator };
     defer client.deinit();
 
-    var header_buffer: [32 * 1024]u8 = undefined;
-    var request = client.open(method, uri, .{
-        .server_header_buffer = &header_buffer,
+    //var header_buffer: [32 * 1024]u8 = undefined;
+    var request = client.request(method, uri, .{
+        //.server_header_buffer = &header_buffer,
         .headers = header.headers,
         .extra_headers = header.extra_headers.items,
         .privileged_headers = header.privileged_headers.items,
@@ -58,39 +58,43 @@ fn call(lua: *Lua) i32 {
     };
     if (writeBody) request.transfer_encoding = .chunked;
 
-    request.send() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
     if (lua.typeOf(bodyIndex) != .nil and writeBody) {
         const body = lua.toString(bodyIndex) catch return luax.returnError(lua, "could not get body ");
-        _ = request.write(body) catch return luax.returnFormattedError(lua, "could not send body to '%s'", .{url.ptr});
+        _ = request.sendBodyComplete(@constCast(body)) catch return luax.returnFormattedError(lua, "could not send body to '%s'", .{url.ptr});
+    } else {
+        request.sendBodiless() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
     }
-    request.finish() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
-    request.wait() catch return luax.returnFormattedError(lua, "could not get response from '%s'", .{url.ptr});
 
-    pushResponse(lua, &request.response);
+    //request.re .wait() catch return luax.returnFormattedError(lua, "could not get response from '%s'", .{url.ptr});
+
+    var redirect_buffer: [readLength]u8 = undefined;
+    const response = request.receiveHead(&redirect_buffer) catch return luax.returnFormattedError(lua, "could not receive header from '%s'", .{url.ptr});
+    pushHeader(lua, &response.head);
     readAndPushBody(lua, &request);
     return 2;
 }
 
-fn pushResponse(lua: *Lua, response: *const std.http.Client.Response) void {
+fn pushHeader(lua: *Lua, head: *const std.http.Client.Response.Head) void {
     lua.newTable();
     const responseIndex = lua.getTop();
-    const status = @intFromEnum(response.status);
-    luax.setTableString(lua, responseIndex, "version", @tagName(response.version));
+
+    const status = @intFromEnum(head.status);
+    luax.setTableString(lua, responseIndex, "version", @tagName(head.version));
     luax.setTableInteger(lua, responseIndex, "status", status);
-    luax.setTableString(lua, responseIndex, "status_name", @tagName(response.status));
-    luax.setTableString(lua, responseIndex, "reason", response.reason);
+    luax.setTableString(lua, responseIndex, "status_name", @tagName(head.status));
+    luax.setTableString(lua, responseIndex, "reason", head.reason);
     luax.setTableBoolean(lua, responseIndex, "success", status >= 200 and status < 300);
 
-    if (response.location) |location| {
+    if (head.location) |location| {
         luax.setTableString(lua, responseIndex, "location", location);
     }
-    if (response.content_type) |content_type| {
+    if (head.content_type) |content_type| {
         luax.setTableString(lua, responseIndex, "content_type", content_type);
     }
-    if (response.content_disposition) |content_disposition| {
+    if (head.content_disposition) |content_disposition| {
         luax.setTableString(lua, responseIndex, "content_disposition", content_disposition);
     }
-    if (response.content_length) |content_length| {
+    if (head.content_length) |content_length| {
         luax.setTableInteger(lua, responseIndex, "content_length", @bitCast(content_length));
     }
 }
@@ -100,8 +104,10 @@ fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) void {
     lua_buffer.init(lua);
     var buffer = lua_buffer.prepSize(readLength);
 
+    //todo: rewrite for new interface
+    const reader = &request.reader.interface.adaptToOldInterface();
     while (true) {
-        const length = request.readAll(buffer) catch luax.raiseError(lua, "could not read response");
+        const length = reader.readAll(buffer) catch luax.raiseError(lua, "could not read response");
         lua_buffer.addSize(length);
         if (length == readLength) {
             buffer = lua_buffer.prepSize(readLength);
@@ -117,8 +123,8 @@ const Header = struct {
     arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     headers: std.http.Client.Request.Headers = undefined,
-    extra_headers: std.ArrayList(std.http.Header),
-    privileged_headers: std.ArrayList(std.http.Header),
+    extra_headers: std.array_list.Managed(std.http.Header),
+    privileged_headers: std.array_list.Managed(std.http.Header),
 
     host: ?[]const u8 = null,
     authorization: ?[]const u8 = null,
@@ -133,8 +139,8 @@ const Header = struct {
         return .{
             .arena = _arena,
             .allocator = _allocator,
-            .extra_headers = std.ArrayList(std.http.Header).init(_allocator),
-            .privileged_headers = std.ArrayList(std.http.Header).init(_allocator),
+            .extra_headers = std.array_list.Managed(std.http.Header).init(_allocator),
+            .privileged_headers = std.array_list.Managed(std.http.Header).init(_allocator),
         };
     }
 

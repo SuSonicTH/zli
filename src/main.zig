@@ -86,11 +86,11 @@ const extention_init = "/init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
     const arg = lua.checkString(1);
-    const filename = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+    const filename = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
     defer allocator.free(filename);
 
     if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
-        const initName = std.fmt.allocPrintZ(allocator, "{s}.lua", .{arg}) catch unreachable;
+        const initName = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
         defer allocator.free(initName);
 
         if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
@@ -112,7 +112,7 @@ fn payload_searcher(lua: *Lua) i32 {
 const BUFFER_SIZE: usize = 4096;
 var buffer: [BUFFER_SIZE]u8 = undefined;
 
-fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.C) [*c]const u8 {
+fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.c) [*c]const u8 {
     _ = data;
     _ = state;
     size.* = @intCast(c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));
