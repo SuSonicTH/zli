@@ -25,34 +25,34 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    exe.addIncludePath(b.path("src/"));
+    exe.root_module.addIncludePath(b.path("src/"));
     exe.root_module.addImport("zlua", zlua.module("zlua"));
 
     //zlib and zip libraries
     const zlib_dep = b.dependency("zlib", .{});
-    exe.addIncludePath(zlib_dep.path(""));
-    exe.addIncludePath(zlib_dep.path("contrib/minizip/"));
-    exe.linkLibrary(zlib(b, target, optimize, zlib_dep));
-    exe.linkLibrary(luaZlib(b, target, optimize, zlib_dep));
-    exe.linkLibrary(miniZip(b, target, optimize, zlib_dep));
+    exe.root_module.addIncludePath(zlib_dep.path(""));
+    exe.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    exe.root_module.linkLibrary(zlib(b, target, optimize, zlib_dep));
+    exe.root_module.linkLibrary(luaZlib(b, target, optimize, zlib_dep));
+    exe.root_module.linkLibrary(miniZip(b, target, optimize, zlib_dep));
 
-    exe.linkLibrary(lsqlite3(
+    exe.root_module.linkLibrary(lsqlite3(
         b,
         target,
         optimize,
     ));
-    exe.linkLibrary(lpeg(
+    exe.root_module.linkLibrary(lpeg(
         b,
         target,
         optimize,
     ));
-    exe.linkLibrary(luaCJson(
+    exe.root_module.linkLibrary(luaCJson(
         b,
         target,
         optimize,
     ));
-    exe.linkLibrary(crossline(b, target, optimize, exe));
-    exe.linkLibrary(timer(
+    exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
+    exe.root_module.linkLibrary(timer(
         b,
         target,
         optimize,
@@ -74,11 +74,11 @@ pub fn build(b: *std.Build) void {
     } else {
         inline for (luastrip_list) |script| {
             if (script.dependency[0] == 0) {
-                copyFile(script.input, script.output) catch unreachable;
+                copyFile(b.graph.io, script.input, script.output) catch unreachable;
             } else {
                 const dependency = b.dependency(script.dependency, .{});
                 const source = dependency.path(script.input).getPath(b);
-                copyFile(source, script.output) catch unreachable;
+                copyFile(b.graph.io, source, script.output) catch unreachable;
             }
         }
     }
@@ -144,22 +144,22 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/httpserver.lua", .output = "src/stripped/httpserver.lua" },
 };
 
-fn copyFile(input_path: []const u8, output_path: []const u8) !void {
-    const input = try std.fs.cwd().openFile(input_path, .{});
-    defer input.close();
+fn copyFile(io: std.Io, input_path: []const u8, output_path: []const u8) !void {
+    const input = try std.Io.Dir.cwd().openFile(io, input_path, .{});
+    defer input.close(io);
 
-    const output = try std.fs.cwd().createFile(output_path, .{});
-    defer output.close();
+    const output = try std.Io.Dir.cwd().createFile(io, output_path, .{});
+    defer output.close(io);
 
-    var buffer: [4096]u8 = undefined;
-    while (true) {
-        const size = try input.readAll(&buffer);
-        if (size > 0) {
-            try output.writeAll(buffer[0..size]);
-        } else {
-            break;
-        }
-    }
+    var read_buffer: [4096]u8 = undefined;
+    var file_reader = input.reader(io, &read_buffer);
+    const reader = &file_reader.interface;
+
+    var write_buffer: [4096]u8 = undefined;
+    var file_writer = output.writer(io, &write_buffer);
+    const writer = &file_writer.interface;
+
+    _ = try reader.streamRemaining(writer);
 }
 
 fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
@@ -171,14 +171,14 @@ fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(luaPath);
+    lib.root_module.addIncludePath(luaPath);
     const dependency = b.dependency("lsqlite3", .{});
-    lib.addIncludePath(dependency.path(""));
-    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
+    lib.root_module.addIncludePath(dependency.path(""));
+    lib.root_module.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "sqlite3.c",
         "lsqlite3.c",
     }, .flags = flags_c99 });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -191,10 +191,10 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(luaPath);
+    lib.root_module.addIncludePath(luaPath);
     const dependency = b.dependency("lpeg", .{});
-    lib.addIncludePath(dependency.path(""));
-    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
+    lib.root_module.addIncludePath(dependency.path(""));
+    lib.root_module.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "lpcap.c",
         "lpcode.c",
         "lpcset.c",
@@ -202,7 +202,7 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
         "lptree.c",
         "lpvm.c",
     }, .flags = flags_c99 });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -215,8 +215,8 @@ fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(zlib_deb.path(""));
-    lib.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
+    lib.root_module.addIncludePath(zlib_deb.path(""));
+    lib.root_module.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
         "adler32.c",
         "crc32.c",
         "gzclose.c",
@@ -233,7 +233,7 @@ fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
         "inftrees.c",
         "uncompr.c",
     }, .flags = &.{"-std=gnu89"} });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -246,11 +246,11 @@ fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builti
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(luaPath);
-    lib.addIncludePath(zlib_deb.path(""));
+    lib.root_module.addIncludePath(luaPath);
+    lib.root_module.addIncludePath(zlib_deb.path(""));
     const dependency = b.dependency("lua_zlib", .{});
-    lib.addCSourceFile(.{ .file = dependency.path("lua_zlib.c"), .flags = &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" } });
-    lib.linkLibC();
+    lib.root_module.addCSourceFile(.{ .file = dependency.path("lua_zlib.c"), .flags = &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" } });
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -263,23 +263,23 @@ fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builti
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(b.path("src/"));
-    lib.addIncludePath(zlib_deb.path(""));
-    lib.addIncludePath(zlib_deb.path("contrib/minizip/"));
-    lib.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
+    lib.root_module.addIncludePath(b.path("src/"));
+    lib.root_module.addIncludePath(zlib_deb.path(""));
+    lib.root_module.addIncludePath(zlib_deb.path("contrib/minizip/"));
+    lib.root_module.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
         "contrib/minizip/zip.c",
         "contrib/minizip/unzip.c",
         "contrib/minizip/ioapi.c",
     }, .flags = flags_c99 });
-    lib.addCSourceFile(.{ .file = b.path("src/zip_util.c"), .flags = flags_c99 });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/zip_util.c"), .flags = flags_c99 });
 
     switch (target.result.os.tag) {
         .windows => {
-            lib.addCSourceFile(.{ .file = zlib_deb.path("contrib/minizip/iowin32.c"), .flags = flags_c99 });
+            lib.root_module.addCSourceFile(.{ .file = zlib_deb.path("contrib/minizip/iowin32.c"), .flags = flags_c99 });
         },
         else => {},
     }
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -292,16 +292,16 @@ fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(luaPath);
+    lib.root_module.addIncludePath(luaPath);
     const dependency = b.dependency("cjson", .{});
-    lib.addIncludePath(dependency.path(""));
-    lib.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
+    lib.root_module.addIncludePath(dependency.path(""));
+    lib.root_module.addCSourceFiles(.{ .root = dependency.path(""), .files = &[_][]const u8{
         "fpconv.c",
         "g_fmt.c",
         "lua_cjson.c",
         "strbuf.c",
     }, .flags = flags_c99 });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -315,10 +315,10 @@ fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.buil
         .linkage = .static,
     });
     const dependency = b.dependency("crossline", .{});
-    lib.addIncludePath(dependency.path(""));
-    exe.addIncludePath(dependency.path(""));
-    lib.addCSourceFile(.{ .file = dependency.path("crossline.c"), .flags = flags_c99 });
-    lib.linkLibC();
+    lib.root_module.addIncludePath(dependency.path(""));
+    exe.root_module.addIncludePath(dependency.path(""));
+    lib.root_module.addCSourceFile(.{ .file = dependency.path("crossline.c"), .flags = flags_c99 });
+    lib.root_module.link_libc = true;
     return lib;
 }
 
@@ -331,8 +331,8 @@ fn timer(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.
         }),
         .linkage = .static,
     });
-    lib.addIncludePath(b.path("src/"));
-    lib.addCSourceFile(.{ .file = b.path("src/timer.c"), .flags = flags_c99 });
-    lib.linkLibC();
+    lib.root_module.addIncludePath(b.path("src/"));
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/timer.c"), .flags = flags_c99 });
+    lib.root_module.link_libc = true;
     return lib;
 }

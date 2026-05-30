@@ -102,7 +102,7 @@ const UnzipUdata = struct {
                 lua.setTable(table);
             } else {
                 create_file_table(lua, zfname, uzfi, ud);
-                lua.rawSetIndex(table, index);
+                lua.setIndexRaw(table, index);
             }
             if (c.unzGoToNextFile(ud.uzfh) != c.UNZ_OK) {
                 break;
