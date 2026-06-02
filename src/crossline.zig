@@ -85,12 +85,15 @@ const bg_colors = [_]luax.NamedConstantInteger{
 };
 
 var stdout_buffer: [4096]u8 = undefined;
-var stdout_writer: std.fs.File.Writer = undefined;
+var stdout_writer: std.Io.File.Writer = undefined;
 var stdout: *std.Io.Writer = undefined;
 
-pub fn luaopen_crossline(lua: *Lua) i32 {
-    stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+pub fn setIo(io: std.Io) void {
+    stdout_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
     stdout = &stdout_writer.interface;
+}
+
+pub fn luaopen_crossline(lua: *Lua) i32 {
     lua.newLib(&crossline);
     registerColors(lua);
     luax.createFunctionSubTable(lua, &crossline_screen, "screen");
@@ -294,10 +297,10 @@ fn crossline_paging_print(lua: *Lua) i32 {
 }
 
 fn crossline_paging_print_table(lua: *Lua) i32 {
-    const len = lua.rawLen(1);
+    const len = lua.lenRaw(1);
 
     for (1..len) |i| {
-        _ = lua.rawGetIndex(1, @intCast(i));
+        _ = lua.getIndexRaw(1, @intCast(i));
         _ = crossline_paging_print_output(lua);
         if (lua.toBoolean(-1)) {
             return 1;

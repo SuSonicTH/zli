@@ -39,7 +39,8 @@ pub fn register(lua: *Lua) void {
     register_module(lua, "os", &os_functions);
 
     lua.loadBuffer(@embedFile("auxiliary.lua"), "auxiliary", zlua.Mode.text) catch lua.raiseError();
-    lua.call(.{ .args = 0, .results = 0 });
+    //todo enable after fix
+    //lua.call(.{ .args = 0, .results = 0 });
 }
 
 fn register_module(lua: *Lua, module: [:0]const u8, functions: []const zlua.FnReg) void {

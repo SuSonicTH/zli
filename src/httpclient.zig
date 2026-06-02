@@ -8,6 +8,12 @@ const httpclient = [_]zlua.FnReg{
     .{ .name = "call", .func = zlua.wrap(call) },
 };
 
+var io: std.Io = undefined;
+
+pub fn setIo(_io: std.Io) void {
+    io = _io;
+}
+
 pub fn luaopen_httpclient(lua: *Lua) i32 {
     lua.newLib(&httpclient);
     luax.registerExtended(lua, @embedFile("stripped/httpclient.lua"), "httpclient", "zli_httpclient");
@@ -40,7 +46,7 @@ fn call(lua: *Lua) i32 {
 
     const uri = std.Uri.parse(url) catch return luax.returnFormattedError(lua, "invalid url '%s'", .{url.ptr});
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .io = io, .allocator = allocator };
     defer client.deinit();
 
     //var header_buffer: [32 * 1024]u8 = undefined;
@@ -104,10 +110,9 @@ fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) void {
     lua_buffer.init(lua);
     var buffer = lua_buffer.prepSize(readLength);
 
-    //todo: rewrite for new interface
-    const reader = &request.reader.interface.adaptToOldInterface();
+    const reader = &request.reader.interface;
     while (true) {
-        const length = reader.readAll(buffer) catch luax.raiseError(lua, "could not read response");
+        const length = reader.readSliceShort(buffer) catch luax.raiseError(lua, "could not read response");
         lua_buffer.addSize(length);
         if (length == readLength) {
             buffer = lua_buffer.prepSize(readLength);

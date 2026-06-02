@@ -15,8 +15,6 @@ pub extern fn luaopen_zlib(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.c) c_int;
 
 const std = @import("std");
-const strcmp = std.zig.c_builtins.__builtin_strcmp;
-const strlen = std.zig.c_builtins.__builtin_strlen;
 
 const preload: []const zlua.FnReg = &.{
     .{
@@ -96,8 +94,15 @@ const luascripts: []const luascript = &.{
     .{ .name = "memoize", .source = @embedFile("stripped/memoize.lua") },
 };
 
-pub fn openlibs(lua: *Lua) i32 {
+pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     lua.openLibs();
+
+    filesystem.setIo(io);
+    crossline.setIo(io);
+    httpclient.setIo(io);
+    httpserver.setIo(io);
+    zip.setIo(io);
+    unzip.setIo(io);
 
     _ = lua.getSubtable(zlua.registry_index, "_PRELOAD");
     for (preload) |lib| {
@@ -120,7 +125,7 @@ pub fn openlibs(lua: *Lua) i32 {
 fn luaopen_luascript(lua: *Lua) i32 {
     const modname = lua.toString(1) catch unreachable;
     for (luascripts) |script| {
-        if (strcmp(modname, script.name) == 0) {
+        if (std.mem.eql(u8, modname, script.name)) {
             lua.loadBuffer(script.source, modname, zlua.Mode.text) catch lua.raiseError();
             lua.call(.{ .args = 0, .results = 1 });
             return 1;

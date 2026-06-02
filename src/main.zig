@@ -27,7 +27,7 @@ pub fn main(init: std.process.Init) !void {
 
     try createArgTable(lua, args);
     _ = lua.gcSetGenerational(0, 0);
-    _ = libraries.openlibs(lua);
+    _ = libraries.openlibs(init.io, lua);
     try create_payload_searcher(lua);
 
     lua.pushFunction(zlua.wrap(messageHandler));
@@ -77,7 +77,7 @@ fn create_payload_searcher(lua: *Lua) !void {
 
     _ = lua.pushString("searchers");
     _ = lua.getTable(package);
-    const len = lua.rawLen(-1);
+    const len = lua.lenRaw(-1);
     lua.pushFunction(zlua.wrap(payload_searcher));
     lua.setIndexRaw(-2, @intCast(len + 1));
     lua.setTop(top);

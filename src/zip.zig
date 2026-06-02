@@ -24,6 +24,12 @@ const zip = [_]zlua.FnReg{
 
 const zli_zip = "zli_zip";
 
+var io: std.Io = undefined;
+
+pub fn setIo(_io: std.Io) void {
+    io = _io;
+}
+
 pub fn luaopen_zip(lua: *Lua) i32 {
     ZipUdata.register(lua);
     lua.newLib(&zip);
@@ -98,8 +104,8 @@ const ZipUdata = struct {
 
         _ = c.zipCloseFileInZip(ud.zfh);
 
-        const file = fs.cwd().openFile(source_name, .{}) catch return luax.returnFormattedError(lua, "could not open input file '%s'", .{source_name.ptr});
-        defer file.close();
+        const file = std.Io.Dir.cwd().openFile(io, source_name, .{}) catch return luax.returnFormattedError(lua, "could not open input file '%s'", .{source_name.ptr});
+        defer file.close(io);
 
         var zfi: c.zip_fileinfo = undefined;
         c.filetime_to_ziptime(source_name.ptr, &zfi);
@@ -110,12 +116,15 @@ const ZipUdata = struct {
         defer _ = c.zipCloseFileInZip(ud.zfh);
 
         var buffer: [4096]u8 = undefined;
+        var streaming_reader = file.readerStreaming(io, &buffer);
+        const reader = &streaming_reader.interface;
+        var data: [4096]u8 = undefined;
         while (true) {
-            const size = file.readAll(&buffer) catch luax.raiseFormattedError(lua, "could not read from file '%s'", .{source_name.ptr});
+            const size = reader.readSliceShort(&data) catch luax.raiseFormattedError(lua, "could not read from file '%s'", .{source_name.ptr});
             if (size > 0) {
-                _ = c.zipWriteInFileInZip(ud.zfh, &buffer, @intCast(size));
+                _ = c.zipWriteInFileInZip(ud.zfh, &data, @intCast(size));
             }
-            if (size == 0 or size < buffer.len) {
+            if (size == 0 or size < data.len) {
                 break;
             }
         }

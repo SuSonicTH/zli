@@ -82,6 +82,12 @@ const separator_string = switch (builtin.os.tag) {
 const zli_filesystem = "zli_filesystem";
 const zli_mt_path = "zli_mt_path";
 
+var io: std.Io = undefined;
+
+pub fn setIo(_io: std.Io) void {
+    io = _io;
+}
+
 pub fn luaopen_filesystem(lua: *Lua) i32 {
     lua.newLib(&filesystem);
     lua.setFuncs(&filesystem_path, 0);
@@ -117,7 +123,7 @@ fn pathToString(path: []const u8) [:0]u8 {
 }
 
 fn getRealPath(lua: *Lua, path: []const u8) [:0]u8 {
-    const realPath = fs.cwd().realpathAlloc(allocator, path) catch luax.raiseFormattedError(lua, "path '%s' does not exist", .{path.ptr});
+    const realPath = std.Io.Dir.cwd().realPathFileAlloc(io, path, allocator) catch luax.raiseFormattedError(lua, "path '%s' does not exist", .{path.ptr});
     defer allocator.free(realPath);
     return pathToString(realPath);
 }
@@ -137,8 +143,8 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
     } else {
         path = "./";
     }
-    var directory = std.Io.Dir.cwd().openDir(path, .{ .iterate = true }) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
-    defer directory.close();
+    var directory = std.Io.Dir.cwd().openDir(io, path, .{ .iterate = true }) catch luax.raiseFormattedError(lua, "could not open directory '%s'", .{path.ptr});
+    defer directory.close(io);
 
     const fullPath = lua.pushString(getRealPath(lua, std.mem.sliceTo(path, 0)));
 
@@ -146,14 +152,14 @@ fn list_dir(lua: *Lua, keyValue: bool) i32 {
     const table = lua.getTop();
     var iterator = directory.iterate();
     if (keyValue) {
-        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
+        while (iterator.next(io) catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
             const name = lua.pushString(pathToString(entry.name));
             create_path_sub(lua, fullPath, name);
             lua.setTable(table);
         }
     } else {
         var index: i32 = 1;
-        while (iterator.next() catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
+        while (iterator.next(io) catch luax.raiseFormattedError(lua, "could not traverse directory '%s'", .{path.ptr})) |entry| {
             const name = pathToString(entry.name);
             create_path_sub(lua, fullPath, name);
             lua.setIndexRaw(table, index);
@@ -218,14 +224,14 @@ fn current_directory(lua: *Lua) i32 {
     return 1;
 }
 
-fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.fs.File.Stat {
-    const file = std.Io.Dir.cwd().openFile(fullpath, .{}) catch {
-        var directory = std.Io.Dir.cwd().openDir(fullpath, .{}) catch luax.raiseFormattedError(lua, "Could not get stats for '%s", .{fullpath.ptr});
-        defer directory.close();
-        return directory.stat() catch luax.raiseFormattedError(lua, "Could not get directory stats for '%s'", .{fullpath.ptr});
+fn get_stat(lua: *Lua, fullpath: [:0]const u8) std.Io.File.Stat {
+    const file = std.Io.Dir.cwd().openFile(io, fullpath, .{}) catch {
+        var directory = std.Io.Dir.cwd().openDir(io, fullpath, .{}) catch luax.raiseFormattedError(lua, "Could not get stats for '%s", .{fullpath.ptr});
+        defer directory.close(io);
+        return directory.stat(io) catch luax.raiseFormattedError(lua, "Could not get directory stats for '%s'", .{fullpath.ptr});
     };
-    defer file.close();
-    return file.stat() catch luax.raiseFormattedError(lua, "Could not get file stats for '%s'", .{fullpath.ptr});
+    defer file.close(io);
+    return file.stat(io) catch luax.raiseFormattedError(lua, "Could not get file stats for '%s'", .{fullpath.ptr});
 }
 
 const SECONDS_DENOMINATOR = 1000000000;
@@ -237,33 +243,33 @@ fn stat(lua: *Lua) i32 {
 
     lua.newTable();
     const table = lua.getTop();
-    luax.setTableBoolean(lua, table, "is_directory", stats.kind == std.fs.File.Kind.directory);
-    luax.setTableBoolean(lua, table, "is_file", stats.kind == std.fs.File.Kind.file);
+    luax.setTableBoolean(lua, table, "is_directory", stats.kind == std.Io.File.Kind.directory);
+    luax.setTableBoolean(lua, table, "is_file", stats.kind == std.Io.File.Kind.file);
 
     luax.setTableInteger(lua, table, "size", @intCast(stats.size));
     luax.setTableString(lua, table, "size_hr", size_human_readable(stats.size) catch luax.raiseError(lua, "internal error: could not format human readable size"));
 
-    luax.setTableInteger(lua, table, "access_time", @intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
-    luax.setTableInteger(lua, table, "create_time", @intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
-    luax.setTableInteger(lua, table, "modify_time", @intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
-
-    luax.setTableInteger(lua, table, "access_time_ms", @intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
-    luax.setTableInteger(lua, table, "create_time_ms", @intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
-    luax.setTableInteger(lua, table, "modify_time_ms", @intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
-
-    _ = lua.pushString("access_time_stamp");
-    push_time_stamp(lua, stats.atime);
-    lua.setTable(table);
-
+    if (stats.atime) |atime| {
+        luax.setTableInteger(lua, table, "access_time", atime.toSeconds());
+        luax.setTableInteger(lua, table, "access_time_ms", atime.toMilliseconds());
+        _ = lua.pushString("access_time_stamp");
+        push_time_stamp(lua, atime.toSeconds());
+        lua.setTable(table);
+    }
+    luax.setTableInteger(lua, table, "create_time", stats.ctime.toSeconds());
+    luax.setTableInteger(lua, table, "create_time_ms", stats.ctime.toMilliseconds());
     _ = lua.pushString("create_time_stamp");
-    push_time_stamp(lua, stats.ctime);
+    push_time_stamp(lua, stats.ctime.toSeconds());
     lua.setTable(table);
+
+    luax.setTableInteger(lua, table, "modify_time", stats.mtime.toSeconds());
+    luax.setTableInteger(lua, table, "modify_time_ms", stats.mtime.toMilliseconds());
 
     _ = lua.pushString("modify_time_stamp");
-    push_time_stamp(lua, stats.mtime);
+    push_time_stamp(lua, stats.mtime.toSeconds());
     lua.setTable(table);
 
-    luax.setTableInteger(lua, table, "mode", @intCast(stats.mode));
+    luax.setTableInteger(lua, table, "mode", @intFromEnum(stats.permissions));
 
     _ = lua.pushString("mode_flags");
     push_mode_flags(lua, stats);
@@ -289,13 +295,13 @@ pub fn get_path_index(lua: *Lua, index: i32) [:0]const u8 {
 
 fn is_directory(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushBoolean(stats.kind == std.fs.File.Kind.directory);
+    lua.pushBoolean(stats.kind == std.Io.File.Kind.directory);
     return 1;
 }
 
 fn is_file(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushBoolean(stats.kind == std.fs.File.Kind.file);
+    lua.pushBoolean(stats.kind == std.Io.File.Kind.file);
     return 1;
 }
 
@@ -307,68 +313,80 @@ fn size(lua: *Lua) i32 {
 
 fn access_time(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.atime, SECONDS_DENOMINATOR)));
+    if (stats.atime) |atime| {
+        lua.pushInteger(atime.toSeconds());
+    } else {
+        lua.pushNil();
+    }
     return 1;
 }
 
 fn create_time(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.ctime, SECONDS_DENOMINATOR)));
+    lua.pushInteger(stats.ctime.toSeconds());
     return 1;
 }
 
 fn modify_time(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.mtime, SECONDS_DENOMINATOR)));
+    lua.pushInteger(stats.mtime.toSeconds());
     return 1;
 }
 
 fn access_time_ms(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.atime, MILLISECONDS_DENOMINATOR)));
+    if (stats.atime) |atime| {
+        lua.pushInteger(atime.toSeconds());
+    } else {
+        lua.pushNil();
+    }
     return 1;
 }
 
 fn create_time_ms(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.ctime, MILLISECONDS_DENOMINATOR)));
+    lua.pushInteger(stats.ctime.toSeconds());
     return 1;
 }
 
 fn modify_time_ms(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(@divTrunc(stats.mtime, MILLISECONDS_DENOMINATOR)));
+    lua.pushInteger(stats.mtime.toSeconds());
     return 1;
 }
 
 fn access_time_stamp(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    push_time_stamp(lua, stats.atime);
+    if (stats.atime) |atime| {
+        push_time_stamp(lua, atime.toSeconds());
+    } else {
+        lua.pushNil();
+    }
     return 1;
 }
 
-fn push_time_stamp(lua: *Lua, time: i128) void {
+fn push_time_stamp(lua: *Lua, time: i64) void {
     luax.pushLibraryFunction(lua, "os", "date");
     _ = lua.pushString(TIMESTAMP_FORMAT);
-    lua.pushInteger(@intCast(@divTrunc(time, SECONDS_DENOMINATOR)));
+    lua.pushInteger(time);
     lua.call(.{ .args = 2, .results = 1 });
 }
 
 fn create_time_stamp(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    push_time_stamp(lua, stats.ctime);
+    push_time_stamp(lua, stats.ctime.toSeconds());
     return 1;
 }
 
 fn modify_time_stamp(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    push_time_stamp(lua, stats.mtime);
+    push_time_stamp(lua, stats.mtime.toSeconds());
     return 1;
 }
 
 fn mode(lua: *Lua) i32 {
     const stats = get_stat(lua, get_path(lua));
-    lua.pushInteger(@intCast(stats.mode));
+    lua.pushInteger(@intFromEnum(stats.permissions));
     return 1;
 }
 
@@ -378,11 +396,11 @@ fn mode_flags(lua: *Lua) i32 {
     return 1;
 }
 
-fn push_mode_flags(lua: *Lua, stats: std.fs.File.Stat) void {
+fn push_mode_flags(lua: *Lua, stats: std.Io.File.Stat) void {
     if (builtin.os.tag == .windows) {
         var modeString = [10:0]u8{ '-', 'r', 'w', 'x', 'r', 'w', 'x', 'r', 'w', 'x' };
 
-        if (stats.kind == std.fs.File.Kind.directory) {
+        if (stats.kind == std.Io.File.Kind.directory) {
             modeString[0] = 'd';
         }
 
@@ -391,7 +409,7 @@ fn push_mode_flags(lua: *Lua, stats: std.fs.File.Stat) void {
         var modeString = [10:0]u8{ '-', '-', '-', '-', '-', '-', '-', '-', '-', '-' };
         const modeFlags = "drwxrwxrwx";
 
-        if (stats.kind == std.fs.File.Kind.directory) {
+        if (stats.kind == std.Io.File.Kind.directory) {
             modeString[0] = 'd';
         }
 
@@ -445,7 +463,8 @@ fn size_hr(lua: *Lua) i32 {
 fn rename(lua: *Lua) i32 {
     const old = get_path_arg(lua, 1);
     const new = get_path_arg(lua, 2);
-    std.Io.Dir.cwd().rename(old, new) catch luax.raiseFormattedError(lua, "could not rename '%s' to '%s'", .{ old.ptr, new.ptr });
+    const cwd = std.Io.Dir.cwd();
+    std.Io.Dir.rename(cwd, old, cwd, new, io) catch luax.raiseFormattedError(lua, "could not rename '%s' to '%s'", .{ old.ptr, new.ptr });
     return 0;
 }
 
@@ -463,10 +482,10 @@ fn get_path_arg(lua: *Lua, idx: i32) [:0]const u8 {
 fn delete(lua: *Lua) i32 {
     const path = get_path(lua);
     const stats = get_stat(lua, path);
-    if (stats.kind == std.fs.File.Kind.file) {
-        std.Io.Dir.cwd().deleteFile(path) catch luax.raiseFormattedError(lua, "Could not delete file '%s'", .{path.ptr});
+    if (stats.kind == std.Io.File.Kind.file) {
+        std.Io.Dir.cwd().deleteFile(io, path) catch luax.raiseFormattedError(lua, "Could not delete file '%s'", .{path.ptr});
     } else {
-        std.Io.Dir.cwd().deleteDir(path) catch luax.raiseFormattedError(lua, "Could not delete direcory '%s'", .{path.ptr});
+        std.Io.Dir.cwd().deleteDir(io, path) catch luax.raiseFormattedError(lua, "Could not delete direcory '%s'", .{path.ptr});
     }
     return 0;
 }
@@ -488,23 +507,23 @@ fn open(lua: *Lua) i32 {
 fn exists(lua: *Lua) i32 {
     const path = get_path(lua);
 
-    const file = std.Io.Dir.cwd().openFile(path, .{}) catch {
-        var directory = std.Io.Dir.cwd().openDir(path, .{}) catch {
+    const file = std.Io.Dir.cwd().openFile(io, path, .{}) catch {
+        var directory = std.Io.Dir.cwd().openDir(io, path, .{}) catch {
             lua.pushBoolean(false);
             return 1;
         };
-        defer directory.close();
+        defer directory.close(io);
         lua.pushBoolean(true);
         return 1;
     };
-    file.close();
+    file.close(io);
     lua.pushBoolean(true);
     return 1;
 }
 
 fn absolute(lua: *Lua) i32 {
     const path = get_path(lua);
-    const realPath = fs.cwd().realpathAlloc(allocator, std.mem.sliceTo(path, 0)) catch {
+    const realPath = std.Io.Dir.cwd().realPathFileAlloc(io, std.mem.sliceTo(path, 0), allocator) catch {
         lua.pushNil();
         return 1;
     };
@@ -515,14 +534,14 @@ fn absolute(lua: *Lua) i32 {
 
 fn change_directory(lua: *Lua) i32 {
     const path = get_path(lua);
-    var directory = std.Io.Dir.cwd().openDir(path, .{}) catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
-    defer directory.close();
-    directory.setAsCwd() catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
+    var directory = std.Io.Dir.cwd().openDir(io, path, .{}) catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
+    defer directory.close(io);
+    std.process.setCurrentDir(io, directory) catch luax.raiseFormattedError(lua, "Could not change directory to '%s", .{path.ptr});
     return 0;
 }
 
 fn create_directory(lua: *Lua) i32 {
     const path = get_path(lua);
-    std.Io.Dir.cwd().makeDir(path) catch luax.raiseFormattedError(lua, "Could not create directory '%s", .{path.ptr});
+    std.Io.Dir.cwd().createDir(io, path, std.Io.File.Permissions.default_dir) catch luax.raiseFormattedError(lua, "Could not create directory '%s", .{path.ptr});
     return 0;
 }

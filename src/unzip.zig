@@ -21,6 +21,12 @@ const unzip = [_]zlua.FnReg{
 
 const zli_unzip = "zli_unzip";
 
+var io: std.Io = undefined;
+
+pub fn setIo(_io: std.Io) void {
+    io = _io;
+}
+
 pub fn luaopen_unzip(lua: *Lua) i32 {
     UnzipUdata.register(lua);
     UnzipFile.register(lua);
@@ -228,15 +234,15 @@ const UnzipUdata = struct {
         if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
         const destination_name: [:0]const u8 = luax.getTableStringOrError(lua, "full_path", -1) catch std.mem.sliceTo(lua.toString(-1) catch lua.argError(1, "expected file name to extract to"), 0);
-        const file = fs.cwd().createFile(destination_name, .{}) catch return luax.returnFormattedError(lua, "could not open output file '%s'", .{destination_name.ptr});
-        defer file.close();
+        const file = std.Io.Dir.cwd().createFile(io, destination_name, .{}) catch return luax.returnFormattedError(lua, "could not open output file '%s'", .{destination_name.ptr});
+        defer file.close(io);
 
         var buffer: [4096]u8 = undefined;
 
         while (true) {
             const bytes_read: usize = @intCast(c.unzReadCurrentFile(ud.uzfh, &buffer, buffer.len));
             if (bytes_read > 0) {
-                file.writeAll(buffer[0..bytes_read]) catch return luax.returnFormattedError(lua, "could not write to file '%s'", .{destination_name.ptr});
+                file.writeStreamingAll(io, buffer[0..bytes_read]) catch return luax.returnFormattedError(lua, "could not write to file '%s'", .{destination_name.ptr});
             } else {
                 break;
             }
