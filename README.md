@@ -8,7 +8,9 @@ Currently supported platforms
 * linux on x86_64
 * linux on aarch64
 
-Other platforms that are supported by zig could work but are untested
+Other platforms that are supported by zig could work but are untested.
+
+Examples:
 * Windows on x86 and aarch64
 * linux on x86, armv7a, riscv64 and powerpc64le
 * macOS on aarch64 and x86_64
@@ -57,7 +59,7 @@ libraries developed specifically for ZLI that don't use any external libraries
 In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
 
 ## Build
-This works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.15.1 on the path
+This works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.16.0 on the path
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli
