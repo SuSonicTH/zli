@@ -45,7 +45,7 @@ pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, mod
 }
 
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
-    _ = lua.getGlobal(module) catch undefined;
+    _ = lua.getGlobal(module);
     _ = lua.pushString(function);
     _ = lua.getTable(-2);
     lua.remove(-2);

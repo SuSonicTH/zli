@@ -43,7 +43,7 @@ pub fn register(lua: *Lua) void {
 }
 
 fn register_module(lua: *Lua, module: [:0]const u8, functions: []const zlua.FnReg) void {
-    _ = lua.getGlobal(module) catch unreachable;
+    _ = lua.getGlobal(module);
     for (functions) |function| {
         _ = lua.pushString(function.name);
         lua.pushFunction(function.func.?);
@@ -94,7 +94,7 @@ fn to_table(lua: *Lua) i32 {
     var it = std.mem.splitSequence(u8, str, delim);
     while (it.next()) |item| {
         _ = lua.pushString(item);
-        lua.rawSetIndex(table, index);
+        lua.setIndexRaw(table, index);
         index += 1;
     }
     return 1;
@@ -104,20 +104,20 @@ const char_to_strip = " \t\r\n\x00";
 
 fn trim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    const ltrimmed = std.mem.trimLeft(u8, str, char_to_strip);
-    _ = lua.pushString(std.mem.trimRight(u8, ltrimmed, char_to_strip));
+    const ltrimmed = std.mem.trimStart(u8, str, char_to_strip);
+    _ = lua.pushString(std.mem.trimEnd(u8, ltrimmed, char_to_strip));
     return 1;
 }
 
 fn ltrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    _ = lua.pushString(std.mem.trimLeft(u8, str, char_to_strip));
+    _ = lua.pushString(std.mem.trimStart(u8, str, char_to_strip));
     return 1;
 }
 
 fn rtrim(lua: *Lua) i32 {
     const str = std.mem.sliceTo(lua.checkString(1), 0);
-    _ = lua.pushString(std.mem.trimRight(u8, str, char_to_strip));
+    _ = lua.pushString(std.mem.trimEnd(u8, str, char_to_strip));
     return 1;
 }
 

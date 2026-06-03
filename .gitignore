@@ -2,6 +2,7 @@
 .idea/
 .zig-cache/
 zig-out/
+zig-pkg/
 zig/
 upx/
 zli

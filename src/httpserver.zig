@@ -8,6 +8,12 @@ const httpserver = [_]zlua.FnReg{
     .{ .name = "listen", .func = zlua.wrap(listen) },
 };
 
+var io: std.Io = undefined;
+
+pub fn setIo(_io: std.Io) void {
+    io = _io;
+}
+
 pub fn luaopen_httpserver(lua: *Lua) i32 {
     lua.newLib(&httpserver);
     luax.registerExtended(lua, @embedFile("stripped/httpserver.lua"), "httpserver", "zli_httpserver");
@@ -22,26 +28,29 @@ const optionsIndex = 4;
 fn listen(lua: *Lua) i32 {
     const address = luax.getArgStringOrError(lua, addressIndex, "expecting address to listen on");
     const port = luax.getArgIntegerOrError(lua, portIndex, "expecting port to listen on");
-    const addr = std.net.Address.parseIp4(address, @intCast(port)) catch |err| {
+    const addr = std.Io.net.IpAddress.parse(address, @intCast(port)) catch |err| {
         return luax.returnFormattedError(lua, "could not resolve ip '%s' error: %s", .{ address.ptr, @errorName(err).ptr });
     };
 
     var extra_headers = std.array_list.Managed(std.http.Header).init(lua.allocator());
     defer extra_headers.deinit();
 
-    var server = addr.listen(.{}) catch return luax.returnFormattedError(lua, "could not listen to %s:%d", .{ address.ptr, port });
+    var server = addr.listen(
+        io,
+        .{},
+    ) catch return luax.returnFormattedError(lua, "could not listen to %s:%d", .{ address.ptr, port });
     while (true) {
-        var connection = server.accept() catch |err| {
+        var connection = server.accept(io) catch |err| {
             std.debug.print("Connection to client interrupted: {}\n", .{err});
             continue;
         };
-        defer connection.stream.close();
+        defer connection.close(io);
 
         var read_buffer: [1024 * 16]u8 = undefined;
         var write_buffer: [1024 * 16]u8 = undefined;
-        var reader = connection.stream.reader(&read_buffer);
-        var writer = connection.stream.writer(&write_buffer);
-        var http_server = std.http.Server.init(reader.interface(), &writer.interface);
+        var reader = connection.reader(io, &read_buffer);
+        var writer = connection.writer(io, &write_buffer);
+        var http_server = std.http.Server.init(&reader.interface, &writer.interface);
 
         var request = http_server.receiveHead() catch |err| {
             std.debug.print("Could not read head: {}", .{err});

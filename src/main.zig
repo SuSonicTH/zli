@@ -10,21 +10,24 @@ const Lua = zlua.Lua;
 const debug = std.log.debug;
 
 const main_lua: [:0]const u8 = @embedFile("stripped/main.lua");
-var prog_name: [:0]u8 = undefined;
+var prog_name: [:0]const u8 = undefined;
 var uzfh: c.unzFile = undefined;
 
 const allocator = std.heap.c_allocator;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     Utf8Output.init();
     defer Utf8Output.deinit();
 
     var lua = try Lua.init(allocator);
     defer lua.deinit();
 
-    try createArgTable(lua);
+    const args = try init.minimal.args.toSlice(allocator);
+    defer allocator.free(args);
+
+    try createArgTable(lua, args);
     _ = lua.gcSetGenerational(0, 0);
-    _ = libraries.openlibs(lua);
+    _ = libraries.openlibs(init.io, lua);
     try create_payload_searcher(lua);
 
     lua.pushFunction(zlua.wrap(messageHandler));
@@ -36,14 +39,13 @@ pub fn main() !void {
     };
 }
 
-fn createArgTable(lua: *Lua) !void {
-    const args = try std.process.argsAlloc(allocator);
+fn createArgTable(lua: *Lua, args: []const [:0]const u8) !void {
     prog_name = args[0];
 
     lua.createTable(@intCast(args.len), 1);
     for (args, 0..) |arg, i| {
         _ = lua.pushString(arg);
-        lua.rawSetIndex(-2, @intCast(i));
+        lua.setIndexRaw(-2, @intCast(i));
     }
     lua.setGlobal("arg");
 }
@@ -70,14 +72,14 @@ fn create_payload_searcher(lua: *Lua) !void {
     }
     const top = lua.getTop();
 
-    _ = try lua.getGlobal("package");
+    _ = lua.getGlobal("package");
     const package = lua.getTop();
 
     _ = lua.pushString("searchers");
     _ = lua.getTable(package);
-    const len = lua.rawLen(-1);
+    const len = lua.lenRaw(-1);
     lua.pushFunction(zlua.wrap(payload_searcher));
-    lua.rawSetIndex(-2, @intCast(len + 1));
+    lua.setIndexRaw(-2, @intCast(len + 1));
     lua.setTop(top);
 }
 
