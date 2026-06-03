@@ -414,8 +414,9 @@ fn push_mode_flags(lua: *Lua, stats: std.Io.File.Stat) void {
         }
 
         var current_flag: u32 = 0b100000000;
+        const pmode = stats.permissions.toMode();
         inline for (1..10) |i| {
-            if (stats.mode & current_flag == current_flag) {
+            if (pmode & current_flag == current_flag) {
                 modeString[i] = modeFlags[i];
             }
             current_flag = current_flag >> 1;
