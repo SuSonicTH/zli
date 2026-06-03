@@ -161,6 +161,7 @@ fn copyFile(io: std.Io, input_path: []const u8, output_path: []const u8) !void {
     const writer = &file_writer.interface;
 
     _ = try reader.streamRemaining(writer);
+    try writer.flush();
 }
 
 fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
