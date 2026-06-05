@@ -8,6 +8,7 @@ const unzip = @import("unzip.zig");
 const zip = @import("zip.zig");
 const httpclient = @import("httpclient.zig");
 const httpserver = @import("httpserver.zig");
+const luastrip = @import("luastrip.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
@@ -65,6 +66,10 @@ const preload: []const zlua.FnReg = &.{
         .name = "httpserver",
         .func = zlua.wrap(httpserver.luaopen_httpserver),
     },
+    .{
+        .name = "luastrip",
+        .func = zlua.wrap(luastrip.luaopen_luaStrip),
+    },
 };
 
 const luascript = struct {
@@ -103,6 +108,7 @@ pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     httpserver.setIo(io);
     zip.setIo(io);
     unzip.setIo(io);
+    luastrip.setIo(io);
 
     _ = lua.getSubtable(zlua.registry_index, "_PRELOAD");
     for (preload) |lib| {

@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addIncludePath(b.path("src/"));
     exe.root_module.addImport("zlua", zlua.module("zlua"));
+    exe.root_module.addImport("zigLuaStrip", zigLuaStrip.module("zigLuaStrip"));
 
     //zlib and zip libraries
     const zlib_dep = b.dependency("zlib", .{});
