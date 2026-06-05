@@ -20,7 +20,7 @@ const string_functions = [_]zlua.FnReg{
     .{ .name = "base64decode", .func = zlua.wrap(base64decode) },
     .{ .name = "base64urlEncode", .func = zlua.wrap(base64urlEncode) },
     .{ .name = "base64urlDecode", .func = zlua.wrap(base64urlDecode) },
-    .{ .name = "urlEecode", .func = zlua.wrap(urlEecode) },
+    .{ .name = "urlEncode", .func = zlua.wrap(urlEncode) },
     .{ .name = "utf8len", .func = zlua.wrap(utf8len) },
 };
 
@@ -53,14 +53,11 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const zlua.FnRe
 }
 
 fn os_get_name(lua: *Lua) i32 {
-    if (builtin.os.tag == .windows) {
-        _ = lua.pushString("windows");
-    } else if (builtin.os.tag == .linux) {
-        _ = lua.pushString("linux");
-    } else if (builtin.os.tag == .macos) {
-        _ = lua.pushString("macos");
-    } else {
-        _ = lua.pushString("unknown");
+    switch (builtin.os.tag) {
+        .windows => _ = lua.pushString("windows"),
+        .linux => _ = lua.pushString("linux"),
+        .macos => _ = lua.pushString("macos"),
+        else => _ = lua.pushString("unknown"),
     }
     return 1;
 }
@@ -158,7 +155,7 @@ fn base64dec(lua: *Lua, decoder: std.base64.Base64Decoder) i32 {
     return 1;
 }
 
-fn urlEecode(lua: *Lua) i32 {
+fn urlEncode(lua: *Lua) i32 {
     const string = lua.toString(1) catch luax.raiseError(lua, "could not get string argument");
     var lua_buffer: zlua.Buffer = undefined;
     var buffer: [3]u8 = undefined;

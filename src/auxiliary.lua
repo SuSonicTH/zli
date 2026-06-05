@@ -94,7 +94,7 @@ end
 
 function io.write_lines(filename, tbl, eol)
     eol = eol or "\n"
-    local fh = assert(io.open(filename, "w"))
+    local fh = assert(io.open(filename, "wb"))
     for _, line in ipairs(tbl) do
         fh:write(line, eol)
     end
@@ -115,7 +115,7 @@ function io.write_file(filename, data)
 end
 
 function io.append_file(filename, data)
-    local fh = assert(io.open(filename, "a+"))
+    local fh = assert(io.open(filename, "a+b"))
     fh:write(data)
     fh:close()
 end
@@ -131,9 +131,9 @@ function table.copy(orig, copies)
             local copy = {}
             copies[orig] = copy
             for orig_key, orig_value in next, orig, nil do
-                copy[table_copy(orig_key, copies)] = table_copy(orig_value, copies)
+                copy[table.copy(orig_key, copies)] = table.copy(orig_value, copies)
             end
-            setmetatable(copy, table_copy(getmetatable(orig), copies))
+            setmetatable(copy, table.copy(getmetatable(orig), copies))
             return copy
         end
     else
@@ -148,7 +148,6 @@ function table.tostring(tbl, name)
     local str = serpent.block(tbl, {
         sortkeys = true,
         indent = "    ",
-        --sparse = true,
         compact = false,
         comment = false,
         nocode = true
@@ -224,9 +223,14 @@ function table.insert_all(tbl, index, ...)
     return tbl
 end
 
-function table.load_file(filename, options)
-    arg_check_type("table.load_file", 1, filename, 3, 'string')
-    return serpent.load(io_read_file(filename), options)
+function table.load(filename)
+    arg_check_type("table.load", 1, filename, 3, 'string')
+    return load("return " .. io.read_file(filename))()
+end
+
+function table.save(filename, tbl)
+    arg_check_type("table.save", 1, filename, 3, 'string')
+    io.write_file(filename, table.tostring(tbl))
 end
 
 local function default_index(self, key)
@@ -296,10 +300,10 @@ end
 
 os.name = os.get_name()
 os.home = home()
-os.is_windows = os.get_name() == "windows"
-os.is_linux = os.get_name() == "linux"
-os.is_mac = os.get_name() == "macos"
-os.separator = os.get_name() == "windows" and "\\" or "/"
+os.is_windows = os.name == "windows"
+os.is_linux = os.name == "linux"
+os.is_mac = os.name == "macos"
+os.separator = os.name == "windows" and "\\" or "/"
 
 --[[ string functions ]]
 
