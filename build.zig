@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .lang = .lua54,
     });
-    luaPath = b.dependency("lua54", .{}).path("src/");
+    luaPath = zlua.artifact("lua").getEmittedIncludeTree();
 
     const zigLuaStrip = b.dependency("zigluastrip", .{
         .optimize = std.builtin.OptimizeMode.Debug,
