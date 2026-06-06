@@ -24,14 +24,14 @@ There are many libraries included in the ZLI binary, some 3rd party lua librarie
 | library    | link                                        | licence | description                                                                                                                            |
 | ---------- | ------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | argparse   | https://github.com/mpeterv/argparse         | MIT     | Argparse is a feature-rich command line parser for Lua inspired by argparse for Python                                                 |
-| LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | LuaSQLite 3 is a thin wrapper around the public domain [SQLite3](https://www.sqlite.org/) database engine.                             |
-| LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | LPeg is a new pattern-matching library for Lua, based on Parsing Expression Grammars (PEGs)                                            |
-| lua-zlib   | https://github.com/brimworks/lua-zlib       | MIT     | lua binding to the [zlib](https://zlib.net/) to compress/decompress                                                                    |
-| luaunit    | https://github.com/bluebird75/luaunit       | BSD     | LuaUnit is a popular unit-testing framework for Lua, with an interface typical of xUnit libraries (Python unittest, Junit, NUnit, ...) |
-| lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                                                                                             |
-| Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer.                                                                                                     |
-| ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | ftcsv is a fast csv library written in pure Lua                                                                                        |
 | f-string   | https://github.com/hishamhm/f-strings       | MIT     | String interpolation for Lua, inspired by f-strings, a form of string interpolation coming in Python 3.6.                              |
+| ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | ftcsv is a fast csv library written in pure Lua                                                                                        |
+| LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | LPeg is a new pattern-matching library for Lua, based on Parsing Expression Grammars (PEGs)                                            |
+| lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                                                                                             |
+| lua-zlib   | https://github.com/brimworks/lua-zlib       | MIT     | lua binding to the [zlib](https://zlib.net/) to compress/decompress                                                                    |
+| LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | LuaSQLite 3 is a thin wrapper around the public domain [SQLite3](https://www.sqlite.org/) database engine.                             |
+| luaunit    | https://github.com/bluebird75/luaunit       | BSD     | LuaUnit is a popular unit-testing framework for Lua, with an interface typical of xUnit libraries (Python unittest, Junit, NUnit, ...) |
+| Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer.                                                                                                     |
 
 ### Custom ZLI bindings to 3rd party libraries
 there are some custom lua bindings for 3rd party libraries
@@ -44,23 +44,33 @@ there are some custom lua bindings for 3rd party libraries
 ### Inhouse ZLI libraries
 libraries developed specifically for ZLI that don't use any external libraries
 
-| library    | description                                                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| auxiliary  | some auxiliary functions to improve the string, table and file handling                                                  |
-| collection | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                 |
-| filesystem | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories. |
-| logger     | a very simple logging library                                                                                            |
-| stream     | a stream library enspired by the java stream library that brings the functional style programming to lua.                |
-| timer      | a nanosecond timer for high precision timings available as os.nanotime                                                   |
-| httpclient | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options          |
-| httpserver | a convinient httpserver library based on zig's httpcserver, includes optional caching                                    |
-| luastrip   | a lua source code stripping/compacting library. removes comments and unnessessary whitespace fro lua source code         |
+| library    | description                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| auxiliary  | some auxiliary functions to improve the string, table and file handling                                                 |
+| benchmark  | a small library to run benchmarks with nano second precision                                                            |
+| collection | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                |
+| filesystem | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories |
+| grid       | a library to output line-drawing text grids (tables) with per column alignment,padding, min/max width                   |
+| httpclient | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options         |
+| httpserver | a convinient httpserver library based on zig's httpcserver, includes optional caching                                   |
+| logger     | a very simple logging library                                                                                           |
+| luastrip   | a lua source code stripping/compacting library to remove comments and unnessessary whitespace from lua source code      |
+| memoize    | a library to memoize/cache expensive function results                                                                   |
+| stream     | a stream library enspired by the java stream library that brings the functional style programming to lua                |
+| timer      | a nanosecond timer for high precision timings available as os.nanotime                                                  |
+| uuid       | a library to create V4 and v7 uuids in string form                                                                      |
 
 ### Included tools
-In the main binary there are also some commandline tools included. More information can be found in [Tools](https://github.com/SuSonicTH/zli/blob/master/src/tools/)
+In the main binary there are also some commandline tools embedded. 
+
+| tool    | commandline option | description                                                                          |
+| ------- | ------------------ | ------------------------------------------------------------------------------------ |
+| compile | --compiler         | a tool to package lua scripts and files into a zip attached to an executable (alpha) |
+| repl    | --repl             | a Read Print Eval Loop with a nice interface                                         |
+| sqlite  | --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
 
 ## Build
-This works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.16.0 on the path
+The build works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.16.0 on the path
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli
@@ -70,7 +80,7 @@ If you want to compile for all the supported platforms use the `--all` switch, a
 ```bash
 ./build.sh --all
 ```
-If you want to have a substentially smaller binary you also have to have upx on the path and call:
+If you want to have a substentially smaller binary (as the release binaries) you also have to have upx on the path and call:
 ```bash
 ./build.sh --upx
 ```
