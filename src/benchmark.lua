@@ -95,13 +95,6 @@ local function benchmark(bench, n)
             { name = "memory", align = "right", fixed_width = 10 },
         }
         grd:print_header()
-        --[[
-        for i = 1, 3 do
-            before(bench, run, init)
-            do_run(bench, run, 0, grd)
-            after(bench, run, init)
-        end
-]]
         for i = 1, iter do
             before(bench, run, init)
             do_run(bench, run, i, grd)
