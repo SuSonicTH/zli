@@ -132,6 +132,8 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
     .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
     .{ .input = "src/grid.lua", .output = "src/stripped/grid.lua" },
+    .{ .input = "src/httpclient.lua", .output = "src/stripped/httpclient.lua" },
+    .{ .input = "src/httpserver.lua", .output = "src/stripped/httpserver.lua" },
     .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
     .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
     .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
@@ -141,9 +143,8 @@ const luastrip_list = [_]luastrip_entry{
     .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
     .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
+    .{ .input = "src/xlsxmlwriter.lua", .output = "src/stripped/xlsxmlwriter.lua" },
     .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
-    .{ .input = "src/httpclient.lua", .output = "src/stripped/httpclient.lua" },
-    .{ .input = "src/httpserver.lua", .output = "src/stripped/httpserver.lua" },
 };
 
 fn copyFile(io: std.Io, input_path: []const u8, output_path: []const u8) !void {

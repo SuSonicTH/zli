@@ -69,29 +69,28 @@ const luascript = struct {
 
 const luascripts: []const luascript = &.{
     .{ .name = "argparse", .source = @embedFile("stripped/argparse.lua") },
-    .{ .name = "collection", .source = @embedFile("stripped/collection.init.lua") },
-    .{ .name = "collection.set", .source = @embedFile("stripped/collection.set.lua") },
+    .{ .name = "benchmark", .source = @embedFile("stripped/benchmark.lua") },
     .{ .name = "collection.list", .source = @embedFile("stripped/collection.list.lua") },
     .{ .name = "collection.map", .source = @embedFile("stripped/collection.map.lua") },
+    .{ .name = "collection.set", .source = @embedFile("stripped/collection.set.lua") },
+    .{ .name = "collection", .source = @embedFile("stripped/collection.init.lua") },
     .{ .name = "compile", .source = @embedFile("stripped/compile.lua") },
     .{ .name = "csv", .source = @embedFile("stripped/ftcsv.lua") },
     .{ .name = "F", .source = @embedFile("stripped/F.lua") },
+    .{ .name = "grid", .source = @embedFile("stripped/grid.lua") },
     .{ .name = "log", .source = @embedFile("stripped/logger.lua") },
     .{ .name = "luaunit", .source = @embedFile("stripped/luaunit.lua") },
+    .{ .name = "memoize", .source = @embedFile("stripped/memoize.lua") },
     .{ .name = "re", .source = @embedFile("stripped/re.lua") },
     .{ .name = "repl", .source = @embedFile("stripped/repl.lua") },
     .{ .name = "serpent", .source = @embedFile("stripped/serpent.lua") },
     .{ .name = "sqlite_cli", .source = @embedFile("stripped/sqlite_cli.lua") },
     .{ .name = "stream", .source = @embedFile("stripped/stream.lua") },
     .{ .name = "timer", .source = @embedFile("stripped/timer.lua") },
-    .{ .name = "benchmark", .source = @embedFile("stripped/benchmark.lua") },
-    .{ .name = "grid", .source = @embedFile("stripped/grid.lua") },
-    .{ .name = "memoize", .source = @embedFile("stripped/memoize.lua") },
+    .{ .name = "xlsxmlwriter", .source = @embedFile("stripped/xlsxmlwriter.lua") },
 };
 
 pub fn openlibs(io: std.Io, lua: *Lua) i32 {
-    lua.openLibs();
-
     filesystem.setIo(io);
     crossline.setIo(io);
     httpclient.setIo(io);
@@ -101,6 +100,7 @@ pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     luastrip.setIo(io);
     uuid.setIo(io);
 
+    lua.openLibs();
     _ = lua.getSubtable(zlua.registry_index, "_PRELOAD");
     for (preload) |lib| {
         if (lib.func) |func| {

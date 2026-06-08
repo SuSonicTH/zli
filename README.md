@@ -44,30 +44,31 @@ there are some custom lua bindings for 3rd party libraries
 ### Inhouse ZLI libraries
 libraries developed specifically for ZLI that don't use any external libraries
 
-| library    | description                                                                                                             |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------- |
-| auxiliary  | some auxiliary functions to improve the string, table and file handling                                                 |
-| benchmark  | a small library to run benchmarks with nano second precision                                                            |
-| collection | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                |
-| filesystem | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories |
-| grid       | a library to output line-drawing text grids (tables) with per column alignment,padding, min/max width                   |
-| httpclient | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options         |
-| httpserver | a convinient httpserver library based on zig's httpcserver, includes optional caching                                   |
-| logger     | a very simple logging library                                                                                           |
-| luastrip   | a lua source code stripping/compacting library to remove comments and unnessessary whitespace from lua source code      |
-| memoize    | a library to memoize/cache expensive function results                                                                   |
-| stream     | a stream library enspired by the java stream library that brings the functional style programming to lua                |
-| timer      | a nanosecond timer for high precision timings available as os.nanotime                                                  |
-| uuid       | a library to create V4 and v7 uuids in string form                                                                      |
+| library      | description                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| auxiliary    | some auxiliary functions to improve the string, table and file handling                                                  |
+| benchmark    | a small library to run benchmarks with nano second precision                                                             |
+| collection   | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                 |
+| filesystem   | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories  |
+| grid         | a library to output line-drawing text grids (tables) with per column alignment,padding, min/max width                    |
+| httpclient   | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options          |
+| httpserver   | a convinient httpserver library based on zig's httpcserver, includes optional caching                                    |
+| logger       | a very simple logging library                                                                                            |
+| luastrip     | a lua source code stripping/compacting library to remove comments and unnessessary whitespace from lua source code       |
+| memoize      | a library to memoize/cache expensive function results                                                                    |
+| stream       | a stream library enspired by the java stream library that brings the functional style programming to lua                 |
+| timer        | a nanosecond timer for high precision timings available as os.nanotime                                                   |
+| uuid         | a library to create V4 and v7 uuids in string form                                                                       |
+| xlsxmlwriter | a very simple library to write an excel file in the xml format. Not space efficient nor feature rich but simple and fast |
 
 ### Included tools
 In the main binary there are also some commandline tools embedded. 
 
-| tool    | commandline option | description                                                                          |
-| ------- | ------------------ | ------------------------------------------------------------------------------------ |
-| compile | --compiler         | a tool to package lua scripts and files into a zip attached to an executable (alpha) |
-| repl    | --repl             | a Read Print Eval Loop with a nice interface                                         |
-| sqlite  | --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
+| commandline option | description                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| --compiler         | a tool to package lua scripts and files into a zip attached to an executable (alpha) |
+| --repl             | a Read Print Eval Loop with a nice interface                                         |
+| --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
 
 ## Build
 The build works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.16.0 on the path
