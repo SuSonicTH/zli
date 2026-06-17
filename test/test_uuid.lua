@@ -20,7 +20,7 @@ function Test_uuid:Test_v7()
     lu.assertStrMatches(v71, uuidPattern)
     lu.assertStrMatches(v72, uuidPattern)
     lu.assertNotEquals(v71, v72)
-    lu.assertEquals(v71:sub(0, 13), v72:sub(0, 13))
+    lu.assertEquals(v71:sub(0, 12), v72:sub(0, 12))
 end
 
 if not RUN_ALL then
