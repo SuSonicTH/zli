@@ -345,3 +345,13 @@ end
 
 math.maxdouble = 1.7976931348623158e+308
 math.mindouble = 2.2250738585072014e-308
+
+function math.round(x)
+    arg_check_type("math.round", 1, x, 3, 'number')
+    local f = math.floor(x)
+    if (x == f) or (x % 2.0 == 0.5) then
+        return f
+    else
+        return math.floor(x + 0.5)
+    end
+end

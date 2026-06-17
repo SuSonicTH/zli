@@ -347,6 +347,25 @@ function Test_auxiliary.Test_os_home()
     lu.assertNotEquals("", os.home)
 end
 
+function Test_auxiliary.Test_math_round()
+    lu.assertEquals(42, math.round(42))
+    lu.assertEquals(42, math.round(42.2))
+    lu.assertEquals(42, math.round(42.49))
+
+    lu.assertEquals(42, math.round(42.5))
+    lu.assertEquals(43, math.round(42.50001))
+    lu.assertEquals(43, math.round(42.7))
+    lu.assertEquals(43, math.round(42.99))
+
+    lu.assertEquals(41, math.round(41))
+    lu.assertEquals(41, math.round(41.2))
+    lu.assertEquals(41, math.round(41.49))
+
+    lu.assertEquals(42, math.round(41.5))
+    lu.assertEquals(42, math.round(41.7))
+    lu.assertEquals(42, math.round(41.99))
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
