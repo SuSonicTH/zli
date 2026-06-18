@@ -14,7 +14,13 @@ pub fn build(b: *std.Build) void {
     luaPath = zlua.artifact("lua").getEmittedIncludeTree();
 
     const zigLuaStrip = b.dependency("zigluastrip", .{
-        .optimize = std.builtin.OptimizeMode.Debug,
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .target = b.graph.host,
+    });
+
+    const zupx = b.dependency("zupx", .{
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .target = b.graph.host,
     });
 
     //zli exe
@@ -86,9 +92,16 @@ pub fn build(b: *std.Build) void {
     }
 
     b.installArtifact(exe);
-    const run_cmd = b.addRunArtifact(exe);
 
-    //run
+    const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
+    const bin_path = b.getInstallPath(.bin, exe.out_filename);
+    upx_cmd.addArgs(&.{ "--lzma", bin_path });
+    upx_cmd.step.dependOn(b.getInstallStep());
+
+    const upx_step = b.step("upx", "compress the app with upx");
+    upx_step.dependOn(&upx_cmd.step);
+
+    const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {

@@ -57,5 +57,9 @@
             .url = "https://zlib.net/zlib-1.3.2.tar.gz",
             .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",
         },
+        .zupx = .{
+            .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.1.0.tar.gz",
+            .hash = "zupx-0.1.0-rouXWTMbAAAcnIF88vaaszszL3xgbsMdPFeVQ8HtxZWX",
+        },
     },
 }
