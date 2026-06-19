@@ -9,4 +9,4 @@ zli
 zli.exe
 tst.lua
 lib.zig
-test*.lua
+/test*.lua
