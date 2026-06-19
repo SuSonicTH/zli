@@ -1,73 +1,21 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
-var luaPath: std.Build.LazyPath = undefined;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const zlua = b.dependency("zlua", .{
-        .target = target,
-        .optimize = optimize,
-        .lang = .lua54,
-    });
-    luaPath = zlua.artifact("lua").getEmittedIncludeTree();
-
+    //build-time dependencies
     const zigLuaStrip = b.dependency("zigluastrip", .{
         .optimize = std.builtin.OptimizeMode.ReleaseFast,
         .target = b.graph.host,
     });
 
-    const zupx = b.dependency("zupx", .{
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
-        .target = b.graph.host,
-    });
-
-    //zli exe
-    const exe = b.addExecutable(.{
-        .name = "zli",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    exe.root_module.addIncludePath(b.path("src/"));
-    exe.root_module.addImport("zlua", zlua.module("zlua"));
-    exe.root_module.addImport("zigLuaStrip", zigLuaStrip.module("zigLuaStrip"));
-
-    //zlib and zip libraries
-    const zlib_dep = b.dependency("zlib", .{});
-    exe.root_module.addIncludePath(zlib_dep.path(""));
-    exe.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
-    exe.root_module.linkLibrary(zlib(b, target, optimize, zlib_dep));
-    exe.root_module.linkLibrary(luaZlib(b, target, optimize, zlib_dep));
-    exe.root_module.linkLibrary(miniZip(b, target, optimize, zlib_dep));
-
-    exe.root_module.linkLibrary(lsqlite3(
-        b,
-        target,
-        optimize,
-    ));
-    exe.root_module.linkLibrary(lpeg(
-        b,
-        target,
-        optimize,
-    ));
-    exe.root_module.linkLibrary(luaCJson(
-        b,
-        target,
-        optimize,
-    ));
-    exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
-    exe.root_module.linkLibrary(timer(
-        b,
-        target,
-        optimize,
-    ));
+    //normal build
+    const exe = compileStep(b, target, optimize, "zli");
+    b.installArtifact(exe);
 
     if (optimize != .Debug) {
-        exe.root_module.strip = true;
         inline for (luastrip_list) |script| {
             var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
             if (script.dependency[0] == 0) {
@@ -91,34 +39,122 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    b.installArtifact(exe);
+    //release
+    const release = b.step("release", "Build all cross-compilation targets in release mode");
+    releasebuild(b, release);
 
-    const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
-    const bin_path = b.getInstallPath(.bin, exe.out_filename);
-    upx_cmd.addArgs(&.{ "--lzma", bin_path });
-    upx_cmd.step.dependOn(b.getInstallStep());
+    //native
+    const native = b.step("native", "Build all cross-compilation targets in native mode");
+    native.dependOn(nativebuild(b));
 
-    const upx_step = b.step("upx", "compress the app with upx");
-    upx_step.dependOn(&upx_cmd.step);
-
+    //run
+    const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
-
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
-
-    const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
     //test
+    const test_step = b.step("test", "Test the interpreter and libs");
     const test_cmd = b.addRunArtifact(exe);
-
     test_cmd.step.dependOn(b.getInstallStep());
     test_cmd.addArgs(&[_][]const u8{"./test/test.lua"});
-
-    const test_step = b.step("test", "Test the interpreter and libs");
     test_step.dependOn(&test_cmd.step);
+}
+
+const TargetConfig = struct {
+    query: std.Target.Query,
+    suffix: []const u8,
+};
+
+const release_targets = [_]TargetConfig{
+    .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .linux }, .suffix = "x86_64-linux" },
+    .{ .query = .{ .cpu_arch = .aarch64, .os_tag = .linux }, .suffix = "aarch64-linux" },
+    .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows }, .suffix = "x86_64-windows" },
+};
+
+fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
+    const zupx = b.dependency("zupx", .{
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .target = b.graph.host,
+    });
+
+    for (release_targets) |config| {
+        const target = b.resolveTargetQuery(config.query);
+        const exe_name = b.fmt("zli-{s}", .{config.suffix});
+        const exe = compileStep(b, target, std.builtin.OptimizeMode.ReleaseFast, exe_name);
+        const install_artifact = b.addInstallArtifact(exe, .{});
+
+        //upx
+        const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
+        upx_cmd.addArgs(&.{ "--lzma", b.getInstallPath(.bin, exe.out_filename) });
+        upx_cmd.step.dependOn(&install_artifact.step);
+
+        release.dependOn(&upx_cmd.step);
+    }
+}
+
+fn nativebuild(b: *std.Build) *std.Build.Step {
+    const zupx = b.dependency("zupx", .{
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .target = b.graph.host,
+    });
+
+    const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.ReleaseFast, "zli");
+    const install_artifact = b.addInstallArtifact(exe, .{});
+
+    //upx
+    const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
+    upx_cmd.addArgs(&.{ "--lzma", b.getInstallPath(.bin, exe.out_filename) });
+    upx_cmd.step.dependOn(&install_artifact.step);
+    return &upx_cmd.step;
+}
+
+fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, exe_name: []const u8) *std.Build.Step.Compile {
+    const zlua = b.dependency("zlua", .{
+        .target = target,
+        .optimize = optimize,
+        .lang = .lua54,
+    });
+    const luaPath = zlua.artifact("lua").getEmittedIncludeTree();
+
+    const zigLuaStrip = b.dependency("zigluastrip", .{
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .target = b.graph.host,
+    });
+
+    //zli exe
+    const exe = b.addExecutable(.{
+        .name = exe_name,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .strip = optimize != std.builtin.OptimizeMode.Debug,
+        }),
+    });
+    exe.root_module.addIncludePath(b.path("src/"));
+    exe.root_module.addImport("zlua", zlua.module("zlua"));
+    exe.root_module.addImport("zigLuaStrip", zigLuaStrip.module("zigLuaStrip"));
+
+    //zlib and zip libraries
+    const zlib_dep = b.dependency("zlib", .{});
+    exe.root_module.addIncludePath(zlib_dep.path(""));
+    exe.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    exe.root_module.linkLibrary(zlib(b, target, optimize, zlib_dep));
+    exe.root_module.linkLibrary(luaZlib(b, target, optimize, zlib_dep, luaPath));
+    exe.root_module.linkLibrary(miniZip(b, target, optimize, zlib_dep));
+
+    //libraries
+    exe.root_module.linkLibrary(lsqlite3(b, target, optimize, luaPath));
+    exe.root_module.linkLibrary(lpeg(b, target, optimize, luaPath));
+    exe.root_module.linkLibrary(luaCJson(b, target, optimize, luaPath));
+    exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
+    exe.root_module.linkLibrary(timer(b, target, optimize));
+
+    return exe;
 }
 
 const luastrip_entry = struct {
@@ -179,7 +215,7 @@ fn copyFile(io: std.Io, input_path: []const u8, output_path: []const u8) !void {
     try writer.flush();
 }
 
-fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lsqlite3",
         .root_module = b.createModule(.{
@@ -199,7 +235,7 @@ fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
     return lib;
 }
 
-fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lpeg",
         .root_module = b.createModule(.{
@@ -254,7 +290,7 @@ fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
     return lib;
 }
 
-fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
+fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lua_zlib",
         .root_module = b.createModule(.{
@@ -300,7 +336,7 @@ fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builti
     return lib;
 }
 
-fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lua_cjson",
         .root_module = b.createModule(.{

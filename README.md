@@ -71,21 +71,11 @@ In the main binary there are also some commandline tools embedded.
 | --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
 
 ## Build
-The build works under linux and windows(under gitbash) for x86_64 platforms and on linux arm. All it needs git and zig version 0.16.0 on the path
+The build ist tested under linux and windows for x86_64 platforms and on linux arm64. All it needs git and zig version 0.16.0 on the path
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli
-./build.sh
+zig build
 ```
-If you want to compile for all the supported platforms use the `--all` switch, all binaries are saved to the bin directory with the platform suffix. 
-```bash
-./build.sh --all
-```
-If you want to have a substentially smaller binary (as the release binaries) you also have to have upx on the path and call:
-```bash
-./build.sh --upx
-```
-Tests can be executed by calling 
-```bash
-./build.shj --test
-```
+this will create a debug build in `zig-out/bin`. You can run `zig build test`to run all included tests and for a *realease build* for your native architecture just run `zig build native`.
+And if you want to compile a release build for all the supported platforms use the `zig build native`, all binaries are saved to the zig-out/bin directory with the platform suffix. 
