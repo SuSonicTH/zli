@@ -13,7 +13,7 @@ if not fs.exists(config_zli) then
     fs.mkdir(config_zli)
 end
 
-local init = config_zli .. "/init.lua"
+local init = config_zli .. "init.lua"
 if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[

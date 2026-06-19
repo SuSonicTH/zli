@@ -1,43 +1,14 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
+const strip = @import("src/strip.zig").strip;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    //build-time dependencies
-    const zigLuaStrip = b.dependency("zigluastrip", .{
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
-        .target = b.graph.host,
-    });
-
     //normal build
     const exe = compileStep(b, target, optimize, "zli");
     b.installArtifact(exe);
-
-    if (optimize != .Debug) {
-        inline for (luastrip_list) |script| {
-            var run_step = b.addRunArtifact(zigLuaStrip.artifact("zigluastrip"));
-            if (script.dependency[0] == 0) {
-                run_step.addArgs(&.{ script.input, script.output });
-            } else {
-                const dependency = b.dependency(script.dependency, .{});
-                const source = dependency.path(script.input).getPath(b);
-                run_step.addArgs(&.{ source, script.output });
-            }
-            exe.step.dependOn(&run_step.step);
-        }
-    } else {
-        inline for (luastrip_list) |script| {
-            if (script.dependency[0] == 0) {
-                copyFile(b.graph.io, script.input, script.output) catch unreachable;
-            } else {
-                const dependency = b.dependency(script.dependency, .{});
-                const source = dependency.path(script.input).getPath(b);
-                copyFile(b.graph.io, source, script.output) catch unreachable;
-            }
-        }
-    }
 
     //release
     const release = b.step("release", "Build all cross-compilation targets in release mode");
@@ -120,11 +91,6 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     const luaPath = zlua.artifact("lua").getEmittedIncludeTree();
 
-    const zigLuaStrip = b.dependency("zigluastrip", .{
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
-        .target = b.graph.host,
-    });
-
     //zli exe
     const exe = b.addExecutable(.{
         .name = exe_name,
@@ -137,7 +103,9 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     exe.root_module.addIncludePath(b.path("src/"));
     exe.root_module.addImport("zlua", zlua.module("zlua"));
-    exe.root_module.addImport("zigLuaStrip", zigLuaStrip.module("zigLuaStrip"));
+
+    //add lualibs (strip for non debug)
+    luaLibs(b, optimize, exe.root_module);
 
     //zlib and zip libraries
     const zlib_dep = b.dependency("zlib", .{});
@@ -157,62 +125,83 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     return exe;
 }
 
-const luastrip_entry = struct {
+const lualib_entry = struct {
     input: [:0]const u8,
-    output: [:0]const u8,
+    name: [:0]const u8,
     dependency: [:0]const u8 = "",
 };
 
-const luastrip_list = [_]luastrip_entry{
-    .{ .input = "F.lua", .output = "src/stripped/F.lua", .dependency = "fstring" },
-    .{ .input = "ftcsv.lua", .output = "src/stripped/ftcsv.lua", .dependency = "ftcsv" },
-    .{ .input = "lua/cjson/util.lua", .output = "src/stripped/cjson.util.lua", .dependency = "cjson" },
-    .{ .input = "luaunit.lua", .output = "src/stripped/luaunit.lua", .dependency = "luaunit" },
-    .{ .input = "re.lua", .output = "src/stripped/re.lua", .dependency = "lpeg" },
-    .{ .input = "src/argparse.lua", .output = "src/stripped/argparse.lua", .dependency = "argparse" },
-    .{ .input = "src/serpent.lua", .output = "src/stripped/serpent.lua", .dependency = "serpent" },
+var lualib_list = [_]lualib_entry{
+    .{ .input = "F.lua", .name = "F.lua", .dependency = "fstring" },
+    .{ .input = "ftcsv.lua", .name = "ftcsv.lua", .dependency = "ftcsv" },
+    .{ .input = "lua/cjson/util.lua", .name = "cjson.util.lua", .dependency = "cjson" },
+    .{ .input = "luaunit.lua", .name = "luaunit.lua", .dependency = "luaunit" },
+    .{ .input = "re.lua", .name = "re.lua", .dependency = "lpeg" },
+    .{ .input = "src/argparse.lua", .name = "argparse.lua", .dependency = "argparse" },
+    .{ .input = "src/serpent.lua", .name = "serpent.lua", .dependency = "serpent" },
 
-    .{ .input = "src/auxiliary.lua", .output = "src/stripped/auxiliary.lua" },
-    .{ .input = "src/benchmark.lua", .output = "src/stripped/benchmark.lua" },
-    .{ .input = "src/collection/init.lua", .output = "src/stripped/collection.init.lua" },
-    .{ .input = "src/collection/list.lua", .output = "src/stripped/collection.list.lua" },
-    .{ .input = "src/collection/map.lua", .output = "src/stripped/collection.map.lua" },
-    .{ .input = "src/collection/set.lua", .output = "src/stripped/collection.set.lua" },
-    .{ .input = "src/crossline.lua", .output = "src/stripped/crossline.lua" },
-    .{ .input = "src/filesystem.lua", .output = "src/stripped/filesystem.lua" },
-    .{ .input = "src/grid.lua", .output = "src/stripped/grid.lua" },
-    .{ .input = "src/httpclient.lua", .output = "src/stripped/httpclient.lua" },
-    .{ .input = "src/httpserver.lua", .output = "src/stripped/httpserver.lua" },
-    .{ .input = "src/logger.lua", .output = "src/stripped/logger.lua" },
-    .{ .input = "src/main.lua", .output = "src/stripped/main.lua" },
-    .{ .input = "src/memoize.lua", .output = "src/stripped/memoize.lua" },
-    .{ .input = "src/stream.lua", .output = "src/stripped/stream.lua" },
-    .{ .input = "src/timer.lua", .output = "src/stripped/timer.lua" },
-    .{ .input = "src/tools/compile.lua", .output = "src/stripped/compile.lua" },
-    .{ .input = "src/tools/repl.lua", .output = "src/stripped/repl.lua" },
-    .{ .input = "src/tools/sqlite_cli.lua", .output = "src/stripped/sqlite_cli.lua" },
-    .{ .input = "src/unzip.lua", .output = "src/stripped/unzip.lua" },
-    .{ .input = "src/xlsxmlwriter.lua", .output = "src/stripped/xlsxmlwriter.lua" },
-    .{ .input = "src/zip.lua", .output = "src/stripped/zip.lua" },
+    .{ .input = "src/auxiliary.lua", .name = "auxiliary.lua" },
+    .{ .input = "src/benchmark.lua", .name = "benchmark.lua" },
+    .{ .input = "src/collection/init.lua", .name = "collection.init.lua" },
+    .{ .input = "src/collection/list.lua", .name = "collection.list.lua" },
+    .{ .input = "src/collection/map.lua", .name = "collection.map.lua" },
+    .{ .input = "src/collection/set.lua", .name = "collection.set.lua" },
+    .{ .input = "src/crossline.lua", .name = "crossline.lua" },
+    .{ .input = "src/filesystem.lua", .name = "filesystem.lua" },
+    .{ .input = "src/grid.lua", .name = "grid.lua" },
+    .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },
+    .{ .input = "src/httpserver.lua", .name = "httpserver.lua" },
+    .{ .input = "src/logger.lua", .name = "logger.lua" },
+    .{ .input = "src/main.lua", .name = "main.lua" },
+    .{ .input = "src/memoize.lua", .name = "memoize.lua" },
+    .{ .input = "src/stream.lua", .name = "stream.lua" },
+    .{ .input = "src/timer.lua", .name = "timer.lua" },
+    .{ .input = "src/tools/compile.lua", .name = "compile.lua" },
+    .{ .input = "src/tools/repl.lua", .name = "repl.lua" },
+    .{ .input = "src/tools/sqlite_cli.lua", .name = "sqlite_cli.lua" },
+    .{ .input = "src/unzip.lua", .name = "unzip.lua" },
+    .{ .input = "src/xlsxmlwriter.lua", .name = "xlsxmlwriter.lua" },
+    .{ .input = "src/zip.lua", .name = "zip.lua" },
 };
 
-fn copyFile(io: std.Io, input_path: []const u8, output_path: []const u8) !void {
-    const input = try std.Io.Dir.cwd().openFile(io, input_path, .{});
-    defer input.close(io);
+fn luaLibs(b: *std.Build, optimize: std.builtin.OptimizeMode, module: *std.Build.Module) void {
+    const lualibs = b.addWriteFiles();
+    for (&lualib_list) |*script| {
+        var source: []const u8 = undefined;
 
-    const output = try std.Io.Dir.cwd().createFile(io, output_path, .{});
-    defer output.close(io);
+        if (script.dependency[0] == 0) {
+            if (optimize == .Debug) {
+                source = readFile(b, script.input);
+            } else {
+                source = strip(readFile(b, script.input), b.allocator) catch |err| {
+                    std.debug.panic("Failed to strip Lua script '{s}': {any}\n", .{ script.name, err });
+                };
+            }
+        } else {
+            const dependency = b.dependency(script.dependency, .{});
+            if (optimize == .Debug) {
+                source = readFile(b, dependency.path(script.input).getPath(b));
+            } else {
+                source = strip(readFile(b, dependency.path(script.input).getPath(b)), b.allocator) catch |err| {
+                    std.debug.panic("Failed to strip Lua script '{s}': {any}\n", .{ script.name, err });
+                };
+            }
+        }
+        module.addAnonymousImport(script.name, .{
+            .root_source_file = lualibs.add(script.name, source),
+        });
+    }
+}
 
-    var read_buffer: [4096]u8 = undefined;
-    var file_reader = input.reader(io, &read_buffer);
-    const reader = &file_reader.interface;
-
-    var write_buffer: [4096]u8 = undefined;
-    var file_writer = output.writer(io, &write_buffer);
-    const writer = &file_writer.interface;
-
-    _ = try reader.streamRemaining(writer);
-    try writer.flush();
+fn readFile(b: *std.Build, path: []const u8) []const u8 {
+    return b.build_root.handle.readFileAlloc(
+        b.graph.io,
+        path,
+        b.graph.arena,
+        std.Io.Limit.unlimited,
+    ) catch |err| {
+        std.debug.panic("Failed to read {s}: {any}\n", .{ path, err });
+    };
 }
 
 fn lsqlite3(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {

@@ -32,7 +32,7 @@ pub fn luaopen_unzip(lua: *Lua) i32 {
     UnzipFile.register(lua);
     lua.newLib(&unzip);
 
-    const exteded = @embedFile("stripped/unzip.lua");
+    const exteded = @embedFile("unzip.lua");
     luax.registerExtended(lua, exteded, "zip", zli_unzip);
     return 1;
 }

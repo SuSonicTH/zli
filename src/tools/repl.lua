@@ -2,7 +2,7 @@ local cl = require "crossline"
 local fs = require "filesystem"
 --[[ ~/.config/repl.init ]]
 
-local init = os.home .. "/.config/zli/repl_init.lua"
+local init = os.home .. ".config/zli/repl_init.lua"
 if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[

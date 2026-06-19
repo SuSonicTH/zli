@@ -9,10 +9,6 @@
             .url = "https://github.com/natecraddock/ziglua/archive/d59103e257b25ae892cdede9a671366e8d4f3e51.tar.gz",
             .hash = "zlua-0.1.0-hGRpC4aUBQCOTE7WgTqCz0YBVUUaIpqDu1cNBu8nN6jH",
         },
-        .zigluastrip = .{
-            .url = "https://github.com/SuSonicTH/zigluastrip/archive/793a942ebfda578f72b44c901112e26267a592ac.tar.gz",
-            .hash = "zigluastrip-0.2.0-g5ETbChLAADXurjLrF3Nl5a0HJqtKVxRW7fPaQ2JLv6-",
-        },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
             .hash = "N-V-__8AAA48AwAs-qNuEPo0PXKQAuwnMXVIW49MY0tYwoDQ",

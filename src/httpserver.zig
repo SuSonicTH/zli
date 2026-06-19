@@ -16,7 +16,7 @@ pub fn setIo(_io: std.Io) void {
 
 pub fn luaopen_httpserver(lua: *Lua) i32 {
     lua.newLib(&httpserver);
-    luax.registerExtended(lua, @embedFile("stripped/httpserver.lua"), "httpserver", "zli_httpserver");
+    luax.registerExtended(lua, @embedFile("httpserver.lua"), "httpserver", "zli_httpserver");
     return 1;
 }
 

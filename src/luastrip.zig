@@ -1,6 +1,6 @@
 const std = @import("std");
 const zlua = @import("zlua");
-const strip = @import("zigLuaStrip");
+const strip = @import("strip.zig");
 const luax = @import("luax.zig");
 const Lua = zlua.Lua;
 

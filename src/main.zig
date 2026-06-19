@@ -9,7 +9,7 @@ const c = @cImport({
 const Lua = zlua.Lua;
 const debug = std.log.debug;
 
-const main_lua: [:0]const u8 = @embedFile("stripped/main.lua");
+const main_lua: [:0]const u8 = @embedFile("main.lua");
 var prog_name: [:0]const u8 = undefined;
 var uzfh: c.unzFile = undefined;
 
@@ -84,7 +84,7 @@ fn create_payload_searcher(lua: *Lua) !void {
 }
 
 const extention_lua = ".lua";
-const extention_init = "/init.lua";
+const extention_init = "init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
     const arg = lua.checkString(1);

@@ -34,7 +34,7 @@ pub fn luaopen_zip(lua: *Lua) i32 {
     ZipUdata.register(lua);
     lua.newLib(&zip);
 
-    const exteded = @embedFile("stripped/zip.lua");
+    const exteded = @embedFile("zip.lua");
     luax.registerExtended(lua, exteded, "zip", zli_zip);
     return 1;
 }

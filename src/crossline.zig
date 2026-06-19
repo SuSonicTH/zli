@@ -101,7 +101,7 @@ pub fn luaopen_crossline(lua: *Lua) i32 {
     luax.createFunctionSubTable(lua, &crossline_history, "history");
     luax.createFunctionSubTable(lua, &crossline_paging, "paging");
 
-    luax.registerExtended(lua, @embedFile("stripped/crossline.lua"), "crossline", "zli_crossline");
+    luax.registerExtended(lua, @embedFile("crossline.lua"), "crossline", "zli_crossline");
     return 1;
 }
 

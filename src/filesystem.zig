@@ -96,7 +96,7 @@ pub fn luaopen_filesystem(lua: *Lua) i32 {
     lua.setTable(-3);
 
     register_path_mt(lua);
-    luax.registerExtended(lua, @embedFile("stripped/filesystem.lua"), "filesytem", zli_filesystem);
+    luax.registerExtended(lua, @embedFile("filesystem.lua"), "filesytem", zli_filesystem);
     return 1;
 }
 
