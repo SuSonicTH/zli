@@ -9,6 +9,10 @@
             .url = "https://github.com/natecraddock/ziglua/archive/d59103e257b25ae892cdede9a671366e8d4f3e51.tar.gz",
             .hash = "zlua-0.1.0-hGRpC4aUBQCOTE7WgTqCz0YBVUUaIpqDu1cNBu8nN6jH",
         },
+        .lua55 = .{
+            .url = "https://www.lua.org/ftp/lua-5.5.0.tar.gz",
+            .hash = "N-V-__8AAGuAFQAFQL34FRuOIGC9klkZq44uTTan4cUS9vas",
+        },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
             .hash = "N-V-__8AAA48AwAs-qNuEPo0PXKQAuwnMXVIW49MY0tYwoDQ",

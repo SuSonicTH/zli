@@ -89,7 +89,12 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
         .optimize = optimize,
         .lang = .lua54,
     });
-    const luaPath = zlua.artifact("lua").getEmittedIncludeTree();
+
+    const lua = b.dependency("lua55", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const luaPath = lua.path("src/");
 
     //zli exe
     const exe = b.addExecutable(.{
