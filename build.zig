@@ -87,7 +87,7 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     const zlua = b.dependency("zlua", .{
         .target = target,
         .optimize = optimize,
-        .lang = .lua54,
+        .lang = .lua55,
     });
 
     const lua = b.dependency("lua55", .{

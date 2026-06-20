@@ -1,8 +1,17 @@
 local cl = require "crossline"
 local fs = require "filesystem"
---[[ ~/.config/repl.init ]]
 
-local init = os.home .. ".config/zli/repl_init.lua"
+local config = os.home .. "/.config"
+if not fs.exists(config) then
+    fs.mkdir(config)
+end
+
+local config_zli = config .. "/zli"
+if not fs.exists(config_zli) then
+    fs.mkdir(config_zli)
+end
+
+local init = config_zli .. "/repl_init.lua"
 if not fs.exists(init) then
     io.write_file(init, [==[
 --[================================================================================[
@@ -12,7 +21,7 @@ you can put global initialisations here that will get executed on every
 invocation of zli repl before the repl loop starts
 it's usefull to set some local configurations or load default libraries
 
-the ~/.config/init.lua gets executed before this script is executed
+the ~/.config/zli/init.lua gets executed before this script is executed
 --]================================================================================]
 
 csv = require "csv"

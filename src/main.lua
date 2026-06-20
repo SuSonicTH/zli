@@ -1,4 +1,4 @@
-local version = "v0.1.4"
+local version = "v0.1.7"
 local version_string = "zli - Zig Lua Interpreter " .. version
 local unzip = require "unzip"
 local fs = require "filesystem"
@@ -149,7 +149,7 @@ elseif arg[1] == '--compile' then
     local config = assert(load("return {" .. io.read_file(config_name) .. "}", config_name))()
     require("compile").execute(config)
 elseif arg[1] == '--manual' then
-    serve("./doc/lua_53_manual/")
+    serve("./doc/lua_55_manual/")
 elseif arg[1] == '--serve' then
     serve(arg[2])
 else
