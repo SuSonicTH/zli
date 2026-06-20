@@ -104,7 +104,7 @@ local function serve(dir)
     local dir = dir or "./"
     local server = require "httpserver"
 
-    print("serving manual http://127.0.0.1:8080/")
+    print("serving at http://127.0.0.1:8080/")
     print("your browser should automatically open")
     if os.is_windows then
         os.execute("start http://127.0.0.1:8080/")

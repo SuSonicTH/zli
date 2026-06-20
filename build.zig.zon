@@ -1,8 +1,8 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.1.4",
-    .minimum_zig_version = "0.15.1",
+    .version = "0.1.6",
+    .minimum_zig_version = "0.16.0",
     .paths = .{""},
     .dependencies = .{
         .zlua = .{

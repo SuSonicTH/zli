@@ -77,5 +77,9 @@ git clone https://github.com/SuSonicTH/zli.git
 cd zli
 zig build
 ```
-this will create a debug build in `zig-out/bin`. You can run `zig build test`to run all included tests and for a *realease build* for your native architecture just run `zig build native`.
+this will create a debug build in `zig-out/bin`.
+You can run `zig build test`to run all included tests and for a *realease build* for your native architecture just run 
+```bash
+zig build native
+```
 And if you want to compile a release build for all the supported platforms use the `zig build release`, all binaries are saved to the zig-out/bin directory with the platform suffix. 
