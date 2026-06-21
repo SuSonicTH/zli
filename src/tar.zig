@@ -31,7 +31,7 @@ fn open(lua: *Lua) i32 {
 }
 
 fn iterate(lua: *Lua) i32 {
-    const tar = lua.toUserdata(TarReader, lua.upvalueIndex(1)) catch luax.raiseError(lua, "could not get TarReader");
+    const tar = lua.toUserdata(TarReader, Lua.upvalueIndex(1)) catch luax.raiseError(lua, "could not get TarReader");
     const file_in_tar = tar.next() catch luax.raiseError(lua, "could not iterate on tar file");
     if (file_in_tar) |file| {
         _ = lua.pushString(file.name);
