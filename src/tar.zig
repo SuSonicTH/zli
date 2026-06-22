@@ -6,6 +6,7 @@ const Lua = zlua.Lua;
 
 const flate = std.compress.flate;
 const zstd = std.compress.zstd;
+const xz = std.compress.xz;
 
 const allocator = std.heap.c_allocator;
 
@@ -45,9 +46,10 @@ const FileReader = struct {
     file: std.Io.File,
     file_buffer: [4096]u8 = undefined,
     file_reader: std.Io.File.Reader = undefined,
-    decompress_buffer: [zstd.default_window_len + zstd.block_size_max]u8 = undefined,
+    decompress_buffer: []u8 = undefined,
     gzip: flate.Decompress = undefined,
     zstd: zstd.Decompress = undefined,
+    xz: xz.Decompress = undefined,
 
     pub fn init(tarPath: []const u8) !FileReader {
         return .{
@@ -64,8 +66,12 @@ const FileReader = struct {
             self.gzip = flate.Decompress.init(freader, flate.Container.gzip, &self.decompress_buffer);
             return &self.gzip.reader;
         } else if (self.pathEndsWith(".zstd") or self.pathEndsWith(".zst") or self.pathEndsWith(".tzstd") or self.pathEndsWith(".tzst")) {
+            //zstd.default_window_len + zstd.block_size_max
             self.zstd = zstd.Decompress.init(freader, &self.decompress_buffer, .{});
             return &self.zstd.reader;
+         } else if (self.pathEndsWith(".xz") or self.pathEndsWith(".txz") ) {
+            //self.decompress_buffer = allocator.alloc(u8, n: usize)
+            self.xz = xz.Decompress.init(freader, allocator, &self.decompress_buffer)
         } else {
             return freader;
         }
