@@ -256,6 +256,15 @@ pub fn setTableFunction(lua: *Lua, index: i32, key: []const u8, value: zlua.CFn)
     lua.setTable(table_index);
 }
 
+pub fn setTableClosure(lua: *Lua, index: i32, key: []const u8, value: zlua.CFn, n: i32) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    lua.pushClosure(value, n);
+    _ = lua.pushString(key);
+    lua.pushValue(-2);
+    lua.setTable(table_index);
+    lua.pop(1);
+}
+
 pub fn setTableValue(lua: *Lua, index: i32, key: []const u8, value: i32, remove: bool) void {
     const table_index = getAbsoluteIndex(lua, index);
     const value_index = getAbsoluteIndex(lua, value);

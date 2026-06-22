@@ -7,6 +7,7 @@ const Lua = zlua.Lua;
 const allocator = std.heap.c_allocator;
 
 const exported_functions = [_]zlua.FnReg{
+    .{ .name = "extract", .func = zlua.wrap(extract) },
     .{ .name = "open", .func = zlua.wrap(open) },
 };
 
@@ -21,9 +22,24 @@ pub fn luaopen_tar(lua: *Lua) i32 {
     return 1;
 }
 
+fn extract(lua: *Lua) i32 {
+    const tarPath = filesystem.get_path_index(lua, 1);
+    const extractPath = filesystem.get_path_index(lua, 2);
+    var buffer: [4096]u8 = undefined;
+
+    var extractDir = std.Io.Dir.cwd().openDir(io, extractPath, .{ .follow_symlinks = false }) catch luax.raiseError(lua, "could not open output directory");
+    defer extractDir.close(io);
+
+    var file = std.Io.Dir.cwd().openFile(io, tarPath, .{}) catch luax.raiseError(lua, "could not open tar file");
+    var reader = file.reader(io, &buffer);
+
+    std.tar.extract(io, extractDir, &reader.interface, .{}) catch luax.raiseError(lua, "could not extract tar file");
+
+    return 0;
+}
+
 fn open(lua: *Lua) i32 {
     const path = filesystem.get_path(lua);
-    std.log.debug("PATH: {s}", .{path});
     const tar = TarReader.init(path) catch luax.raiseError(lua, "could not open tar file");
     lua.pushLightUserdata(@ptrCast(tar));
     lua.pushClosure(zlua.wrap(iterate), 1);
@@ -34,11 +50,59 @@ fn iterate(lua: *Lua) i32 {
     const tar = lua.toUserdata(TarReader, Lua.upvalueIndex(1)) catch luax.raiseError(lua, "could not get TarReader");
     const file_in_tar = tar.next() catch luax.raiseError(lua, "could not iterate on tar file");
     if (file_in_tar) |file| {
-        _ = lua.pushString(file.name);
+        lua.newTable();
+        luax.setTableString(lua, -1, "name", file.name);
+        luax.setTableString(lua, -1, "type", @tagName(file.kind));
+        luax.setTableInteger(lua, -1, "size", @intCast(file.size));
+        const size_hr = filesystem.size_human_readable(file.size) catch luax.raiseError(lua, "could not convert size to size_hr");
+        luax.setTableString(lua, -1, "size_hr", size_hr);
+        luax.setTableString(lua, -1, "link_name", file.link_name);
+        luax.setTableInteger(lua, -1, "mode", @intCast(file.mode));
+        luax.setTableString(lua, -1, "mode_flags", &modeToPosixString(file.mode));
+        luax.setTableBoolean(lua, -1, "is_directory", file.kind == .directory);
+        luax.setTableBoolean(lua, -1, "is_file", file.kind == .file);
+        luax.setTableBoolean(lua, -1, "is_link", file.kind == .sym_link);
+        lua.pushLightUserdata(tar);
+        luax.setTableClosure(lua, -2, "extract", zlua.wrap(extract_file), 1);
     } else {
         lua.pushNil();
     }
     return 1;
+}
+
+fn extract_file(lua: *Lua) i32 {
+    const tar = lua.toUserdata(TarReader, Lua.upvalueIndex(1)) catch luax.raiseError(lua, "could not get TarReader");
+    const path = filesystem.get_path(lua);
+    tar.extract(path) catch luax.raiseError(lua, "could not extract file form tar");
+    return 0;
+}
+
+pub fn modeToPosixString(mode: u32) [10]u8 {
+    // 0o170000 is the POSIX bitmask for file types
+    const file_type: u8 = switch (mode & 0o170000) {
+        0o140000 => 's', // Socket
+        0o120000 => 'l', // Symlink
+        0o100000 => '-', // Regular file
+        0o060000 => 'b', // Block device
+        0o040000 => 'd', // Directory
+        0o020000 => 'c', // Character device
+        0o010000 => 'p', // FIFO / pipe
+        0 => '-', // Raw permission passed without a type; default to file
+        else => '?', // Unknown
+    };
+
+    return .{
+        file_type,
+        if ((mode & 0o0400) != 0) 'r' else '-',
+        if ((mode & 0o0200) != 0) 'w' else '-',
+        if ((mode & 0o0100) != 0) 'x' else '-',
+        if ((mode & 0o0040) != 0) 'r' else '-',
+        if ((mode & 0o0020) != 0) 'w' else '-',
+        if ((mode & 0o0010) != 0) 'x' else '-',
+        if ((mode & 0o0004) != 0) 'r' else '-',
+        if ((mode & 0o0002) != 0) 'w' else '-',
+        if ((mode & 0o0001) != 0) 'x' else '-',
+    };
 }
 
 const TarReader = struct {
@@ -107,43 +171,3 @@ const TarReader = struct {
         allocator.destroy(self);
     }
 };
-
-//pub fn main(init: std.process.Init) !void {
-//    var tar = try TarReader.init(init.io, "test.tar", init.arena.allocator());
-//    defer tar.deinit();
-//    while (try tar.next()) |file| {
-//        std.log.info("{s} {any}", .{ file.name, file.kind });
-//        if (std.mem.eql(u8, "src/uuid.zig", file.name)) {
-//            std.log.info("{s}", .{try tar.toslice()});
-//        } else if (std.mem.eql(u8, "src/zip.lua", file.name)) {
-//            try tar.extract("tartest/zip.lua");
-//        }
-//    }
-//}
-
-//pub fn main(init: std.process.Init) !void {
-//    const tarFile = try std.Io.Dir.cwd().openFile(init.io, "test.tar", .{});
-//    defer tarFile.close(init.io);
-//    var buffer: [4096]u8 = undefined;
-//
-//    var reader_interface = tarFile.reader(init.io, &buffer);
-//    const reader = &reader_interface.interface;
-//
-//    var file_name_buffer: [std.fs.max_path_bytes]u8 = undefined;
-//    var link_name_buffer: [std.fs.max_path_bytes]u8 = undefined;
-//
-//    var it = std.tar.Iterator.init(reader, .{
-//        .file_name_buffer = &file_name_buffer,
-//        .link_name_buffer = &link_name_buffer,
-//    });
-//    while (try it.next()) |file| {
-//        std.log.info("{s} {any}", .{ file.name, file.kind });
-//        if (std.mem.eql(u8, file.name, "src/uuid.zig")) {
-//            var stdout_buffer: [4096]u8 = undefined;
-//            var stdout_writer = std.Io.File.stdout().writer(init.io, &stdout_buffer);
-//            const stdout = &stdout_writer.interface;
-//            try it.streamRemaining(file, stdout);
-//            try stdout.flush();
-//        }
-//    }
-//}
