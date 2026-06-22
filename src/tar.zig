@@ -37,7 +37,8 @@ fn extract_all(lua: *Lua) i32 {
     var fileReader = FileReader.init(tarPath) catch luax.raiseError(lua, "could not open tar file");
     defer fileReader.close();
 
-    std.tar.extract(io, extractDir, fileReader.reader(), .{}) catch luax.raiseError(lua, "could not extract tar file");
+    const reader = fileReader.reader() catch luax.raiseError(lua, "could not allocate memory");
+    std.tar.extract(io, extractDir, reader, .{}) catch luax.raiseError(lua, "could not extract tar file");
     return 0;
 }
 
@@ -46,10 +47,13 @@ const FileReader = struct {
     file: std.Io.File,
     file_buffer: [4096]u8 = undefined,
     file_reader: std.Io.File.Reader = undefined,
-    decompress_buffer: []u8 = undefined,
-    gzip: flate.Decompress = undefined,
-    zstd: zstd.Decompress = undefined,
-    xz: xz.Decompress = undefined,
+    decompress_buffer: ?[]u8 = null,
+    decompressor: union(enum) {
+        uncompressed: void,
+        gzip: flate.Decompress,
+        zstd: zstd.Decompress,
+        xz: xz.Decompress,
+    } = .uncompressed,
 
     pub fn init(tarPath: []const u8) !FileReader {
         return .{
@@ -58,20 +62,22 @@ const FileReader = struct {
         };
     }
 
-    pub fn reader(self: *FileReader) *std.Io.Reader {
+    pub fn reader(self: *FileReader) !*std.Io.Reader {
         self.file_reader = self.file.reader(io, &self.file_buffer);
         const freader = &self.file_reader.interface;
-
+        std.log.info("{any}", .{self.decompressor});
         if (self.pathEndsWith(".gz") or self.pathEndsWith(".gzip") or self.pathEndsWith(".tgz")) {
-            self.gzip = flate.Decompress.init(freader, flate.Container.gzip, &self.decompress_buffer);
-            return &self.gzip.reader;
+            self.decompress_buffer = try allocator.alloc(u8, flate.max_window_len);
+            self.decompressor = .{ .gzip = flate.Decompress.init(freader, flate.Container.gzip, self.decompress_buffer.?) };
+            return &self.decompressor.gzip.reader;
         } else if (self.pathEndsWith(".zstd") or self.pathEndsWith(".zst") or self.pathEndsWith(".tzstd") or self.pathEndsWith(".tzst")) {
-            //zstd.default_window_len + zstd.block_size_max
-            self.zstd = zstd.Decompress.init(freader, &self.decompress_buffer, .{});
-            return &self.zstd.reader;
-         } else if (self.pathEndsWith(".xz") or self.pathEndsWith(".txz") ) {
-            //self.decompress_buffer = allocator.alloc(u8, n: usize)
-            self.xz = xz.Decompress.init(freader, allocator, &self.decompress_buffer)
+            self.decompress_buffer = try allocator.alloc(u8, zstd.default_window_len + zstd.block_size_max);
+            self.decompressor = .{ .zstd = zstd.Decompress.init(freader, self.decompress_buffer.?, .{}) };
+            return &self.decompressor.zstd.reader;
+        } else if (self.pathEndsWith(".xz") or self.pathEndsWith(".txz")) {
+            self.decompress_buffer = try allocator.alloc(u8, 4 * 1024);
+            self.decompressor = .{ .xz = try xz.Decompress.init(freader, allocator, self.decompress_buffer.?) };
+            return &self.decompressor.xz.reader;
         } else {
             return freader;
         }
@@ -81,7 +87,18 @@ const FileReader = struct {
         return self.tarPath.len > suffix.len and std.mem.eql(u8, self.tarPath[self.tarPath.len - suffix.len ..], suffix);
     }
 
+    fn freeBuffer(self: *FileReader) void {
+        if (self.decompress_buffer) |buffer| {
+            allocator.free(buffer);
+        }
+    }
+
     pub fn close(self: *FileReader) void {
+        switch (self.decompressor) {
+            .gzip, .zstd => self.freeBuffer(),
+            .xz => |*x| x.deinit(),
+            else => {},
+        }
         self.file.close(io);
     }
 };
@@ -104,8 +121,8 @@ const TarReader = struct {
 
         const tarReader: *TarReader = luax.createUserData(lua, name, TarReader);
         tarReader.file_reader = FileReader.init(path) catch luax.raiseError(lua, "could not open tar file");
-
-        tarReader.iterator = std.tar.Iterator.init(tarReader.file_reader.reader(), .{
+        const reader = tarReader.file_reader.reader() catch luax.raiseError(lua, "could not allocate memory");
+        tarReader.iterator = std.tar.Iterator.init(reader, .{
             .file_name_buffer = &tarReader.file_name_buffer,
             .link_name_buffer = &tarReader.link_name_buffer,
         });
