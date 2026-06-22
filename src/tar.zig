@@ -26,18 +26,61 @@ pub fn luaopen_tar(lua: *Lua) i32 {
 fn extract_all(lua: *Lua) i32 {
     const tarPath = filesystem.get_path_index(lua, 1);
     const extractPath = filesystem.get_path_index(lua, 2);
-    var buffer: [4096]u8 = undefined;
+    //var buffer: [4096]u8 = undefined;
 
     var extractDir = std.Io.Dir.cwd().openDir(io, extractPath, .{ .follow_symlinks = false }) catch luax.raiseError(lua, "could not open output directory");
     defer extractDir.close(io);
 
-    var file = std.Io.Dir.cwd().openFile(io, tarPath, .{}) catch luax.raiseError(lua, "could not open tar file");
-    var reader = file.reader(io, &buffer);
+    var fileReader = FileReader.init(tarPath) catch luax.raiseError(lua, "could not open tar file");
+    defer fileReader.close();
 
-    std.tar.extract(io, extractDir, &reader.interface, .{}) catch luax.raiseError(lua, "could not extract tar file");
-
+    //    var file = std.Io.Dir.cwd().openFile(io, tarPath, .{}) catch luax.raiseError(lua, "could not open tar file");
+    //    defer file.close(io);
+    //
+    //    var file_reader = file.reader(io, &buffer);
+    //    var reader: *std.Io.Reader = undefined;
+    //
+    //    if (tarPath.len > 2 and std.mem.eql(u8, tarPath[tarPath.len - 3 ..], ".gz")) {
+    //        var gzip_buffer: [std.compress.flate.max_window_len]u8 = undefined;
+    //        var gzip = std.compress.flate.Decompress.init(&file_reader.interface, std.compress.flate.Container.gzip, &gzip_buffer);
+    //        reader = &gzip.reader;
+    //    } else {
+    //        reader = &file_reader.interface;
+    //    }
+    std.tar.extract(io, extractDir, fileReader.reader(), .{}) catch luax.raiseError(lua, "could not extract tar file");
     return 0;
 }
+
+const FileReader = struct {
+    tarPath: []const u8,
+    file: std.Io.File,
+    file_buffer: [4096]u8 = undefined,
+    file_reader: std.Io.File.Reader = undefined,
+    gzip_buffer: [std.compress.flate.max_window_len]u8 = undefined,
+    gzip: std.compress.flate.Decompress = undefined,
+
+    pub fn init(tarPath: []const u8) !FileReader {
+        return .{
+            .tarPath = tarPath,
+            .file = try std.Io.Dir.cwd().openFile(io, tarPath, .{}),
+        };
+    }
+
+    pub fn reader(self: *FileReader) *std.Io.Reader {
+        self.file_reader = self.file.reader(io, &self.file_buffer);
+
+        if (self.tarPath.len > 2 and std.mem.eql(u8, self.tarPath[self.tarPath.len - 3 ..], ".gz")) {
+            self.gzip = std.compress.flate.Decompress.init(&self.file_reader.interface, std.compress.flate.Container.gzip, &self.gzip_buffer);
+            return &self.gzip.reader;
+        } else {
+            return &self.file_reader.interface;
+        }
+    }
+
+    pub fn close(self: *FileReader) void {
+        self.file.close(io);
+    }
+};
 
 const TarReader = struct {
     const name = "_TarReader";
