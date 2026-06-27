@@ -13,6 +13,7 @@ const allocator = std.heap.c_allocator;
 const exported_functions = [_]zlua.FnReg{
     .{ .name = "extract", .func = zlua.wrap(extract_all) },
     .{ .name = "open", .func = zlua.wrap(TarReader.new) },
+    .{ .name = "create", .func = zlua.wrap(TarWriter.new) },
 };
 
 var io: std.Io = undefined;
@@ -23,6 +24,7 @@ pub fn setIo(_io: std.Io) void {
 
 pub fn luaopen_tar(lua: *Lua) i32 {
     TarReader.register(lua);
+    TarWriter.register(lua);
     lua.newLib(&exported_functions);
     return 1;
 }
@@ -231,5 +233,54 @@ const TarReader = struct {
             }
         }
         luax.raiseError(lua, "not a regular file");
+    }
+};
+
+const TarWriter = struct {
+    const name = "_TarWriter";
+    const functions = [_]zlua.FnReg{
+        .{ .name = "add", .func = zlua.wrap(add) },
+    };
+
+    file: std.Io.File = undefined,
+    file_buffer: [4096]u8 = undefined,
+    file_writer: std.Io.File.Writer = undefined,
+    writer: std.tar.Writer = undefined,
+
+    fn new(lua: *Lua) i32 {
+        const path = filesystem.get_path(lua);
+
+        const tarWriter = luax.createUserDataTableSetFunctions(lua, name, TarWriter, &functions);
+
+        tarWriter.file = std.Io.Dir.cwd().createFile(io, path, .{}) catch luax.raiseError(lua, "could not create outputfile");
+        tarWriter.file_writer = tarWriter.file.writer(io, &tarWriter.file_buffer);
+        tarWriter.writer = std.tar.Writer{ .underlying_writer = &tarWriter.file_writer.interface };
+
+        return 1;
+    }
+
+    fn register(lua: *Lua) void {
+        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
+    }
+
+    fn garbageCollect(lua: *Lua) i32 {
+        const self: *TarWriter = luax.getGcUserData(lua, TarWriter);
+
+        self.file_writer.interface.flush() catch @panic("could not flush tar file");
+        self.file.close(io);
+        return 0;
+    }
+
+    fn getSelf(lua: *Lua) *TarWriter {
+        return luax.getUserData(lua, name, TarWriter);
+    }
+
+    fn add(lua: *Lua) i32 {
+        const tarWriter = getSelf(lua);
+        const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
+        const content = luax.getArgStringOrError(lua, 3, "expecting a file data as 2st argument");
+        tarWriter.writer.writeFileBytes(path, content, .{}) catch luax.raiseError(lua, "could not write to tar file");
+        lua.pushValue(1);
+        return 1;
     }
 };
