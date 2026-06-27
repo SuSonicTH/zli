@@ -240,6 +240,9 @@ const TarWriter = struct {
     const name = "_TarWriter";
     const functions = [_]zlua.FnReg{
         .{ .name = "add", .func = zlua.wrap(add) },
+        .{ .name = "setRoot", .func = zlua.wrap(setRoot) },
+        .{ .name = "addDir", .func = zlua.wrap(addDir) },
+        .{ .name = "addFile", .func = zlua.wrap(addFile) },
     };
 
     file: std.Io.File = undefined,
@@ -280,6 +283,44 @@ const TarWriter = struct {
         const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
         const content = luax.getArgStringOrError(lua, 3, "expecting a file data as 2st argument");
         tarWriter.writer.writeFileBytes(path, content, .{}) catch luax.raiseError(lua, "could not write to tar file");
+        lua.pushValue(1);
+        return 1;
+    }
+
+    fn setRoot(lua: *Lua) i32 {
+        const tarWriter = getSelf(lua);
+        const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
+        tarWriter.writer.setRoot(path) catch luax.raiseError(lua, "could not write to tar file");
+        lua.pushValue(1);
+        return 1;
+    }
+
+    fn addDir(lua: *Lua) i32 {
+        const tarWriter = getSelf(lua);
+        const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
+        tarWriter.writer.writeDir(path, .{}) catch luax.raiseError(lua, "could not write to tar file");
+        lua.pushValue(1);
+        return 1;
+    }
+
+    fn addFile(lua: *Lua) i32 {
+        const tarWriter = getSelf(lua);
+        const file_path = filesystem.get_path_index(lua, 2);
+        var path: [:0]const u8 = undefined;
+        if (lua.getTop() == 2) {
+            path = file_path;
+        } else {
+            path = luax.getArgStringOrError(lua, 3, "expecting a file path as 1st argument");
+        }
+
+        var input_file = std.Io.Dir.cwd().openFile(io, file_path, .{}) catch luax.raiseError(lua, "could not open input file");
+        defer input_file.close(io);
+
+        const stats = input_file.stat(io) catch luax.raiseError(lua, "could not stat input file");
+        var buffer: [4096]u8 = undefined;
+        var reader = input_file.reader(io, &buffer);
+
+        tarWriter.writer.writeFileStream(path, stats.size, &reader.interface, .{}) catch luax.raiseError(lua, "could not write to tar file");
         lua.pushValue(1);
         return 1;
     }
