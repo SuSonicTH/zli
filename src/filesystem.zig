@@ -180,11 +180,7 @@ fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) void {
     lua.newTable();
     lua.setFuncs(&filesystem_path, 0);
 
-    inline for (filesystem_path_lua) |function_name| {
-        _ = lua.pushString(function_name);
-        luax.pushRegistryFunction(lua, zli_filesystem, function_name);
-        lua.setTable(-3);
-    }
+    luax.setTableRegistryFunctions(lua, zli_filesystem, &filesystem_path_lua);
 
     _ = lua.getMetatableRegistry(zli_mt_path);
     lua.setMetatable(-2);

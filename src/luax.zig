@@ -65,6 +65,14 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     lua.remove(-2);
 }
 
+pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, comptime function_list: []const [:0]const u8) void {
+    inline for (function_list) |function_name| {
+        _ = lua.pushString(function_name);
+        pushRegistryFunction(lua, module, function_name);
+        lua.setTable(-3);
+    }
+}
+
 pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
     _ = lua.pushFString(message, args);
     lua.raiseError();
