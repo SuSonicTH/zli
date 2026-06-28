@@ -16,6 +16,8 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "create", .func = zlua.wrap(TarWriter.new) },
 };
 
+const zli_tar = "zli_tar";
+
 var io: std.Io = undefined;
 
 pub fn setIo(_io: std.Io) void {
@@ -26,6 +28,7 @@ pub fn luaopen_tar(lua: *Lua) i32 {
     TarReader.register(lua);
     TarWriter.register(lua);
     lua.newLib(&exported_functions);
+    luax.registerExtended(lua, @embedFile("tar.lua"), "tar", zli_tar);
     return 1;
 }
 
@@ -37,20 +40,28 @@ fn extract_all(lua: *Lua) i32 {
     defer extractDir.close(io);
 
     var fileReader = FileReader.init(tarPath) catch luax.raiseError(lua, "could not open tar file");
-    defer fileReader.close();
+    defer fileReader.deinit();
 
     const reader = fileReader.reader() catch luax.raiseError(lua, "could not allocate memory");
     std.tar.extract(io, extractDir, reader, .{}) catch luax.raiseError(lua, "could not extract tar file");
     return 0;
 }
 
+const DeCompression = enum {
+    uncompressed,
+    gzip,
+    zstd,
+    xz,
+};
+
 const FileReader = struct {
     tarPath: []const u8,
+
     file: std.Io.File,
     file_buffer: [4096]u8 = undefined,
     file_reader: std.Io.File.Reader = undefined,
     decompress_buffer: ?[]u8 = null,
-    decompressor: union(enum) {
+    decompressor: union(DeCompression) {
         uncompressed: void,
         gzip: flate.Decompress,
         zstd: zstd.Decompress,
@@ -95,7 +106,7 @@ const FileReader = struct {
         }
     }
 
-    pub fn close(self: *FileReader) void {
+    pub fn deinit(self: *FileReader) void {
         switch (self.decompressor) {
             .gzip, .zstd => self.freeBuffer(),
             .xz => |*x| x.deinit(),
@@ -112,7 +123,7 @@ const TarReader = struct {
     file_name_buffer: [std.fs.max_path_bytes]u8 = undefined,
     link_name_buffer: [std.fs.max_path_bytes]u8 = undefined,
 
-    file_reader: FileReader = undefined,
+    fileReader: FileReader = undefined,
     reader: std.Io.File.Reader = undefined,
     iterator: std.tar.Iterator = undefined,
 
@@ -122,8 +133,8 @@ const TarReader = struct {
         const path = filesystem.get_path(lua);
 
         const tarReader: *TarReader = luax.createUserData(lua, name, TarReader);
-        tarReader.file_reader = FileReader.init(path) catch luax.raiseError(lua, "could not open tar file");
-        const reader = tarReader.file_reader.reader() catch luax.raiseError(lua, "could not allocate memory");
+        tarReader.fileReader = FileReader.init(path) catch luax.raiseError(lua, "could not open tar file");
+        const reader = tarReader.fileReader.reader() catch luax.raiseError(lua, "could not allocate memory");
         tarReader.iterator = std.tar.Iterator.init(reader, .{
             .file_name_buffer = &tarReader.file_name_buffer,
             .link_name_buffer = &tarReader.link_name_buffer,
@@ -139,7 +150,7 @@ const TarReader = struct {
 
     fn garbageCollect(lua: *Lua) i32 {
         const self: *TarReader = luax.getGcUserData(lua, TarReader);
-        self.file_reader.close();
+        self.fileReader.deinit();
         return 0;
     }
 
@@ -236,30 +247,128 @@ const TarReader = struct {
     }
 };
 
+const Compression = enum {
+    uncompressed,
+    gzip,
+};
+
+const FileWriter = struct {
+    tarPath: []const u8,
+    compression: Compression,
+    file: std.Io.File = undefined,
+    file_buffer: [4096]u8 = undefined,
+    file_writer: std.Io.File.Writer = undefined,
+
+    compressor_buffer: ?[]u8 = null,
+    compressor: union(Compression) {
+        uncompressed: void,
+        gzip: flate.Compress,
+    } = undefined,
+    closed: bool = false,
+
+    pub fn init(tarPath: []const u8, compression: Compression) !FileWriter {
+        return .{
+            .tarPath = tarPath,
+            .compression = compression,
+            .file = try std.Io.Dir.cwd().createFile(io, tarPath, .{}),
+        };
+    }
+
+    pub fn writer(self: *FileWriter, opts: std.compress.flate.Compress.Options) !*std.Io.Writer {
+        self.file_writer = self.file.writer(io, &self.file_buffer);
+        const fwriter = &self.file_writer.interface;
+        switch (self.compression) {
+            .uncompressed => {
+                return fwriter;
+            },
+            .gzip => {
+                self.compressor_buffer = try allocator.alloc(u8, flate.max_window_len);
+                self.compressor = .{
+                    .gzip = try std.compress.flate.Compress.init(fwriter, self.compressor_buffer.?, .gzip, opts),
+                };
+                return &self.compressor.gzip.writer;
+            },
+        }
+    }
+
+    fn freeBuffer(self: *FileWriter) void {
+        if (self.compressor_buffer) |buffer| {
+            allocator.free(buffer);
+        }
+    }
+
+    pub fn deinit(self: *FileWriter) !void {
+        if (!self.closed) {
+            switch (self.compressor) {
+                .gzip => {
+                    try self.compressor.gzip.finish();
+                    self.freeBuffer();
+                },
+                else => {},
+            }
+            try self.file_writer.flush();
+            self.file.close(io);
+            self.closed = true;
+        }
+    }
+};
+
 const TarWriter = struct {
     const name = "_TarWriter";
+    const lua_functions = [_][:0]const u8{
+        "archive_path",
+    };
+
     const functions = [_]zlua.FnReg{
         .{ .name = "add", .func = zlua.wrap(add) },
         .{ .name = "setRoot", .func = zlua.wrap(setRoot) },
         .{ .name = "addDir", .func = zlua.wrap(addDir) },
         .{ .name = "addFile", .func = zlua.wrap(addFile) },
+        .{ .name = "close", .func = zlua.wrap(close) },
     };
 
-    file: std.Io.File = undefined,
-    file_buffer: [4096]u8 = undefined,
-    file_writer: std.Io.File.Writer = undefined,
-    writer: std.tar.Writer = undefined,
+    fileWriter: FileWriter = undefined,
+    writer: std.tar.Writer,
 
     fn new(lua: *Lua) i32 {
         const path = filesystem.get_path(lua);
+        const slevel = lua.toString(2) catch "default";
+        const level = toLevel(slevel);
+        std.log.info("{s} {any}", .{ slevel, level });
+        var compression: Compression = .uncompressed;
+
+        if (pathEndsWith(path, ".gz") or pathEndsWith(path, ".tgz")) {
+            compression = .gzip;
+        }
 
         const tarWriter = luax.createUserDataTableSetFunctions(lua, name, TarWriter, &functions);
+        luax.setTableRegistryFunctions(lua, zli_tar, &lua_functions);
 
-        tarWriter.file = std.Io.Dir.cwd().createFile(io, path, .{}) catch luax.raiseError(lua, "could not create outputfile");
-        tarWriter.file_writer = tarWriter.file.writer(io, &tarWriter.file_buffer);
-        tarWriter.writer = std.tar.Writer{ .underlying_writer = &tarWriter.file_writer.interface };
+        tarWriter.fileWriter = FileWriter.init(path, compression) catch luax.raiseError(lua, "could not open output file");
+        const writer = tarWriter.fileWriter.writer(level) catch luax.raiseError(lua, "could not open output file");
+        tarWriter.writer = std.tar.Writer{ .underlying_writer = writer };
 
         return 1;
+    }
+
+    inline fn toLevel(level: [:0]const u8) std.compress.flate.Compress.Options {
+        if (std.mem.eql(u8, level, "default")) return .default;
+        if (std.mem.eql(u8, level, "fastest")) return .fastest;
+        if (std.mem.eql(u8, level, "best")) return .best;
+        if (std.mem.eql(u8, level, "1")) return .level_1;
+        if (std.mem.eql(u8, level, "2")) return .level_2;
+        if (std.mem.eql(u8, level, "3")) return .level_3;
+        if (std.mem.eql(u8, level, "4")) return .level_4;
+        if (std.mem.eql(u8, level, "5")) return .level_5;
+        if (std.mem.eql(u8, level, "6")) return .level_6;
+        if (std.mem.eql(u8, level, "7")) return .level_7;
+        if (std.mem.eql(u8, level, "8")) return .level_8;
+        if (std.mem.eql(u8, level, "9")) return .level_9;
+        @panic("ERR"); //return .default;
+    }
+
+    inline fn pathEndsWith(path: [:0]const u8, suffix: []const u8) bool {
+        return path.len > suffix.len and std.mem.eql(u8, path[path.len - suffix.len ..], suffix);
     }
 
     fn register(lua: *Lua) void {
@@ -268,9 +377,7 @@ const TarWriter = struct {
 
     fn garbageCollect(lua: *Lua) i32 {
         const self: *TarWriter = luax.getGcUserData(lua, TarWriter);
-
-        self.file_writer.interface.flush() catch @panic("could not flush tar file");
-        self.file.close(io);
+        self.fileWriter.deinit() catch luax.raiseError(lua, "could flush output");
         return 0;
     }
 
@@ -323,5 +430,11 @@ const TarWriter = struct {
         tarWriter.writer.writeFileStream(path, stats.size, &reader.interface, .{}) catch luax.raiseError(lua, "could not write to tar file");
         lua.pushValue(1);
         return 1;
+    }
+
+    fn close(lua: *Lua) i32 {
+        const tarWriter = getSelf(lua);
+        tarWriter.fileWriter.deinit() catch luax.raiseError(lua, "could not write to tar file");
+        return 0;
     }
 };
