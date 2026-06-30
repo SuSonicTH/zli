@@ -300,31 +300,31 @@ end
 
 return function(filesystem)
     fs = filesystem
-    fs.split_path = split_path
-    fs.path = new_path
+    fs.child = child
+    fs.chmod = chmod
+    fs.chown = chown
     fs.concat_path = concat_path
+    fs.create_tree = create_tree
+    fs.delete_tree = delete_tree
+    fs.ensure_path = ensure_path
+    fs.get_path = get_path
+    fs.is_empty = is_empty
+    fs.iterate = iterate
+    fs.lines = lines
+    fs.parent = parent
+    fs.path = new_path
+    fs.path_to_path_and_name = path_to_path_and_name
+    fs.read_all = read_all
+    fs.read_lines = read_lines
+    fs.sibling = sibling
+    fs.split_path = split_path
     fs.stream = stream_dir
     fs.stream_tree = stream_tree
+    fs.to_relative = full_path_to_relative
     fs.tree = tree
     fs.tree_size = tree_size
     fs.tree_size_hr = tree_size_hr
-    fs.read_all = read_all
-    fs.read_lines = read_lines
-    fs.lines = lines
-    fs.iterate = iterate
-    fs.delete_tree = delete_tree
     fs.walk = walk
-    fs.parent = parent
-    fs.child = child
-    fs.sibling = sibling
-    fs.chmod = chmod
-    fs.chown = chown
-    fs.get_path = get_path
-    fs.ensure_path = ensure_path
-    fs.create_tree = create_tree
-    fs.path_to_path_and_name = path_to_path_and_name
-    fs.to_relative = full_path_to_relative
-    fs.is_empty = is_empty
 
     return {
         read_all    = read_all,
