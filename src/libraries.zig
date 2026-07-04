@@ -10,6 +10,7 @@ const httpclient = @import("httpclient.zig");
 const httpserver = @import("httpserver.zig");
 const luastrip = @import("luastrip.zig");
 const uuid = @import("uuid.zig");
+const tar = @import("tar.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
@@ -18,49 +19,68 @@ pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.c) c_int;
 
 const std = @import("std");
 
-const preload: []const zlua.FnReg = &.{ .{
-    .name = "sqlite3",
-    .func = &luaopen_lsqlite3,
-}, .{
-    .name = "lpeg",
-    .func = &luaopen_lpeg,
-}, .{
-    .name = "zlib",
-    .func = &luaopen_zlib,
-}, .{
-    .name = "cjson",
-    .func = &luaopen_cjson,
-}, .{
-    .name = "luaunit",
-    .func = zlua.wrap(luaopen_luascript),
-}, .{
-    .name = "re",
-    .func = zlua.wrap(luaopen_luascript),
-}, .{
-    .name = "crossline",
-    .func = zlua.wrap(crossline.luaopen_crossline),
-}, .{
-    .name = "filesystem",
-    .func = zlua.wrap(filesystem.luaopen_filesystem),
-}, .{
-    .name = "unzip",
-    .func = zlua.wrap(unzip.luaopen_unzip),
-}, .{
-    .name = "zip",
-    .func = zlua.wrap(zip.luaopen_zip),
-}, .{
-    .name = "httpclient",
-    .func = zlua.wrap(httpclient.luaopen_httpclient),
-}, .{
-    .name = "httpserver",
-    .func = zlua.wrap(httpserver.luaopen_httpserver),
-}, .{
-    .name = "luastrip",
-    .func = zlua.wrap(luastrip.luaopen_luaStrip),
-}, .{
-    .name = "uuid",
-    .func = zlua.wrap(uuid.luaopen_uuid),
-} };
+const preload: []const zlua.FnReg = &.{
+    .{
+        .name = "sqlite3",
+        .func = &luaopen_lsqlite3,
+    },
+    .{
+        .name = "lpeg",
+        .func = &luaopen_lpeg,
+    },
+    .{
+        .name = "zlib",
+        .func = &luaopen_zlib,
+    },
+    .{
+        .name = "cjson",
+        .func = &luaopen_cjson,
+    },
+    .{
+        .name = "luaunit",
+        .func = zlua.wrap(luaopen_luascript),
+    },
+    .{
+        .name = "re",
+        .func = zlua.wrap(luaopen_luascript),
+    },
+    .{
+        .name = "crossline",
+        .func = zlua.wrap(crossline.luaopen_crossline),
+    },
+    .{
+        .name = "filesystem",
+        .func = zlua.wrap(filesystem.luaopen_filesystem),
+    },
+    .{
+        .name = "unzip",
+        .func = zlua.wrap(unzip.luaopen_unzip),
+    },
+    .{
+        .name = "zip",
+        .func = zlua.wrap(zip.luaopen_zip),
+    },
+    .{
+        .name = "httpclient",
+        .func = zlua.wrap(httpclient.luaopen_httpclient),
+    },
+    .{
+        .name = "httpserver",
+        .func = zlua.wrap(httpserver.luaopen_httpserver),
+    },
+    .{
+        .name = "luastrip",
+        .func = zlua.wrap(luastrip.luaopen_luaStrip),
+    },
+    .{
+        .name = "uuid",
+        .func = zlua.wrap(uuid.luaopen_uuid),
+    },
+    .{
+        .name = "tar",
+        .func = zlua.wrap(tar.luaopen_tar),
+    },
+};
 
 const luascript = struct {
     name: [:0]const u8,
@@ -99,6 +119,7 @@ pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     unzip.setIo(io);
     luastrip.setIo(io);
     uuid.setIo(io);
+    tar.setIo(io);
 
     lua.openLibs();
     _ = lua.getSubtable(zlua.registry_index, "_PRELOAD");

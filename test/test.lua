@@ -3,13 +3,22 @@ local fs = require "filesystem"
 
 RUN_ALL = true
 
---delete everything in ./test/temp except .gitignore
-for _, file in ipairs(fs.list("./test/temp")) do
-    if file.name ~= ".gitignore" then
-        file:delete()
+
+local function cleanTestTemp()
+    for _, file in ipairs(fs.list("./test/temp")) do
+        if file.name ~= ".gitignore" then
+            if (file:is_directory()) then
+                file:delete_tree();
+            else
+                file:delete()
+            end
+        end
     end
 end
 
+
+--delete everything in ./test/temp except .gitignore
+cleanTestTemp()
 --require all test_*.lua files in ./test/
 for fileName in sorted_pairs(fs.dir("./test/")) do
     print(fileName)
@@ -18,4 +27,6 @@ for fileName in sorted_pairs(fs.dir("./test/")) do
     end
 end
 
-os.exit(lu.LuaUnit.run('-v'))
+local ret = lu.LuaUnit.run('-v')
+cleanTestTemp()
+os.exit(ret)

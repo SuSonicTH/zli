@@ -65,6 +65,14 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     lua.remove(-2);
 }
 
+pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, comptime function_list: []const [:0]const u8) void {
+    inline for (function_list) |function_name| {
+        _ = lua.pushString(function_name);
+        pushRegistryFunction(lua, module, function_name);
+        lua.setTable(-3);
+    }
+}
+
 pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
     _ = lua.pushFString(message, args);
     lua.raiseError();
@@ -254,6 +262,15 @@ pub fn setTableFunction(lua: *Lua, index: i32, key: []const u8, value: zlua.CFn)
     _ = lua.pushString(key);
     lua.pushFunction(value);
     lua.setTable(table_index);
+}
+
+pub fn setTableClosure(lua: *Lua, index: i32, key: []const u8, value: zlua.CFn, n: i32) void {
+    const table_index = getAbsoluteIndex(lua, index);
+    lua.pushClosure(value, n);
+    _ = lua.pushString(key);
+    lua.pushValue(-2);
+    lua.setTable(table_index);
+    lua.pop(1);
 }
 
 pub fn setTableValue(lua: *Lua, index: i32, key: []const u8, value: i32, remove: bool) void {
