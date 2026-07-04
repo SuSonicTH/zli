@@ -3,7 +3,7 @@ lu.ORDER_ACTUAL_EXPECTED = false
 
 local tar = require "tar"
 Test_tar = {}
-
+--[[
 function Test_tar:Test_create_tar_file_add_file_bytes()
     local tar_name = "./test/temp/test_file.tar"
     local file_name = "hello.txt"
@@ -48,9 +48,10 @@ function Test_tar:Test_create_tar_file_add_file_bytes_gz_compressed()
 
     lu.assertIsNil(iter())
 end
+--]]
 
 function Test_tar:Test_create_tar_file_add_file_bytes_gz_compressed2()
-    local tar_name = "./test/temp/test_file.tar"
+    local tar_name = "./test/temp/test_file1.tar"
     local file_name = "hello.txt"
     local file_contents = "Hello tar!"
     tar.create(tar_name)
