@@ -169,7 +169,8 @@ const TarReader = struct {
             luax.setTableString(lua, -1, "size_hr", size_hr);
             luax.setTableString(lua, -1, "link_name", file.link_name);
             luax.setTableInteger(lua, -1, "mode", @intCast(file.mode));
-            luax.setTableString(lua, -1, "mode_flags", &modeToPosixString(file.mode));
+            const mode_str = modeToPosixString(file.mode);
+            luax.setTableString(lua, -1, "mode_flags", &mode_str);
             luax.setTableBoolean(lua, -1, "is_directory", file.kind == .directory);
             luax.setTableBoolean(lua, -1, "is_file", file.kind == .file);
             luax.setTableBoolean(lua, -1, "is_link", file.kind == .sym_link);
@@ -220,6 +221,7 @@ const TarReader = struct {
                 self.iterator.streamRemaining(file, &writer) catch luax.raiseError(lua, "could not read file");
                 writer.flush() catch luax.raiseError(lua, "could not read file");
                 _ = lua.pushString(slice);
+                allocator.free(slice);
                 return 1;
             }
         }
@@ -363,7 +365,7 @@ const TarWriter = struct {
         if (std.mem.eql(u8, level, "7")) return .level_7;
         if (std.mem.eql(u8, level, "8")) return .level_8;
         if (std.mem.eql(u8, level, "9")) return .level_9;
-        @panic("ERR"); //return .default;
+        return .default;
     }
 
     inline fn pathEndsWith(path: [:0]const u8, suffix: []const u8) bool {
@@ -451,7 +453,7 @@ var pathToTar_buffer: [1024]u8 = undefined;
 fn pathToTar(writer: std.tar.Writer, path: [:0]const u8) []const u8 {
     _ = std.mem.replace(u8, path, "\\", "/", &pathToTar_buffer);
     if (writer.prefix.len > 0) {
-        if (std.mem.eql(u8, writer.prefix, path[0..writer.prefix.len])) {
+        if (path.len >= writer.prefix.len and std.mem.eql(u8, writer.prefix, path[0..writer.prefix.len])) {
             return pathToTar_buffer[writer.prefix.len..];
         }
     }
