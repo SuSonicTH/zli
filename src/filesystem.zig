@@ -123,7 +123,9 @@ fn pathToString(path: []const u8) [:0]u8 {
 }
 
 fn getRealPath(lua: *Lua, path: []const u8) [:0]u8 {
-    const realPath = std.Io.Dir.cwd().realPathFileAlloc(io, path, allocator) catch luax.raiseFormattedError(lua, "path '%s' does not exist", .{path.ptr});
+    const realPath = std.Io.Dir.cwd().realPathFileAlloc(io, path, allocator) catch {
+        luax.raiseFormattedError(lua, "path '%s' does not exist", .{path.ptr});
+    };
     defer allocator.free(realPath);
     return pathToString(realPath);
 }

@@ -11,9 +11,9 @@ const xz = std.compress.xz;
 const allocator = std.heap.c_allocator;
 
 const exported_functions = [_]zlua.FnReg{
-    .{ .name = "extract", .func = zlua.wrap(extract_all) },
-    .{ .name = "open", .func = zlua.wrap(TarReader.new) },
-    .{ .name = "create", .func = zlua.wrap(TarWriter.new) },
+    .{ .name = "extract", .func = luax.Error.wrap(extract_all) },
+    .{ .name = "open", .func = luax.Error.wrap(TarReader.new) },
+    .{ .name = "create", .func = luax.Error.wrap(TarWriter.new) },
 };
 
 const zli_tar = "zli_tar";
@@ -35,16 +35,25 @@ pub fn luaopen_tar(lua: *Lua) i32 {
 fn extract_all(lua: *Lua) !i32 {
     const tarPath = filesystem.get_path_index(lua, 1);
     const extractPath = filesystem.get_path_index(lua, 2);
+    const errorHandling = luax.Error.handling(lua, 3);
 
-    var extractDir = try std.Io.Dir.cwd().openDir(io, extractPath, .{ .follow_symlinks = false });
+    var extractDir = std.Io.Dir.cwd().openDir(io, extractPath, .{ .follow_symlinks = false }) catch |err|
+        return luax.Error.raiseOrReturn(lua, err, "could not open directory '{s}': {any}", .{ extractPath, err }, errorHandling);
+
     defer extractDir.close(io);
 
-    var fileReader = try FileReader.init(tarPath);
+    var fileReader = FileReader.init(tarPath) catch |err|
+        return luax.Error.raiseOrReturn(lua, err, "could not open tar file '{s}': {any}", .{ tarPath, err }, errorHandling);
     defer fileReader.deinit();
 
-    const reader = try fileReader.reader();
-    try std.tar.extract(io, extractDir, reader, .{});
-    return 0;
+    const reader = fileReader.reader() catch |err|
+        return luax.Error.raiseOrReturn(lua, err, "could not extract tar file '{s}': {any}", .{ tarPath, err }, errorHandling);
+
+    std.tar.extract(io, extractDir, reader, .{}) catch |err|
+        return luax.Error.raiseOrReturn(lua, err, "could not extract tar file '{s}': {any}", .{ tarPath, err }, errorHandling);
+
+    lua.pushBoolean(true);
+    return 1;
 }
 
 const DeCompression = enum {
@@ -130,10 +139,15 @@ const TarReader = struct {
 
     fn new(lua: *Lua) !i32 {
         const path = filesystem.get_path(lua);
+        const errorHandling = luax.Error.handling(lua, 2);
 
         const tarReader: *TarReader = luax.createUserData(lua, name, TarReader);
-        tarReader.fileReader = try FileReader.init(path);
-        const reader = try tarReader.fileReader.reader();
+        tarReader.fileReader = FileReader.init(path) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not open tar file '{s}': {any}", .{ path, err }, errorHandling);
+
+        const reader = tarReader.fileReader.reader() catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not open tar file '{s}': {any}", .{ path, err }, errorHandling);
+
         tarReader.iterator = std.tar.Iterator.init(reader, .{
             .file_name_buffer = &tarReader.file_name_buffer,
             .link_name_buffer = &tarReader.link_name_buffer,
@@ -175,9 +189,9 @@ const TarReader = struct {
             luax.setTableBoolean(lua, -1, "is_file", file.kind == .file);
             luax.setTableBoolean(lua, -1, "is_link", file.kind == .sym_link);
             lua.pushLightUserdata(self);
-            luax.setTableClosure(lua, -2, "extract", zlua.wrap(extract), 1);
+            luax.setTableClosure(lua, -2, "extract", luax.Error.wrap(extract), 1);
             lua.pushLightUserdata(self);
-            luax.setTableClosure(lua, -2, "bytes", zlua.wrap(toslice), 1);
+            luax.setTableClosure(lua, -2, "bytes", luax.Error.wrap(toslice), 1);
         } else {
             lua.pushNil();
         }
@@ -214,14 +228,20 @@ const TarReader = struct {
 
     fn toslice(lua: *Lua) !i32 {
         const self = try getSelf(lua);
+        const errorHandling = luax.Error.handling(lua, 2);
+
         if (self.file_in_tar) |file| {
             if (file.kind == .file) {
-                const slice = try allocator.alloc(u8, file.size);
-                var writer: std.Io.Writer = .fixed(slice);
-                try self.iterator.streamRemaining(file, &writer);
-                try writer.flush();
-                _ = lua.pushString(slice);
-                allocator.free(slice);
+                var lua_buffer: zlua.Buffer = undefined;
+                const buffer = lua_buffer.initSize(lua, file.size);
+
+                var writer: std.Io.Writer = .fixed(buffer);
+                self.iterator.streamRemaining(file, &writer) catch |err|
+                    return luax.Error.raiseOrReturn(lua, err, "could not extract '{s}' from tar: {any}", .{ file.name, err }, errorHandling);
+                writer.flush() catch |err|
+                    return luax.Error.raiseOrReturn(lua, err, "could not extract '{s}' from tar: {any}", .{ file.name, err }, errorHandling);
+
+                lua_buffer.pushResultSize(@intCast(file.size));
                 return 1;
             }
         }
@@ -231,15 +251,20 @@ const TarReader = struct {
     fn extract(lua: *Lua) !i32 {
         const self = try getSelf(lua);
         const path = filesystem.get_path(lua);
+        const errorHandling = luax.Error.handling(lua, 3);
+
         if (self.file_in_tar) |file| {
             if (file.kind == .file) {
-                const ext_file = try std.Io.Dir.cwd().createFile(io, path, .{});
+                const ext_file = std.Io.Dir.cwd().createFile(io, path, .{}) catch |err|
+                    return luax.Error.raiseOrReturn(lua, err, "could not extract '{s}' from tar: {any}", .{ file.name, err }, errorHandling);
                 defer ext_file.close(io);
 
                 var writer = ext_file.writer(io, &self.buffer);
 
-                try self.iterator.streamRemaining(file, &writer.interface);
-                try writer.flush();
+                self.iterator.streamRemaining(file, &writer.interface) catch |err|
+                    return luax.Error.raiseOrReturn(lua, err, "could not extract '{s}' from tar: {any}", .{ file.name, err }, errorHandling);
+                writer.flush() catch |err|
+                    return luax.Error.raiseOrReturn(lua, err, "could not extract '{s}' from tar: {any}", .{ file.name, err }, errorHandling);
 
                 return 0;
             }
@@ -323,12 +348,12 @@ const TarWriter = struct {
     };
 
     const functions = [_]zlua.FnReg{
-        .{ .name = "setRoot", .func = zlua.wrap(setRoot) },
-        .{ .name = "add_dir", .func = zlua.wrap(addDir) },
-        .{ .name = "add_file", .func = zlua.wrap(addFile) },
-        .{ .name = "add_file_bytes", .func = zlua.wrap(addFileBytes) },
-        .{ .name = "add_link", .func = zlua.wrap(addLink) },
-        .{ .name = "close", .func = zlua.wrap(close) },
+        .{ .name = "setRoot", .func = luax.Error.wrap(setRoot) },
+        .{ .name = "add_dir", .func = luax.Error.wrap(addDir) },
+        .{ .name = "add_file", .func = luax.Error.wrap(addFile) },
+        .{ .name = "add_file_bytes", .func = luax.Error.wrap(addFileBytes) },
+        .{ .name = "add_link", .func = luax.Error.wrap(addLink) },
+        .{ .name = "close", .func = luax.Error.wrap(close) },
     };
 
     fileWriter: FileWriter = undefined,
@@ -336,8 +361,9 @@ const TarWriter = struct {
 
     fn new(lua: *Lua) !i32 {
         const path = filesystem.get_path(lua);
-        const slevel = lua.toString(2) catch "default";
-        const level = toLevel(slevel);
+        const level = toLevel(lua.toString(2) catch "default");
+        const errorHandling = luax.Error.handling(lua, 3);
+
         var compression: Compression = .uncompressed;
 
         if (pathEndsWith(path, ".gz") or pathEndsWith(path, ".tgz")) {
@@ -348,7 +374,8 @@ const TarWriter = struct {
         luax.setTableRegistryFunctions(lua, zli_tar, &lua_functions);
 
         tarWriter.fileWriter = FileWriter.init(path, compression);
-        const writer = try tarWriter.fileWriter.writer(level);
+        const writer = tarWriter.fileWriter.writer(level) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not create tar file '{s}': {any}", .{ path, err }, errorHandling);
         tarWriter.writer = std.tar.Writer{ .underlying_writer = writer };
 
         return 1;
@@ -391,7 +418,11 @@ const TarWriter = struct {
     fn setRoot(lua: *Lua) !i32 {
         const tarWriter = getSelf(lua);
         const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
-        try tarWriter.writer.setRoot(path);
+        const errorHandling = luax.Error.handling(lua, 3);
+
+        tarWriter.writer.setRoot(path) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not set root to '{s}': {any}", .{ path, err }, errorHandling);
+
         lua.pushValue(1);
         return 1;
     }
@@ -399,7 +430,11 @@ const TarWriter = struct {
     fn addDir(lua: *Lua) !i32 {
         const tarWriter = getSelf(lua);
         const path = pathToTar(tarWriter.writer, luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument"));
-        try tarWriter.writer.writeDir(path, .{});
+        const errorHandling = luax.Error.handling(lua, 3);
+
+        tarWriter.writer.writeDir(path, .{}) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not set add directory '{s}': {any}", .{ path, err }, errorHandling);
+
         lua.pushValue(1);
         return 1;
     }
@@ -408,7 +443,11 @@ const TarWriter = struct {
         const tarWriter = getSelf(lua);
         const path = luax.getArgStringOrError(lua, 2, "expecting a file path as 1st argument");
         const content = luax.getArgStringOrError(lua, 3, "expecting a file data as 2st argument");
-        try tarWriter.writer.writeFileBytes(path, content, .{});
+        const errorHandling = luax.Error.handling(lua, 4);
+
+        tarWriter.writer.writeFileBytes(path, content, .{}) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not add file '{s}': {any}", .{ path, err }, errorHandling);
+
         lua.pushValue(1);
         return 1;
     }
@@ -416,21 +455,20 @@ const TarWriter = struct {
     fn addFile(lua: *Lua) !i32 {
         const tarWriter = getSelf(lua);
         const file_path = filesystem.get_path_index(lua, 2);
-        var path: []const u8 = undefined;
-        if (lua.getTop() == 2) {
-            path = pathToTar(tarWriter.writer, file_path);
-        } else {
-            path = pathToTar(tarWriter.writer, luax.getArgStringOrError(lua, 3, "expecting a file path as 2nd argument"));
-        }
+        const path = pathToTar(tarWriter.writer, luax.getArgStringOrError(lua, 3, "expecting a file path as 2nd argument"));
+        const errorHandling = luax.Error.handling(lua, 4);
 
-        var input_file = std.Io.Dir.cwd().openFile(io, file_path, .{}) catch luax.raiseError(lua, "could not open input file");
+        var input_file = std.Io.Dir.cwd().openFile(io, file_path, .{}) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not open input file '{s}': {any}", .{ file_path, err }, errorHandling);
         defer input_file.close(io);
 
         const stats = try input_file.stat(io);
         var buffer: [4096]u8 = undefined;
         var reader = input_file.reader(io, &buffer);
 
-        try tarWriter.writer.writeFileStream(path, stats.size, &reader.interface, .{});
+        tarWriter.writer.writeFileStream(path, stats.size, &reader.interface, .{}) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not append input file '{s}': {any}", .{ file_path, err }, errorHandling);
+
         lua.pushValue(1);
         return 1;
     }
@@ -439,14 +477,22 @@ const TarWriter = struct {
         const tarWriter = getSelf(lua);
         const sub_path = luax.getArgStringOrError(lua, 2, "expecting path");
         const link_name = luax.getArgStringOrError(lua, 3, "expecting link name");
-        try tarWriter.writer.writeLink(sub_path, link_name, .{});
+        const errorHandling = luax.Error.handling(lua, 4);
+
+        tarWriter.writer.writeLink(sub_path, link_name, .{}) catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not append link '{s}' to '{s}': {any}", .{ link_name, sub_path, err }, errorHandling);
+
         lua.pushValue(1);
         return 1;
     }
 
     fn close(lua: *Lua) !i32 {
         const tarWriter = getSelf(lua);
-        try tarWriter.fileWriter.deinit();
+        const errorHandling = luax.Error.handling(lua, 4);
+
+        tarWriter.fileWriter.deinit() catch |err|
+            return luax.Error.raiseOrReturn(lua, err, "could not close tar file: {any}", .{err}, errorHandling);
+
         return 0;
     }
 };

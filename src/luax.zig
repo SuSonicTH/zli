@@ -310,3 +310,103 @@ pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
     lua.argCheck(lua.typeOf(index) == .boolean, index, message);
     return lua.toBoolean(index) catch unreachable;
 }
+
+const allocator = std.heap.c_allocator;
+
+pub const Error = struct {
+    var error_message: ?[:0]const u8 = null;
+    var allocated: bool = true;
+    const Handling = enum {
+        raise,
+        @"return",
+    };
+
+    pub fn handling(lua: *Lua, arg: i32) Handling {
+        const str = lua.toString(arg) catch return .@"return";
+        if (std.mem.eql(u8, str, "raise")) {
+            return .raise;
+        }
+        return .@"return";
+    }
+
+    pub fn raise(err: anyerror, comptime format: [:0]const u8, args: anytype) !i32 {
+        const T = @TypeOf(args);
+        const info = @typeInfo(T);
+
+        clearError();
+        switch (info) {
+            .@"struct" => |struct_info| {
+                if (struct_info.fields.len == 0) {
+                    allocated = true;
+                    error_message = format;
+                } else {
+                    allocated = true;
+                    error_message = std.fmt.allocPrintSentinel(allocator, format[0..format.len], args, 0) catch @panic("Could not allocate memory for error message");
+                }
+            },
+            else => @panic("expecting struct as args"),
+        }
+        return err;
+    }
+
+    pub fn ret(lua: *Lua, comptime format: []const u8, args: anytype) i32 {
+        const T = @TypeOf(args);
+        const info = @typeInfo(T);
+
+        switch (info) {
+            .@"struct" => |struct_info| {
+                if (struct_info.fields.len == 0) {
+                    lua.pushNil();
+                    _ = lua.pushString(format);
+                } else {
+                    const message = std.fmt.allocPrint(allocator, format, args) catch @panic("Could not allocate memory for error message");
+                    lua.pushNil();
+                    _ = lua.pushString(message);
+                    allocator.free(message);
+                }
+            },
+            else => @panic("expecting struct as args"),
+        }
+        return 2;
+    }
+
+    pub fn raiseOrReturn(lua: *Lua, err: anyerror, comptime format: [:0]const u8, args: anytype, errorHandling: Handling) !i32 {
+        return switch (errorHandling) {
+            .raise => raise(err, format, args),
+            .@"return" => ret(lua, format, args),
+        };
+    }
+
+    inline fn clearError() void {
+        if (allocated) {
+            if (error_message) |message| {
+                allocator.free(message);
+            }
+        }
+        error_message = null;
+        allocated = false;
+    }
+
+    pub fn wrap(comptime function: anytype) zlua.CFn {
+        const info = @typeInfo(@TypeOf(function)).@"fn";
+        const has_error_union = @typeInfo(info.return_type.?) == .error_union;
+        return struct {
+            fn inner(state: ?*zlua.LuaState) callconv(.c) c_int {
+                // this is called by Lua, state should never be null
+                var lua: *Lua = @ptrCast(state.?);
+                if (has_error_union) {
+                    return @call(.always_inline, function, .{lua}) catch |err| {
+                        if (error_message) |message| {
+                            lua.raiseErrorStr(message, .{});
+                            clearError();
+                        } else {
+                            lua.raiseErrorStr(@errorName(err), .{});
+                        }
+                    };
+                } else {
+                    return @call(.always_inline, function, .{lua});
+                }
+            }
+        }.inner;
+    }
+};
