@@ -2,6 +2,8 @@ const std = @import("std");
 const zlua = @import("zlua");
 const libraries = @import("libraries.zig");
 const Utf8Output = @import("Utf8Output.zig");
+const luax = @import("luax.zig");
+
 const c = @cImport({
     @cInclude("unzip.h");
 });
@@ -31,12 +33,20 @@ pub fn main(init: std.process.Init) !void {
     try create_payload_searcher(lua);
 
     lua.pushFunction(zlua.wrap(messageHandler));
+    createZliTable(lua);
     try lua.loadBuffer(main_lua, prog_name, .binary_text);
     lua.protectedCall(.{ .args = 0, .results = 0, .msg_handler = 1 }) catch {
         const message = lua.toString(-1) catch "Unknown error";
         std.log.err("{s}: {s}", .{ prog_name, message });
         lua.pop(1);
     };
+}
+
+fn createZliTable(lua: *Lua) void {
+    lua.newTable();
+    luax.setTableString(lua, -1, "version", @embedFile("version"));
+    luax.setTableString(lua, -1, "error_handling", "return");
+    lua.setGlobal("ZLI");
 }
 
 fn createArgTable(lua: *Lua, args: []const [:0]const u8) !void {
