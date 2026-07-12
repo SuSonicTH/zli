@@ -22,11 +22,12 @@ const exported_functions = [_]zlua.FnReg{
 const zli_tar = "zli_tar";
 
 var io: std.Io = undefined;
-var errorHandling: luaerror.Handling = undefined;
 
 pub fn setIo(_io: std.Io) void {
     io = _io;
 }
+
+var errorHandling: luaerror.Handling = undefined;
 
 pub fn luaopen_tar(lua: *Lua) i32 {
     errorHandling = luaerror.getGlobalErrorHanding(lua);
@@ -410,9 +411,9 @@ const TarWriter = struct {
         luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
     }
 
-    fn garbageCollect(lua: *Lua) i32 {
+    fn garbageCollect(lua: *Lua) !i32 {
         const self: *TarWriter = luax.getGcUserData(lua, TarWriter);
-        self.fileWriter.deinit() catch luax.raiseError(lua, "could flush output");
+        self.fileWriter.deinit() catch lua.raiseErrorStr("could flush output", .{});
         return 0;
     }
 
