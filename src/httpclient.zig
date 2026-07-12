@@ -7,20 +7,27 @@ const luaerror = @import("luaerror.zig");
 
 const httpclient = [_]zlua.FnReg{
     .{ .name = "call", .func = luaerror.wrap(call) },
+    .{ .name = "error_handling", .func = luaerror.wrap(error_handling) },
 };
 
 var io: std.Io = undefined;
-var errorHandling: luaerror.Handling = undefined;
 
 pub fn setIo(_io: std.Io) void {
     io = _io;
 }
+
+var errorHandling: luaerror.Handling = undefined;
 
 pub fn luaopen_httpclient(lua: *Lua) i32 {
     errorHandling = luaerror.getGlobalErrorHanding(lua);
     lua.newLib(&httpclient);
     luax.registerExtended(lua, @embedFile("httpclient.lua"), "httpclient", "zli_httpclient");
     return 1;
+}
+
+pub fn error_handling(lua: *Lua) !i32 {
+    errorHandling = try luaerror.getErrorHandling(lua);
+    return 0;
 }
 
 const readLength = 4096;

@@ -7,20 +7,27 @@ const luaerror = @import("luaerror.zig");
 
 const httpserver = [_]zlua.FnReg{
     .{ .name = "listen", .func = luaerror.wrap(listen) },
+    .{ .name = "error_handling", .func = luaerror.wrap(error_handling) },
 };
 
 var io: std.Io = undefined;
-var errorHandling: luaerror.Handling = undefined;
 
 pub fn setIo(_io: std.Io) void {
     io = _io;
 }
+
+var errorHandling: luaerror.Handling = undefined;
 
 pub fn luaopen_httpserver(lua: *Lua) i32 {
     errorHandling = luaerror.getGlobalErrorHanding(lua);
     lua.newLib(&httpserver);
     luax.registerExtended(lua, @embedFile("httpserver.lua"), "httpserver", "zli_httpserver");
     return 1;
+}
+
+pub fn error_handling(lua: *Lua) !i32 {
+    errorHandling = try luaerror.getErrorHandling(lua);
+    return 0;
 }
 
 const addressIndex = 1;
