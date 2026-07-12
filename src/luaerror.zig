@@ -41,6 +41,47 @@ pub fn getErrorHandling(lua: *Lua) !Handling {
     return raise(error.wrongArgument, "expecting a string 'return', 'raise' or 'reset' but got '{s}'", .{handler});
 }
 
+pub fn argError(lua: *Lua, arg: i32, comptime format: []const u8, args: anytype) noreturn {
+    const T = @TypeOf(args);
+    const info = @typeInfo(T);
+
+    switch (info) {
+        .@"struct" => |struct_info| {
+            if (struct_info.fields.len == 0) {
+                lua.argError(arg, format);
+            } else {
+                const message = std.fmt.bufPrintSentinel(&error_buffer, format[0..format.len], args, 0) catch @panic("error message is too long");
+                lua.argError(arg, message);
+            }
+        },
+        else => @panic("expecting struct as args"),
+    }
+    unreachable;
+}
+
+pub fn callErrorHandler(lua: *Lua, handlerIndex: ?i32, comptime format: [:0]const u8, args: anytype) void {
+    if (handlerIndex) |index| {
+        lua.pushValue(index);
+    }
+
+    const T = @TypeOf(args);
+    const info = @typeInfo(T);
+
+    switch (info) {
+        .@"struct" => |struct_info| {
+            if (struct_info.fields.len == 0) {
+                _ = lua.pushString(format);
+            } else {
+                const message = std.fmt.bufPrintSentinel(&error_buffer, format[0..format.len], args, 0) catch @panic("error message is too long");
+                _ = lua.pushString(message);
+            }
+        },
+        else => @panic("expecting struct as args"),
+    }
+
+    lua.call(.{ .args = 1, .results = 0 });
+}
+
 pub fn raise(err: anyerror, comptime format: [:0]const u8, args: anytype) anyerror {
     const T = @TypeOf(args);
     const info = @typeInfo(T);

@@ -3,18 +3,21 @@ const std = @import("std");
 const zlua = @import("zlua");
 const luax = @import("luax.zig");
 const Lua = zlua.Lua;
+const luaerror = @import("luaerror.zig");
 
 const httpclient = [_]zlua.FnReg{
-    .{ .name = "call", .func = zlua.wrap(call) },
+    .{ .name = "call", .func = luaerror.wrap(call) },
 };
 
 var io: std.Io = undefined;
+var errorHandling: luaerror.Handling = undefined;
 
 pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
 pub fn luaopen_httpclient(lua: *Lua) i32 {
+    errorHandling = luaerror.getGlobalErrorHanding(lua);
     lua.newLib(&httpclient);
     luax.registerExtended(lua, @embedFile("httpclient.lua"), "httpclient", "zli_httpclient");
     return 1;
@@ -29,11 +32,11 @@ const urlIndex = 2;
 const optionIndex = 3;
 const bodyIndex = 4;
 
-fn call(lua: *Lua) i32 {
+fn call(lua: *Lua) !i32 {
     const methodName = luax.getArgStringOrError(lua, methodNameIndex, "expecting http method string of [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]");
-    const method = std.meta.stringToEnum(Method, methodName) orelse luax.raiseFormattedError(lua, "expecting http method [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH] got '%s'", .{methodName.ptr});
+    const method = std.meta.stringToEnum(Method, methodName) orelse
+        return luaerror.argError(lua, 1, "expecting http method [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH] got '{s}'", .{methodName.ptr});
     const url = luax.getArgStringOrError(lua, urlIndex, "expecting url string");
-
     lua.argCheck(lua.typeOf(optionIndex) == .table, optionIndex, "expecting table with options");
 
     var arena = std.heap.ArenaAllocator.init(lua.allocator());
@@ -42,20 +45,21 @@ fn call(lua: *Lua) i32 {
 
     var header = Header.init(allocator);
     defer header.deinit();
-    header.parseHeader(lua, optionIndex) catch return luax.raiseError(lua, "error while parsing header");
+    header.parseHeader(lua, optionIndex) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "error while parsing header: {any}", .{err}, errorHandling);
 
-    const uri = std.Uri.parse(url) catch return luax.returnFormattedError(lua, "invalid url '%s'", .{url.ptr});
+    const uri = std.Uri.parse(url) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "invalid url '{s}': {any}", .{ url, err }, errorHandling);
 
     var client = std.http.Client{ .io = io, .allocator = allocator };
     defer client.deinit();
 
-    //var header_buffer: [32 * 1024]u8 = undefined;
     var request = client.request(method, uri, .{
-        //.server_header_buffer = &header_buffer,
         .headers = header.headers,
         .extra_headers = header.extra_headers.items,
         .privileged_headers = header.privileged_headers.items,
-    }) catch return luax.returnFormattedError(lua, "could not open connection to '%s'", .{url.ptr});
+    }) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "could not open connection to '{s}': {any}", .{ url, err }, errorHandling);
     defer request.deinit();
 
     const writeBody = switch (method) {
@@ -65,18 +69,21 @@ fn call(lua: *Lua) i32 {
     if (writeBody) request.transfer_encoding = .chunked;
 
     if (lua.typeOf(bodyIndex) != .nil and writeBody) {
-        const body = lua.toString(bodyIndex) catch return luax.returnError(lua, "could not get body ");
-        _ = request.sendBodyComplete(@constCast(body)) catch return luax.returnFormattedError(lua, "could not send body to '%s'", .{url.ptr});
+        const body = lua.toString(bodyIndex) catch |err|
+            return luaerror.raiseOrReturn(lua, err, "could not get body for '{s}': {any}", .{ url, err }, errorHandling);
+        _ = request.sendBodyComplete(@constCast(body)) catch |err|
+            return luaerror.raiseOrReturn(lua, err, "could not get body to '{s}': {any}", .{ url, err }, errorHandling);
     } else {
-        request.sendBodiless() catch return luax.returnFormattedError(lua, "could not send to '%s'", .{url.ptr});
+        request.sendBodiless() catch |err|
+            return luaerror.raiseOrReturn(lua, err, "could not send to '{s}': {any}", .{ url, err }, errorHandling);
     }
 
-    //request.re .wait() catch return luax.returnFormattedError(lua, "could not get response from '%s'", .{url.ptr});
-
     var redirect_buffer: [readLength]u8 = undefined;
-    const response = request.receiveHead(&redirect_buffer) catch return luax.returnFormattedError(lua, "could not receive header from '%s'", .{url.ptr});
+    const response = request.receiveHead(&redirect_buffer) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "could not receive header from '{s}': {any}", .{ url, err }, errorHandling);
     pushHeader(lua, &response.head);
-    readAndPushBody(lua, &request);
+    readAndPushBody(lua, &request) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "could not read response from '{s}': {any}", .{ url, err }, errorHandling);
     return 2;
 }
 
@@ -105,14 +112,14 @@ fn pushHeader(lua: *Lua, head: *const std.http.Client.Response.Head) void {
     }
 }
 
-fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) void {
+fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) !void {
     var lua_buffer: zlua.Buffer = undefined;
     lua_buffer.init(lua);
     var buffer = lua_buffer.prepSize(readLength);
 
     const reader = &request.reader.interface;
     while (true) {
-        const length = reader.readSliceShort(buffer) catch luax.raiseError(lua, "could not read response");
+        const length = try reader.readSliceShort(buffer);
         lua_buffer.addSize(length);
         if (length == readLength) {
             buffer = lua_buffer.prepSize(readLength);
