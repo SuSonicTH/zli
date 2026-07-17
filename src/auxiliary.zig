@@ -23,7 +23,6 @@ const string_functions = [_]zlua.FnReg{
     .{ .name = "base64urlDecode", .func = zlua.wrap(base64urlDecode) },
     .{ .name = "urlEncode", .func = luaerror.wrap(urlEncode) },
     .{ .name = "utf8len", .func = luaerror.wrap(utf8len) },
-    .{ .name = "error_handling", .func = luaerror.wrap(error_handling) },
 };
 
 const table_functions = [_]zlua.FnReg{
@@ -35,11 +34,7 @@ const os_functions = [_]zlua.FnReg{
     .{ .name = "nanotime", .func = zlua.wrap(nanotime) },
 };
 
-var errorHandling: luaerror.Handling = undefined;
-
 pub fn register(lua: *Lua) void {
-    errorHandling = luaerror.getGlobalErrorHanding(lua);
-
     register_module(lua, "string", &string_functions);
     register_module(lua, "table", &table_functions);
     register_module(lua, "os", &os_functions);
@@ -56,11 +51,6 @@ fn register_module(lua: *Lua, module: [:0]const u8, functions: []const zlua.FnRe
         lua.setTable(-3);
     }
     lua.pop(1);
-}
-
-pub fn error_handling(lua: *Lua) !i32 {
-    errorHandling = try luaerror.getErrorHandling(lua);
-    return 0;
 }
 
 fn os_get_name(lua: *Lua) i32 {
@@ -161,13 +151,13 @@ fn base64dec(lua: *Lua, decoder: std.base64.Base64Decoder) !i32 {
     const string = luax.getArgStringOrError(lua, 1, "expecting a strig to decode");
 
     const bufferSize = decoder.calcSizeForSlice(string) catch |err|
-        return luaerror.raiseOrReturn(lua, err, "could not decode string: {any}", .{err}, errorHandling);
+        return luaerror.raise(err, "could not decode string: {any}", .{err});
 
     var lua_buffer: zlua.Buffer = undefined;
     const buffer = lua_buffer.initSize(lua, bufferSize);
 
     decoder.decode(buffer, string) catch |err|
-        return luaerror.raiseOrReturn(lua, err, "could not decode string: {any}", .{err}, errorHandling);
+        return luaerror.raise(err, "could not decode string: {any}", .{err});
 
     lua_buffer.pushResultSize(bufferSize);
     return 1;
@@ -188,7 +178,7 @@ fn urlEncode(lua: *Lua) !i32 {
                 }
                 lua_buffer.addString(string[start..index]);
                 lua_buffer.addString(std.fmt.bufPrint(&buffer, "%{X:0>2}", .{char}) catch |err|
-                    return luaerror.raiseOrReturn(lua, err, "could not urlEncode string '{s}': {any}", .{ string, err }, errorHandling));
+                    return luaerror.raise(err, "could not urlEncode string '{s}': {any}", .{ string, err }));
                 start = index + 1;
             },
         }
@@ -203,7 +193,7 @@ fn urlEncode(lua: *Lua) !i32 {
 fn utf8len(lua: *Lua) !i32 {
     const string = luax.getArgStringOrError(lua, 1, "expecting a strig to count codepoints from");
     const len = std.unicode.utf8CountCodepoints(string) catch |err|
-        return luaerror.raiseOrReturn(lua, err, "could not count codepoints: {any}", .{err}, errorHandling);
+        return luaerror.raise(err, "could not count codepoints: {any}", .{err});
     lua.pushInteger(@bitCast(len));
     return 1;
 }

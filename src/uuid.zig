@@ -23,7 +23,7 @@ pub fn setIo(_io: std.Io) void {
     random = random_impl.interface();
 }
 
-pub fn luaopen_uuid(lua: *Lua) i32 {
+pub fn register(lua: *Lua) i32 {
     lua.newLib(&functions);
     return 1;
 }

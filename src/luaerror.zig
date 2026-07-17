@@ -11,7 +11,7 @@ pub const Handling = enum {
 var error_buffer: [1024:0]u8 = undefined;
 var error_message: ?[:0]const u8 = null;
 
-pub fn getGlobalErrorHanding(lua: *Lua) Handling {
+pub fn getGlobalHanding(lua: *Lua) Handling {
     var handling: Handling = .@"return";
 
     if (lua.getGlobal("ZLI") == .table) {
@@ -28,17 +28,9 @@ pub fn getGlobalErrorHanding(lua: *Lua) Handling {
     return handling;
 }
 
-pub fn getErrorHandling(lua: *Lua) !Handling {
-    const handler = luax.getArgStringOrError(lua, 1, "expecting a string 'return', 'raise' or 'reset'");
-
-    if (std.mem.eql(u8, handler, "raise")) {
-        return .raise;
-    } else if (std.mem.eql(u8, handler, "return")) {
-        return .@"return";
-    } else if (std.mem.eql(u8, handler, "reset")) {
-        return getGlobalErrorHanding(lua);
-    }
-    return raise(error.wrongArgument, "expecting a string 'return', 'raise' or 'reset' but got '{s}'", .{handler});
+pub fn getHandling(error_handling: [:0]const u8) !Handling {
+    return std.meta.stringToEnum(Handling, error_handling) orelse
+        raise(error.unknownArgument, "expecting a string 'return' or 'raise' but got '{s}'", .{error_handling});
 }
 
 pub fn argError(lua: *Lua, arg: i32, comptime format: []const u8, args: anytype) noreturn {

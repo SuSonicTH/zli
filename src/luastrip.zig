@@ -6,10 +6,10 @@ const Lua = zlua.Lua;
 const luaerror = @import("luaerror.zig");
 const filesystem = @import("filesystem.zig");
 
-const luaStrip = [_]zlua.FnReg{
+const exported_functions = [_]zlua.FnReg{
     .{ .name = "file", .func = luaerror.wrap(file) },
     .{ .name = "string", .func = luaerror.wrap(string) },
-    .{ .name = "error_handling", .func = luaerror.wrap(error_handling) },
+    .{ .name = "config", .func = luaerror.wrap(setConfig) },
 };
 
 var io: std.Io = undefined;
@@ -18,16 +18,36 @@ pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
-var errorHandling: luaerror.Handling = undefined;
+const Config = struct {
+    errorHandling: luaerror.Handling = .@"return",
+};
 
-pub fn luaopen_luaStrip(lua: *Lua) i32 {
-    lua.newLib(&luaStrip);
+pub fn register(lua: *Lua) !i32 {
+    var config = setup(lua);
+    config.errorHandling = luaerror.getGlobalHanding(lua);
     return 1;
 }
 
-pub fn error_handling(lua: *Lua) !i32 {
-    errorHandling = try luaerror.getErrorHandling(lua);
-    return 0;
+fn setup(lua: *Lua) *Config {
+    lua.newLibTable(&exported_functions);
+    const udata = lua.newUserdata(Config, 0);
+    lua.setFuncs(&exported_functions, 1);
+    return udata;
+}
+
+pub fn setConfig(lua: *Lua) !i32 {
+    lua.checkType(1, .table);
+    var config = setup(lua);
+
+    if (luax.getOptionalString(lua, "error_handling", 1)) |error_handling| {
+        config.errorHandling = try luaerror.getHandling(error_handling);
+    }
+    return 1;
+}
+
+fn get_error_handling(lua: *Lua) !luaerror.Handling {
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+    return config.errorHandling;
 }
 
 fn file(lua: *Lua) !i32 {
@@ -35,7 +55,7 @@ fn file(lua: *Lua) !i32 {
     const output = filesystem.get_path_index(lua, 2);
 
     strip.file(io, source, output, lua.allocator()) catch |err|
-        return luaerror.raiseOrReturn(lua, err, "could not strip '{s}' to '{s}': {any}", .{ source, output, err }, errorHandling);
+        return luaerror.raiseOrReturn(lua, err, "could not strip '{s}' to '{s}': {any}", .{ source, output, err }, try get_error_handling(lua));
 
     lua.pushBoolean(true);
     return 1;
@@ -44,7 +64,7 @@ fn file(lua: *Lua) !i32 {
 fn string(lua: *Lua) !i32 {
     const source = luax.getArgStringOrError(lua, 1, "expecting lua source string as 1st argument");
     const output = strip.strip(source, lua.allocator()) catch |err|
-        return luaerror.raiseOrReturn(lua, err, "could not strip lua source: {any}", .{err}, errorHandling);
+        return luaerror.raiseOrReturn(lua, err, "could not strip lua source: {any}", .{err}, try get_error_handling(lua));
 
     _ = lua.pushString(output);
     return 1;

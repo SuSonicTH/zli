@@ -44,6 +44,14 @@ pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, mod
     lua.pop(1);
 }
 
+pub fn setupLibrary(lua: *Lua, list: []const zlua.FnReg, comptime T: type, comptime name: [:0]const u8) *T {
+    lua.newLibTable(list);
+    const udata = lua.newUserdata(T, 0);
+    lua.setFuncs(list, 1);
+    registerExtended(lua, @embedFile(name ++ ".lua"), name, "zli_" ++ name);
+    return udata;
+}
+
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.getGlobal(module);
     _ = lua.pushString(function);
@@ -83,12 +91,6 @@ pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     lua.raiseError();
 }
 
-pub fn returnError(lua: *Lua, message: [:0]const u8) i32 {
-    lua.pushNil();
-    _ = lua.pushString(message);
-    return 2;
-}
-
 pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32 {
     lua.pushNil();
     _ = lua.pushFString(message, args);
@@ -118,9 +120,9 @@ pub fn createUserDataTable(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
     return userData;
 }
 
-pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const zlua.FnReg) *T {
+pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const zlua.FnReg, num_upvalues: i32) *T {
     const userData: *T = createUserDataTable(lua, name, T);
-    lua.setFuncs(functions, 0);
+    lua.setFuncs(functions, num_upvalues);
     return userData;
 }
 

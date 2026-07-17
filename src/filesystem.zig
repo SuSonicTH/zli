@@ -88,7 +88,7 @@ pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
-pub fn luaopen_filesystem(lua: *Lua) i32 {
+pub fn register(lua: *Lua) i32 {
     lua.newLib(&filesystem);
     lua.setFuncs(&filesystem_path, 0);
     _ = lua.pushString("separator");

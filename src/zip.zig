@@ -30,7 +30,7 @@ pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
-pub fn luaopen_zip(lua: *Lua) i32 {
+pub fn register(lua: *Lua) i32 {
     ZipUdata.register(lua);
     lua.newLib(&zip);
 
@@ -83,7 +83,7 @@ const ZipUdata = struct {
         const path = filesystem.get_path(lua);
         const zfh = c.zipOpen(path.ptr, mode) orelse return luax.returnFormattedError(lua, "could not create zip file '%s'", .{path.ptr});
 
-        const ud: *ZipUdata = luax.createUserDataTableSetFunctions(lua, name, ZipUdata, &functions);
+        const ud: *ZipUdata = luax.createUserDataTableSetFunctions(lua, name, ZipUdata, &functions, 0);
         luax.setTableRegistryFunction(lua, -1, "add_directory", zli_zip, "add_directory");
 
         ud.path = path;
