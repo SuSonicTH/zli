@@ -194,26 +194,31 @@ const TarReader = struct {
     }
 
     fn iterate(lua: *Lua) !i32 {
-        const self = try getSelf(lua);
+        const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+        const self = try lua.toUserdata(TarReader, Lua.upvalueIndex(2));
+
         self.file_in_tar = try self.iterator.next();
         if (self.file_in_tar) |file| {
             lua.newTable();
-            luax.setTableString(lua, -1, "name", file.name);
-            luax.setTableString(lua, -1, "type", @tagName(file.kind));
-            luax.setTableInteger(lua, -1, "size", @intCast(file.size));
+            const top = lua.getTop();
+            luax.setTableString(lua, top, "name", file.name);
+            luax.setTableString(lua, top, "type", @tagName(file.kind));
+            luax.setTableInteger(lua, top, "size", @intCast(file.size));
             const size_hr = try filesystem.size_human_readable(file.size);
-            luax.setTableString(lua, -1, "size_hr", size_hr);
-            luax.setTableString(lua, -1, "link_name", file.link_name);
-            luax.setTableInteger(lua, -1, "mode", @intCast(file.mode));
+            luax.setTableString(lua, top, "size_hr", size_hr);
+            luax.setTableString(lua, top, "link_name", file.link_name);
+            luax.setTableInteger(lua, top, "mode", @intCast(file.mode));
             const mode_str = modeToPosixString(file.mode);
-            luax.setTableString(lua, -1, "mode_flags", &mode_str);
-            luax.setTableBoolean(lua, -1, "is_directory", file.kind == .directory);
-            luax.setTableBoolean(lua, -1, "is_file", file.kind == .file);
-            luax.setTableBoolean(lua, -1, "is_link", file.kind == .sym_link);
+            luax.setTableString(lua, top, "mode_flags", &mode_str);
+            luax.setTableBoolean(lua, top, "is_directory", file.kind == .directory);
+            luax.setTableBoolean(lua, top, "is_file", file.kind == .file);
+            luax.setTableBoolean(lua, top, "is_link", file.kind == .sym_link);
+            lua.pushLightUserdata(config);
             lua.pushLightUserdata(self);
-            luax.setTableClosure(lua, -2, "extract", luaerror.wrap(extract), 1);
+            luax.setTableClosure(lua, top, "extract", luaerror.wrap(extract), 2);
+            lua.pushLightUserdata(config);
             lua.pushLightUserdata(self);
-            luax.setTableClosure(lua, -2, "bytes", luaerror.wrap(toslice), 1);
+            luax.setTableClosure(lua, top, "bytes", luaerror.wrap(toslice), 2);
         } else {
             lua.pushNil();
         }
@@ -432,7 +437,7 @@ const TarWriter = struct {
     }
 
     fn getSelf(lua: *Lua) *TarWriter {
-        return luax.getUserDataIndex(lua, name, TarWriter, 2);
+        return luax.getUserDataIndex(lua, name, TarWriter, 1);
     }
 
     fn setRoot(lua: *Lua) !i32 {

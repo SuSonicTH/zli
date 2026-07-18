@@ -142,6 +142,32 @@ pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: 
     return udata;
 }
 
+pub fn debugLogStack(lua: *Lua, tag: []const u8, upvalues: bool) !void {
+    if (upvalues) {
+        for (1..5) |i| {
+            const t = lua.typeOf(Lua.upvalueIndex(@intCast(i)));
+            if (t == .none) break;
+            switch (t) {
+                .string => std.log.debug("{s}[-{d}]: {any} ({s})", .{ tag, i, t, try lua.toString(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                .number => std.log.debug("{s}[-{d}]: {any} ({any})", .{ tag, i, t, try lua.toNumber(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                .boolean => std.log.debug("{s}[-{d}]: {any} ({any})", .{ tag, i, t, lua.toBoolean(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                else => std.log.debug("{s}[-{d}]: {any}", .{ tag, i, t }),
+            }
+        }
+    }
+
+    const top: usize = @intCast(lua.getTop() + 1);
+    for (1..top) |i| {
+        const t = lua.typeOf(@intCast(i));
+        switch (t) {
+            .string => std.log.debug("{s}[{d}]: {any} ({s})", .{ tag, i, t, try lua.toString(@intCast(i)) }),
+            .number => std.log.debug("{s}[{d}]: {any} ({any})", .{ tag, i, t, try lua.toNumber(@intCast(i)) }),
+            .boolean => std.log.debug("{s}[{d}]: {any} ({any})", .{ tag, i, t, lua.toBoolean(@intCast(i)) }),
+            else => std.log.debug("{s}[{d}]: {any}", .{ tag, i, t }),
+        }
+    }
+}
+
 pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
     return lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
 }

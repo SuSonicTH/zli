@@ -9,7 +9,6 @@ const c = @cImport({
 });
 
 const Lua = zlua.Lua;
-const debug = std.log.debug;
 
 const main_lua: [:0]const u8 = @embedFile("main.lua");
 var prog_name: [:0]const u8 = undefined;
