@@ -73,7 +73,6 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     lua.remove(-2);
 }
 
-//deprecated
 pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, comptime function_list: []const [:0]const u8) void {
     inline for (function_list) |function_name| {
         _ = lua.pushString(function_name);
