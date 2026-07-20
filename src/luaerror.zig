@@ -118,6 +118,17 @@ pub fn raiseOrReturn(lua: *Lua, err: anyerror, comptime format: [:0]const u8, ar
     };
 }
 
+pub fn raiseOrReturnLast(lua: *Lua, err: anyerror, errorHandling: Handling) !i32 {
+    return switch (errorHandling) {
+        .raise => return err,
+        .@"return" => {
+            lua.pushNil();
+            _ = lua.pushString(error_message.?);
+            return 2;
+        },
+    };
+}
+
 pub fn wrap(comptime function: anytype) zlua.CFn {
     const info = @typeInfo(@TypeOf(function)).@"fn";
     const has_error_union = @typeInfo(info.return_type.?) == .error_union;

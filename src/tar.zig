@@ -25,7 +25,7 @@ pub fn setIo(_io: std.Io) void {
 }
 
 const Config = struct {
-    errorHandling: luaerror.Handling = .@"return",
+    errorHandling: luaerror.Handling = undefined,
 };
 
 pub fn register(lua: *Lua) i32 {
@@ -56,8 +56,8 @@ fn get_error_handling(lua: *Lua) !luaerror.Handling {
 }
 
 fn extract_all(lua: *Lua) !i32 {
-    const tarPath = filesystem.get_path_index(lua, 1);
-    const extractPath = filesystem.get_path_index(lua, 2);
+    const tarPath = try filesystem.get_path_index(lua, 1);
+    const extractPath = try filesystem.get_path_index(lua, 2);
 
     var extractDir = std.Io.Dir.cwd().openDir(io, extractPath, .{ .follow_symlinks = false }) catch |err|
         return luaerror.raiseOrReturn(lua, err, "could not open directory '{s}': {any}", .{ extractPath, err }, try get_error_handling(lua));
@@ -160,7 +160,7 @@ const TarReader = struct {
     file_in_tar: ?std.tar.Iterator.File = null,
 
     fn new(lua: *Lua) !i32 {
-        const path = filesystem.get_path(lua);
+        const path = try filesystem.get_path(lua);
 
         lua.pushValue(Lua.upvalueIndex(1));
         const tarReader: *TarReader = luax.createUserData(lua, name, TarReader);
@@ -276,7 +276,7 @@ const TarReader = struct {
 
     fn extract(lua: *Lua) !i32 {
         const self = try getSelf(lua);
-        const path = filesystem.get_path(lua);
+        const path = try filesystem.get_path(lua);
 
         if (self.file_in_tar) |file| {
             if (file.kind == .file) {
@@ -385,7 +385,7 @@ const TarWriter = struct {
     writer: std.tar.Writer,
 
     fn new(lua: *Lua) !i32 {
-        const path = filesystem.get_path(lua);
+        const path = try filesystem.get_path(lua);
         const level = toLevel(lua.toString(2) catch "default");
 
         var compression: Compression = .uncompressed;
@@ -476,7 +476,7 @@ const TarWriter = struct {
 
     fn addFile(lua: *Lua) !i32 {
         const tarWriter = getSelf(lua);
-        const file_path = filesystem.get_path_index(lua, 2);
+        const file_path = try filesystem.get_path_index(lua, 2);
         const path = pathToTar(tarWriter.writer, luax.getArgStringOrError(lua, 3, "expecting a file path as 2nd argument"));
 
         var input_file = std.Io.Dir.cwd().openFile(io, file_path, .{}) catch |err|

@@ -73,6 +73,7 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     lua.remove(-2);
 }
 
+//deprecated
 pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, comptime function_list: []const [:0]const u8) void {
     inline for (function_list) |function_name| {
         _ = lua.pushString(function_name);
@@ -196,6 +197,17 @@ pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]cons
 
 pub fn getTableString(lua: *Lua, key: [:0]const u8, index: i32) [:0]const u8 {
     return getTableStringOrError(lua, key, index) catch raiseError(lua, "illegal option, expecting String");
+}
+
+pub fn getTableStringOptional(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return null;
+    }
+    const value = lua.toString(-1) catch return null;
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
 }
 
 pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]const u8) [:0]const u8 {
@@ -337,4 +349,12 @@ pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Nu
 pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
     lua.argCheck(lua.typeOf(index) == .boolean, index, message);
     return lua.toBoolean(index) catch unreachable;
+}
+
+pub fn isFirstArgLibTableOrError(lua: *Lua, message: [:0]const u8) void {
+    lua.argCheck(lua.typeOf(1) == .table, 1, message);
+    _ = lua.pushString("config");
+    const t = lua.getTable(1);
+    lua.argCheck(t == .function, 1, message);
+    lua.pop(1);
 }

@@ -17,7 +17,7 @@ pub fn setIo(_io: std.Io) void {
 }
 
 const Config = struct {
-    errorHandling: luaerror.Handling = .@"return",
+    errorHandling: luaerror.Handling = undefined,
 };
 
 pub fn register(lua: *Lua) !i32 {

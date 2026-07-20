@@ -19,7 +19,7 @@ pub fn setIo(_io: std.Io) void {
 }
 
 const Config = struct {
-    errorHandling: luaerror.Handling = .@"return",
+    errorHandling: luaerror.Handling = undefined,
 };
 
 pub fn register(lua: *Lua) !i32 {
@@ -51,8 +51,8 @@ fn get_error_handling(lua: *Lua) !luaerror.Handling {
 }
 
 fn file(lua: *Lua) !i32 {
-    const source = filesystem.get_path_index(lua, 1);
-    const output = filesystem.get_path_index(lua, 2);
+    const source = try filesystem.get_path_index(lua, 1);
+    const output = try filesystem.get_path_index(lua, 2);
 
     strip.file(io, source, output, lua.allocator()) catch |err|
         return luaerror.raiseOrReturn(lua, err, "could not strip '{s}' to '{s}': {any}", .{ source, output, err }, try get_error_handling(lua));

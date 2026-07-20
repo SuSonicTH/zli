@@ -69,7 +69,7 @@ const UnzipUdata = struct {
     }
 
     fn new(lua: *Lua) i32 {
-        const path = filesystem.get_path(lua);
+        const path = filesystem.get_path(lua) catch unreachable; //todo:fix
         const uzfh = c.unzOpen64(path.ptr) orelse return luax.returnFormattedError(lua, "could not open zip file '%s'", .{path.ptr});
 
         const ud: *UnzipUdata = luax.createUserDataTableSetFunctions(lua, name, UnzipUdata, &functions, 0);

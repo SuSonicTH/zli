@@ -1,6 +1,14 @@
 local fs
 local stream
 
+local function raise_or_return_error(message, level)
+    if fs.error_handling == "raise" then
+        error(message, level)
+    else
+        return nil, message
+    end
+end
+
 local function concat_path(path, file)
     if type(path) == "table" then
         path = table.concat(path, fs.separator)
@@ -63,7 +71,7 @@ local function path_to_path_and_name(separator, ...)
         end
     end
     for i, index in ipairs(remove) do
-        if index - i + 1 < 1 then error("illegal path, to many parent references i.e.: ../../") end
+        if index - i + 1 < 1 then return raise_or_return_error("illegal path, to many parent references i.e.: ../../", 4) end
         table.remove(split, index - i + 1)
     end
     if (split[#split] == "") then
@@ -76,8 +84,9 @@ local function path_to_path_and_name(separator, ...)
 end
 
 local function new_path(...)
-    local path, name = path_to_path_and_name(nil, ...)
-    return fs.create_path(path, name)
+    local path, name_or_error = path_to_path_and_name(nil, ...)
+    if not path then return nil, name_or_error end
+    return fs.create_path(path, name_or_error)
 end
 
 local function ensure_path(path)
@@ -85,7 +94,7 @@ local function ensure_path(path)
         if path.full_path then
             return path
         else
-            error("expecting table with 'full_path' key", 2)
+            error("expecting string representing a path or a path object (table with 'full_path' key)", 2)
         end
     end
     return new_path(path)
@@ -117,9 +126,7 @@ end
 
 local function read_all(path)
     local file, error = io.open(get_path(path))
-    if not file then
-        return nil, error
-    end
+    if not file then return raise_or_return_error(error) end
     local text = file:read("a")
     file:close()
     return text
@@ -127,9 +134,8 @@ end
 
 local function read_lines(path, mode)
     local file, error = io.open(get_path(path))
-    if not file then
-        return nil, error
-    end
+    if not file then return raise_or_return_error(error) end
+
     mode = mode or 'l'
 
     local ret = {}
@@ -142,9 +148,7 @@ end
 
 local function lines(path, mode)
     local file, err = io.open(get_path(path))
-    if not file then
-        error(err, 2)
-    end
+    if not file then return raise_or_return_error(error, 2) end
     mode = mode or 'l'
     return function(file, idx)
         local line, err = file:read(mode)

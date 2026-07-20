@@ -21,7 +21,6 @@ end
 cleanTestTemp()
 --require all test_*.lua files in ./test/
 for fileName in sorted_pairs(fs.dir("./test/")) do
-    print(fileName)
     if fileName:find("test_.*%.lua") then
         require("test/" .. fileName:sub(1, -5))
     end
