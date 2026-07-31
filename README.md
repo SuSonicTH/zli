@@ -57,9 +57,12 @@ libraries developed specifically for ZLI that don't use any external libraries
 | luastrip     | a lua source code stripping/compacting library to remove comments and unnessessary whitespace from lua source code       |
 | memoize      | a library to memoize/cache expensive function results                                                                    |
 | stream       | a stream library enspired by the java stream library that brings the functional style programming to lua                 |
+| tar          | a tar library that can read and write tar files (with optional gz compression) and read .xz .zstd compressed tar files   |
 | timer        | a nanosecond timer for high precision timings available as os.nanotime                                                   |
 | uuid         | a library to create V4 and v7 uuids in string form                                                                       |
 | xlsxmlwriter | a very simple library to write an excel file in the xml format. Not space efficient nor feature rich but simple and fast |
+
+Each inhouse library, that has functions that can error, can be configured to either return or raise the error at runtime. Returning the error is the default mode. For simple scripts, that should fail early without you having to check for each possible runtime error, you can set the global `ZLI.error_handling = 'raise'`to automatically raise the error end stop execution at any error. Simmilar to the standard lua libraries some functions might still raise an error, even if error_handiling is set to return, if the arguments to the fuction are wrong. (i.e. errors that can be catched at writing instead of runtime)
 
 ### Included tools
 In the main binary there are also some commandline tools embedded. 
