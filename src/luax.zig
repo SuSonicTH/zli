@@ -81,16 +81,19 @@ pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, compt
     }
 }
 
+///deprecated: use luaerror instead
 pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
     _ = lua.pushFString(message, args);
     lua.raiseError();
 }
 
+///deprecated: use luaerror instead
 pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     _ = lua.pushString(message);
     lua.raiseError();
 }
 
+///deprecated: use luaerror instead
 pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32 {
     lua.pushNil();
     _ = lua.pushFString(message, args);
