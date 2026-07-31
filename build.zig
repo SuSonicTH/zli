@@ -54,7 +54,7 @@ fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
 
     for (release_targets) |config| {
         const target = b.resolveTargetQuery(config.query);
-        const exe_name = b.fmt("zli-{s}", .{config.suffix});
+        const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, @embedFile("src/version") });
         const exe = compileStep(b, target, std.builtin.OptimizeMode.ReleaseFast, exe_name);
         const install_artifact = b.addInstallArtifact(exe, .{});
 

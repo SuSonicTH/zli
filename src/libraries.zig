@@ -46,39 +46,39 @@ const preload: []const zlua.FnReg = &.{
     },
     .{
         .name = "crossline",
-        .func = zlua.wrap(crossline.luaopen_crossline),
+        .func = zlua.wrap(crossline.register),
     },
     .{
         .name = "filesystem",
-        .func = zlua.wrap(filesystem.luaopen_filesystem),
+        .func = zlua.wrap(filesystem.register),
     },
     .{
         .name = "unzip",
-        .func = zlua.wrap(unzip.luaopen_unzip),
+        .func = zlua.wrap(unzip.register),
     },
     .{
         .name = "zip",
-        .func = zlua.wrap(zip.luaopen_zip),
+        .func = zlua.wrap(zip.register),
     },
     .{
         .name = "httpclient",
-        .func = zlua.wrap(httpclient.luaopen_httpclient),
+        .func = zlua.wrap(httpclient.register),
     },
     .{
         .name = "httpserver",
-        .func = zlua.wrap(httpserver.luaopen_httpserver),
+        .func = zlua.wrap(httpserver.register),
     },
     .{
         .name = "luastrip",
-        .func = zlua.wrap(luastrip.luaopen_luaStrip),
+        .func = zlua.wrap(luastrip.register),
     },
     .{
         .name = "uuid",
-        .func = zlua.wrap(uuid.luaopen_uuid),
+        .func = zlua.wrap(uuid.register),
     },
     .{
         .name = "tar",
-        .func = zlua.wrap(tar.luaopen_tar),
+        .func = zlua.wrap(tar.register),
     },
 };
 

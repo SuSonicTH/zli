@@ -44,6 +44,14 @@ pub fn registerExtended(lua: *Lua, source: [:0]const u8, name: [:0]const u8, mod
     lua.pop(1);
 }
 
+pub fn setupLibrary(lua: *Lua, list: []const zlua.FnReg, comptime T: type, comptime name: [:0]const u8) *T {
+    lua.newLibTable(list);
+    const udata = lua.newUserdata(T, 0);
+    lua.setFuncs(list, 1);
+    registerExtended(lua, @embedFile(name ++ ".lua"), name, "zli_" ++ name);
+    return udata;
+}
+
 pub fn pushLibraryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const u8) void {
     _ = lua.getGlobal(module);
     _ = lua.pushString(function);
@@ -73,22 +81,19 @@ pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, compt
     }
 }
 
+///deprecated: use luaerror instead
 pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
     _ = lua.pushFString(message, args);
     lua.raiseError();
 }
 
+///deprecated: use luaerror instead
 pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
     _ = lua.pushString(message);
     lua.raiseError();
 }
 
-pub fn returnError(lua: *Lua, message: [:0]const u8) i32 {
-    lua.pushNil();
-    _ = lua.pushString(message);
-    return 2;
-}
-
+///deprecated: use luaerror instead
 pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32 {
     lua.pushNil();
     _ = lua.pushFString(message, args);
@@ -118,9 +123,9 @@ pub fn createUserDataTable(lua: *Lua, name: [:0]const u8, comptime T: type) *T {
     return userData;
 }
 
-pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const zlua.FnReg) *T {
+pub fn createUserDataTableSetFunctions(lua: *Lua, name: [:0]const u8, comptime T: type, functions: []const zlua.FnReg, num_upvalues: i32) *T {
     const userData: *T = createUserDataTable(lua, name, T);
-    lua.setFuncs(functions, 0);
+    lua.setFuncs(functions, num_upvalues);
     return userData;
 }
 
@@ -138,6 +143,32 @@ pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: 
     const udata: *T = lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
     lua.pop(1);
     return udata;
+}
+
+pub fn debugLogStack(lua: *Lua, tag: []const u8, upvalues: bool) !void {
+    if (upvalues) {
+        for (1..5) |i| {
+            const t = lua.typeOf(Lua.upvalueIndex(@intCast(i)));
+            if (t == .none) break;
+            switch (t) {
+                .string => std.log.debug("{s}[-{d}]: {any} ({s})", .{ tag, i, t, try lua.toString(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                .number => std.log.debug("{s}[-{d}]: {any} ({any})", .{ tag, i, t, try lua.toNumber(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                .boolean => std.log.debug("{s}[-{d}]: {any} ({any})", .{ tag, i, t, lua.toBoolean(@intCast(Lua.upvalueIndex(@intCast(i)))) }),
+                else => std.log.debug("{s}[-{d}]: {any}", .{ tag, i, t }),
+            }
+        }
+    }
+
+    const top: usize = @intCast(lua.getTop() + 1);
+    for (1..top) |i| {
+        const t = lua.typeOf(@intCast(i));
+        switch (t) {
+            .string => std.log.debug("{s}[{d}]: {any} ({s})", .{ tag, i, t, try lua.toString(@intCast(i)) }),
+            .number => std.log.debug("{s}[{d}]: {any} ({any})", .{ tag, i, t, try lua.toNumber(@intCast(i)) }),
+            .boolean => std.log.debug("{s}[{d}]: {any} ({any})", .{ tag, i, t, lua.toBoolean(@intCast(i)) }),
+            else => std.log.debug("{s}[{d}]: {any}", .{ tag, i, t }),
+        }
+    }
 }
 
 pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
@@ -168,6 +199,17 @@ pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]cons
 
 pub fn getTableString(lua: *Lua, key: [:0]const u8, index: i32) [:0]const u8 {
     return getTableStringOrError(lua, key, index) catch raiseError(lua, "illegal option, expecting String");
+}
+
+pub fn getTableStringOptional(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8 {
+    getTable(lua, key, index);
+    if (lua.isNil(-1)) {
+        lua.pop(1);
+        return null;
+    }
+    const value = lua.toString(-1) catch return null;
+    lua.pop(1);
+    return std.mem.sliceTo(value, 0);
 }
 
 pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]const u8) [:0]const u8 {
@@ -309,4 +351,12 @@ pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Nu
 pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
     lua.argCheck(lua.typeOf(index) == .boolean, index, message);
     return lua.toBoolean(index) catch unreachable;
+}
+
+pub fn isFirstArgLibTableOrError(lua: *Lua, message: [:0]const u8) void {
+    lua.argCheck(lua.typeOf(1) == .table, 1, message);
+    _ = lua.pushString("config");
+    const t = lua.getTable(1);
+    lua.argCheck(t == .function, 1, message);
+    lua.pop(1);
 }

@@ -27,7 +27,7 @@ pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
-pub fn luaopen_unzip(lua: *Lua) i32 {
+pub fn register(lua: *Lua) i32 {
     UnzipUdata.register(lua);
     UnzipFile.register(lua);
     lua.newLib(&unzip);
@@ -69,10 +69,10 @@ const UnzipUdata = struct {
     }
 
     fn new(lua: *Lua) i32 {
-        const path = filesystem.get_path(lua);
+        const path = filesystem.get_path(lua) catch unreachable; //todo:fix
         const uzfh = c.unzOpen64(path.ptr) orelse return luax.returnFormattedError(lua, "could not open zip file '%s'", .{path.ptr});
 
-        const ud: *UnzipUdata = luax.createUserDataTableSetFunctions(lua, name, UnzipUdata, &functions);
+        const ud: *UnzipUdata = luax.createUserDataTableSetFunctions(lua, name, UnzipUdata, &functions, 0);
         lua.setFuncs(&file_functions, 0);
 
         ud.path = path;
@@ -308,7 +308,7 @@ const UnzipFile = struct {
         if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) luax.raiseFormattedError(lua, "Could not open file '%s' inside '%s'", .{ fname.ptr, ud.path.ptr });
         if (c.unzGetCurrentFileInfo(ud.uzfh, &uzfi, null, 0, null, 0, null, 0) != c.UNZ_OK) file_info_error(lua, ud);
 
-        const uzf: *UnzipFile = luax.createUserDataTableSetFunctions(lua, name, UnzipFile, &functions);
+        const uzf: *UnzipFile = luax.createUserDataTableSetFunctions(lua, name, UnzipFile, &functions, 0);
         uzf.fname = fname;
         uzf.size = @intCast(uzfi.uncompressed_size);
         uzf.uzfh = ud.uzfh;
