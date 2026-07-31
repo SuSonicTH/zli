@@ -97,7 +97,6 @@ const Config = struct {
 pub fn register(lua: *Lua) !i32 {
     var config = setup(lua);
     config.errorHandling = luaerror.getGlobalHanding(lua);
-    std.log.debug("register: {any}", .{config.errorHandling});
     luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
 
     if (lua.getMetatableRegistry(zli_mt_path) == .nil) {
