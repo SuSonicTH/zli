@@ -1,6 +1,5 @@
 local version = "v0.1.7"
 local version_string = "zli - Zig Lua Interpreter " .. version
-local unzip = require "unzip"
 local fs = require "filesystem"
 
 local config = os.home .. "/.config"
@@ -28,13 +27,22 @@ if not fs.exists(init) then
 ]==])
 end
 
+package.loaded.filesystem = nil
 dofile(init)
 
 if arg[1] == "@" then
     --single @ without name fowards the arguments without @ to handler below
     table.remove(arg, 1)
 else
+    local unloadUnZip = not package.loaded.unzip
+    local unloadFilesystem = not package.loaded.filesystem
+
+    local unzip = require "unzip"
     local payload = unzip.open(arg[0])
+
+    if unloadUnZip then package.loaded.unzip = nil end
+    if unloadFilesystem then package.loaded.filesystem = nil end
+
     if (payload) then
         --we have a zip attached to the exe
         local script

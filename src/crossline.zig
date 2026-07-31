@@ -93,7 +93,7 @@ pub fn setIo(io: std.Io) void {
     stdout = &stdout_writer.interface;
 }
 
-pub fn luaopen_crossline(lua: *Lua) i32 {
+pub fn register(lua: *Lua) i32 {
     lua.newLib(&crossline);
     registerColors(lua);
     luax.createFunctionSubTable(lua, &crossline_screen, "screen");

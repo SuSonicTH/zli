@@ -3,9 +3,11 @@ const std = @import("std");
 const zlua = @import("zlua");
 const luax = @import("luax.zig");
 const Lua = zlua.Lua;
+const luaerror = @import("luaerror.zig");
 
-const httpserver = [_]zlua.FnReg{
-    .{ .name = "listen", .func = zlua.wrap(listen) },
+const exported_functions = [_]zlua.FnReg{
+    .{ .name = "listen", .func = luaerror.wrap(listen) },
+    .{ .name = "config", .func = luaerror.wrap(setConfig) },
 };
 
 var io: std.Io = undefined;
@@ -14,23 +16,47 @@ pub fn setIo(_io: std.Io) void {
     io = _io;
 }
 
-pub fn luaopen_httpserver(lua: *Lua) i32 {
-    lua.newLib(&httpserver);
-    luax.registerExtended(lua, @embedFile("httpserver.lua"), "httpserver", "zli_httpserver");
+const Config = struct {
+    errorHandling: luaerror.Handling = undefined,
+};
+
+pub fn register(lua: *Lua) !i32 {
+    var config = setup(lua);
+    config.errorHandling = luaerror.getGlobalHanding(lua);
     return 1;
+}
+
+fn setup(lua: *Lua) *Config {
+    return luax.setupLibrary(lua, &exported_functions, Config, "httpserver");
+}
+
+pub fn setConfig(lua: *Lua) !i32 {
+    lua.checkType(1, .table);
+    var config = setup(lua);
+
+    if (luax.getOptionalString(lua, "error_handling", 1)) |error_handling| {
+        config.errorHandling = try luaerror.getHandling(error_handling);
+    }
+    return 1;
+}
+
+fn get_error_handling(lua: *Lua) !luaerror.Handling {
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+    return config.errorHandling;
 }
 
 const addressIndex = 1;
 const portIndex = 2;
 const handlerIndex = 3;
 const optionsIndex = 4;
+const errorHandlerIndex = 5;
 
-fn listen(lua: *Lua) i32 {
+fn listen(lua: *Lua) !i32 {
     const address = luax.getArgStringOrError(lua, addressIndex, "expecting address to listen on");
     const port = luax.getArgIntegerOrError(lua, portIndex, "expecting port to listen on");
-    const addr = std.Io.net.IpAddress.parse(address, @intCast(port)) catch |err| {
-        return luax.returnFormattedError(lua, "could not resolve ip '%s' error: %s", .{ address.ptr, @errorName(err).ptr });
-    };
+    const addr = std.Io.net.IpAddress.parse(address, @intCast(port)) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "could not resolve ip '{s}': {any}", .{ address, err }, try get_error_handling(lua));
+    const hasErrHandler = lua.typeOf(errorHandlerIndex) == .function;
 
     var extra_headers = std.array_list.Managed(std.http.Header).init(lua.allocator());
     defer extra_headers.deinit();
@@ -38,10 +64,14 @@ fn listen(lua: *Lua) i32 {
     var server = addr.listen(
         io,
         .{},
-    ) catch return luax.returnFormattedError(lua, "could not listen to %s:%d", .{ address.ptr, port });
+    ) catch |err|
+        return luaerror.raiseOrReturn(lua, err, "could not listen to {s}:{d}: {any}", .{ address, port, err }, try get_error_handling(lua));
+
     while (true) {
         var connection = server.accept(io) catch |err| {
-            std.debug.print("Connection to client interrupted: {}\n", .{err});
+            if (hasErrHandler) {
+                luaerror.callErrorHandler(lua, errorHandlerIndex, "Connection to client interrupted: {any}\n", .{err});
+            }
             continue;
         };
         defer connection.close(io);
@@ -53,7 +83,9 @@ fn listen(lua: *Lua) i32 {
         var http_server = std.http.Server.init(&reader.interface, &writer.interface);
 
         var request = http_server.receiveHead() catch |err| {
-            std.debug.print("Could not read head: {}", .{err});
+            if (hasErrHandler) {
+                luaerror.callErrorHandler(lua, errorHandlerIndex, "Could not read head: {any}", .{err});
+            }
             continue;
         };
 
@@ -80,9 +112,10 @@ fn listen(lua: *Lua) i32 {
         defer lua.pop(1);
 
         if (lua.typeOf(-1) != .table) {
-            std.debug.print("Got non table result for request: {s} {s}\n", .{ @tagName(request.head.method), request.head.target });
             request.respond("", .{ .status = std.http.Status.internal_server_error }) catch |err| {
-                std.debug.print("Could not handle request: {s} {s} error: {}\n", .{ @tagName(request.head.method), request.head.target, err });
+                if (hasErrHandler) {
+                    luaerror.callErrorHandler(lua, errorHandlerIndex, "Could not handle request: {s} {s} error: {any}", .{ @tagName(request.head.method), request.head.target, err });
+                }
             };
             continue;
         }
@@ -91,10 +124,13 @@ fn listen(lua: *Lua) i32 {
 
         var header_arena = std.heap.ArenaAllocator.init(lua.allocator());
         defer header_arena.deinit();
-        parseHeader(lua, &extra_headers, header_arena.allocator()) catch luax.raiseError(lua, "could not allocate an extra header");
+        parseHeader(lua, &extra_headers, header_arena.allocator()) catch |err|
+            return luaerror.raiseOrReturn(lua, err, "could not allocate an extra header: {any}", .{err}, try get_error_handling(lua));
 
         request.respond(body, .{ .status = @enumFromInt(status), .extra_headers = extra_headers.items, .keep_alive = false }) catch |err| {
-            std.debug.print("Could not handle request: {s} {s} error: {}\n", .{ @tagName(request.head.method), request.head.target, err });
+            if (hasErrHandler) {
+                luaerror.callErrorHandler(lua, errorHandlerIndex, "Could not handle request: {s} {s} error: {any}", .{ @tagName(request.head.method), request.head.target, err });
+            }
             continue;
         };
     }

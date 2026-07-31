@@ -1,4 +1,3 @@
-local tar
 local fs = require("filesystem")
 
 local function archive_path_sub(t, fs_path, tar_path)
@@ -18,9 +17,7 @@ local function archive_path(t, fs_path, tar_path)
     archive_path_sub(t, fs_path, path)
 end
 
-return function(tarlib)
-    tar = tarlib
-
+return function()
     return {
         archive_path = archive_path
     }
