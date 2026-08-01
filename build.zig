@@ -96,6 +96,17 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     const luaPath = lua.path("src/");
 
+    const raylib_dep = b.dependency("raylib", .{
+        .target = target,
+        .optimize = optimize,
+        .raudio = true,
+        .rmodels = true,
+        .rshapes = true,
+        .rtext = true,
+        .rtextures = true,
+        .linkage = .static,
+    });
+
     //zli exe
     const exe = b.addExecutable(.{
         .name = exe_name,
@@ -108,6 +119,8 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     exe.root_module.addIncludePath(b.path("src/"));
     exe.root_module.addImport("zlua", zlua.module("zlua"));
+    exe.root_module.linkLibrary(raylib_dep.artifact("raylib"));
+    exe.root_module.addImport("raylib", raylib_dep.module("raylib"));
 
     //add lualibs (strip for non debug)
     luaLibs(b, optimize, exe.root_module);

@@ -61,5 +61,9 @@
             .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.1.0.tar.gz",
             .hash = "zupx-0.1.0-rouXWTMbAAAcnIF88vaaszszL3xgbsMdPFeVQ8HtxZWX",
         },
+        .raylib = .{
+            .url = "https://github.com/raysan5/raylib/archive/refs/tags/6.0.tar.gz",
+            .hash = "raylib-6.0.0-whq8uCSwLgWWeF3ec3dbG6Rr36SLFL-s2WJ1Q_2E22Bb",
+        },
     },
 }

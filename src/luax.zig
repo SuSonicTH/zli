@@ -343,9 +343,21 @@ pub fn getArgIntegerOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.I
     return lua.toInteger(index) catch unreachable;
 }
 
+pub fn getArgIntOrError(T: type, lua: *Lua, index: i32, message: [:0]const u8) T {
+    lua.argCheck(lua.typeOf(index) == .number, index, message);
+    const number = lua.toInteger(index) catch unreachable;
+    return @intCast(number);
+}
+
 pub fn getArgNumberOrError(lua: *Lua, index: i32, message: [:0]const u8) zlua.Number {
     lua.argCheck(lua.typeOf(index) == .number, index, message);
     return lua.toNumber(index) catch unreachable;
+}
+
+pub fn getArgFloatOrError(lua: *Lua, index: i32, message: [:0]const u8) f32 {
+    lua.argCheck(lua.typeOf(index) == .number, index, message);
+    const number = lua.toNumber(index) catch unreachable;
+    return @floatCast(number);
 }
 
 pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
@@ -359,4 +371,24 @@ pub fn isFirstArgLibTableOrError(lua: *Lua, message: [:0]const u8) void {
     const t = lua.getTable(1);
     lua.argCheck(t == .function, 1, message);
     lua.pop(1);
+}
+
+pub fn getArgTableInteger(lua: *Lua, T: type, index: i32, comptime key: []const u8, comptime message: [:0]const u8) T {
+    lua.argCheck(lua.typeOf(index) == .table, index, message);
+    _ = lua.pushString(key);
+    const t = lua.getTable(index);
+    lua.argCheck(t == .number, index, message);
+    const number = lua.toInteger(-1) catch @panic("could not get argument " ++ key ++ " " ++ message);
+    lua.pop(1);
+    return @intCast(number);
+}
+
+pub fn getArgTableFloat(lua: *Lua, T: type, index: i32, comptime key: []const u8, comptime message: [:0]const u8) T {
+    lua.argCheck(lua.typeOf(index) == .table, index, message);
+    _ = lua.pushString(key);
+    const t = lua.getTable(index);
+    lua.argCheck(t == .number, index, message);
+    const number = lua.toNumber(-1) catch @panic("could not get argument " ++ key ++ " " ++ message);
+    lua.pop(1);
+    return @floatCast(number);
 }

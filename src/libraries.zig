@@ -11,6 +11,7 @@ const httpserver = @import("httpserver.zig");
 const luastrip = @import("luastrip.zig");
 const uuid = @import("uuid.zig");
 const tar = @import("tar.zig");
+const raylib = @import("raylib.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
@@ -79,6 +80,10 @@ const preload: []const zlua.FnReg = &.{
     .{
         .name = "tar",
         .func = zlua.wrap(tar.register),
+    },
+    .{
+        .name = "raylib",
+        .func = zlua.wrap(raylib.register),
     },
 };
 
