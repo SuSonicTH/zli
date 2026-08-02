@@ -183,7 +183,7 @@ local function write_exported_functions()
     for _, func in ipairs(exported_functions) do
         out:write(F '    .{{ .name = "{func.lua}", .func = zlua.wrap({func.name}) }},\n')
     end
-    out:write("};\n\n")
+    out:write("};\n")
 end
 
 --[[MAIN]]

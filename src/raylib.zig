@@ -1583,4 +1583,3 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "toggleFullscreen", .func = zlua.wrap(ToggleFullscreen) },
     .{ .name = "windowShouldClose", .func = zlua.wrap(WindowShouldClose) },
 };
-
