@@ -24,7 +24,7 @@ There are many libraries included in the ZLI binary, some 3rd party lua librarie
 | library    | link                                        | licence | description                                                                                                                            |
 | ---------- | ------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | argparse   | https://github.com/mpeterv/argparse         | MIT     | Argparse is a feature-rich command line parser for Lua inspired by argparse for Python                                                 |
-| f-string   | https://github.com/hishamhm/f-strings       | MIT     | String interpolation for Lua, inspired by f-strings, a form of string interpolation coming in Python 3.6.                              |
+| f-string   | https://github.com/dsidirop/f-strings       | MIT     | String interpolation for Lua, inspired by f-strings, a form of string interpolation coming in Python 3.6.                              |
 | ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | ftcsv is a fast csv library written in pure Lua                                                                                        |
 | LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | LPeg is a new pattern-matching library for Lua, based on Parsing Expression Grammars (PEGs)                                            |
 | lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                                                                                             |

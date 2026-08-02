@@ -8,6 +8,7 @@ local re = require "re"
 local csv = require "csv"
 local json = require "cjson"
 local argparse = require "argparse"
+local F = require("F")
 
 Test_libraries = {}
 
@@ -93,6 +94,22 @@ function Test_libraries:Test_argparse()
     lu.assertEquals("inputFile", args.input)
     lu.assertEquals("outputFile", args.output)
     lu.assertEquals({ 'incl' }, args.include)
+end
+
+function Test_libraries:Test_fstring()
+    local hello = "Hello"
+    local world = "World"
+
+
+    lu.assertEquals("Hello World", F "Hello {world}")
+    lu.assertEquals("Hello World", F "{hello} World")
+    lu.assertEquals("Hello World", F "{hello} {world}")
+
+    local num = 1.23456
+
+    lu.assertEquals("1.23456 fornmatted to 2 decimals is 1.23", F "{num} fornmatted to 2 decimals is {num:%.2f}")
+
+    lu.assertEquals("escaping curlie braces also work {name}", F "escaping curlie braces also work {{name}}")
 end
 
 if not RUN_ALL then
