@@ -18,8 +18,8 @@
             .hash = "N-V-__8AAA48AwAs-qNuEPo0PXKQAuwnMXVIW49MY0tYwoDQ",
         },
         .fstring = .{
-            .url = "https://github.com/hishamhm/f-strings/archive/0f623a323b7c37c9b6c94357c929069278b95ef0.tar.gz",
-            .hash = "N-V-__8AAHQoAAByxtiWa6rTGJAp_b4n0BnKOCKnY2C6kXrV",
+            .url = "https://github.com/dsidirop/f-strings/archive/bf7cf102cadb0fa6b59b4233054cee2c29f31036.tar.gz",
+            .hash = "N-V-__8AANUoAABZy2z8_DNNh7W51acj8f9rGMgkL5VZkk1g",
         },
         .luaunit = .{
             .url = "https://github.com/bluebird75/luaunit/archive/9678c933e71cb26adcdfa6cf1baceb926398eb48.tar.gz",
