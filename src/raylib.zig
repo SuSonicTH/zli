@@ -16,13 +16,13 @@ pub fn register(lua: *Lua) i32 {
 pub const rAudioBuffer = opaque {};
 pub const rAudioProcessor = opaque {};
 
-fn Vector2_from_lua(lua: *Lua, index:i32) rl.struct_Vector2 {
+fn Vector2_from_lua(lua: *Lua, index: i32) rl.struct_Vector2 {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Vector2, index) catch @panic("expecting Vector2 object")).*;
     }
     return .{
-        .x = luax.getArgTableFloat(lua, f32, index, "x","expecting Vector2 table"),
-        .y = luax.getArgTableFloat(lua, f32, index, "y","expecting Vector2 table"),
+        .x = luax.getArgTableFloat(lua, f32, index, "x", "expecting Vector2 table"),
+        .y = luax.getArgTableFloat(lua, f32, index, "y", "expecting Vector2 table"),
     };
 }
 
@@ -32,14 +32,14 @@ fn Vector2(lua: *Lua) i32 {
     return 1;
 }
 
-fn Vector3_from_lua(lua: *Lua, index:i32) rl.struct_Vector3 {
+fn Vector3_from_lua(lua: *Lua, index: i32) rl.struct_Vector3 {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Vector3, index) catch @panic("expecting Vector3 object")).*;
     }
     return .{
-        .x = luax.getArgTableFloat(lua, f32, index, "x","expecting Vector3 table"),
-        .y = luax.getArgTableFloat(lua, f32, index, "y","expecting Vector3 table"),
-        .z = luax.getArgTableFloat(lua, f32, index, "z","expecting Vector3 table"),
+        .x = luax.getArgTableFloat(lua, f32, index, "x", "expecting Vector3 table"),
+        .y = luax.getArgTableFloat(lua, f32, index, "y", "expecting Vector3 table"),
+        .z = luax.getArgTableFloat(lua, f32, index, "z", "expecting Vector3 table"),
     };
 }
 
@@ -49,15 +49,15 @@ fn Vector3(lua: *Lua) i32 {
     return 1;
 }
 
-fn Vector4_from_lua(lua: *Lua, index:i32) rl.struct_Vector4 {
+fn Vector4_from_lua(lua: *Lua, index: i32) rl.struct_Vector4 {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Vector4, index) catch @panic("expecting Vector4 object")).*;
     }
     return .{
-        .x = luax.getArgTableFloat(lua, f32, index, "x","expecting Vector4 table"),
-        .y = luax.getArgTableFloat(lua, f32, index, "y","expecting Vector4 table"),
-        .z = luax.getArgTableFloat(lua, f32, index, "z","expecting Vector4 table"),
-        .w = luax.getArgTableFloat(lua, f32, index, "w","expecting Vector4 table"),
+        .x = luax.getArgTableFloat(lua, f32, index, "x", "expecting Vector4 table"),
+        .y = luax.getArgTableFloat(lua, f32, index, "y", "expecting Vector4 table"),
+        .z = luax.getArgTableFloat(lua, f32, index, "z", "expecting Vector4 table"),
+        .w = luax.getArgTableFloat(lua, f32, index, "w", "expecting Vector4 table"),
     };
 }
 
@@ -67,27 +67,27 @@ fn Vector4(lua: *Lua) i32 {
     return 1;
 }
 
-fn Matrix_from_lua(lua: *Lua, index:i32) rl.struct_Matrix {
+fn Matrix_from_lua(lua: *Lua, index: i32) rl.struct_Matrix {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Matrix, index) catch @panic("expecting Matrix object")).*;
     }
     return .{
-        .m0 = luax.getArgTableFloat(lua, f32, index, "m0","expecting Matrix table"),
-        .m4 = luax.getArgTableFloat(lua, f32, index, "m4","expecting Matrix table"),
-        .m8 = luax.getArgTableFloat(lua, f32, index, "m8","expecting Matrix table"),
-        .m12 = luax.getArgTableFloat(lua, f32, index, "m12","expecting Matrix table"),
-        .m1 = luax.getArgTableFloat(lua, f32, index, "m1","expecting Matrix table"),
-        .m5 = luax.getArgTableFloat(lua, f32, index, "m5","expecting Matrix table"),
-        .m9 = luax.getArgTableFloat(lua, f32, index, "m9","expecting Matrix table"),
-        .m13 = luax.getArgTableFloat(lua, f32, index, "m13","expecting Matrix table"),
-        .m2 = luax.getArgTableFloat(lua, f32, index, "m2","expecting Matrix table"),
-        .m6 = luax.getArgTableFloat(lua, f32, index, "m6","expecting Matrix table"),
-        .m10 = luax.getArgTableFloat(lua, f32, index, "m10","expecting Matrix table"),
-        .m14 = luax.getArgTableFloat(lua, f32, index, "m14","expecting Matrix table"),
-        .m3 = luax.getArgTableFloat(lua, f32, index, "m3","expecting Matrix table"),
-        .m7 = luax.getArgTableFloat(lua, f32, index, "m7","expecting Matrix table"),
-        .m11 = luax.getArgTableFloat(lua, f32, index, "m11","expecting Matrix table"),
-        .m15 = luax.getArgTableFloat(lua, f32, index, "m15","expecting Matrix table"),
+        .m0 = luax.getArgTableFloat(lua, f32, index, "m0", "expecting Matrix table"),
+        .m4 = luax.getArgTableFloat(lua, f32, index, "m4", "expecting Matrix table"),
+        .m8 = luax.getArgTableFloat(lua, f32, index, "m8", "expecting Matrix table"),
+        .m12 = luax.getArgTableFloat(lua, f32, index, "m12", "expecting Matrix table"),
+        .m1 = luax.getArgTableFloat(lua, f32, index, "m1", "expecting Matrix table"),
+        .m5 = luax.getArgTableFloat(lua, f32, index, "m5", "expecting Matrix table"),
+        .m9 = luax.getArgTableFloat(lua, f32, index, "m9", "expecting Matrix table"),
+        .m13 = luax.getArgTableFloat(lua, f32, index, "m13", "expecting Matrix table"),
+        .m2 = luax.getArgTableFloat(lua, f32, index, "m2", "expecting Matrix table"),
+        .m6 = luax.getArgTableFloat(lua, f32, index, "m6", "expecting Matrix table"),
+        .m10 = luax.getArgTableFloat(lua, f32, index, "m10", "expecting Matrix table"),
+        .m14 = luax.getArgTableFloat(lua, f32, index, "m14", "expecting Matrix table"),
+        .m3 = luax.getArgTableFloat(lua, f32, index, "m3", "expecting Matrix table"),
+        .m7 = luax.getArgTableFloat(lua, f32, index, "m7", "expecting Matrix table"),
+        .m11 = luax.getArgTableFloat(lua, f32, index, "m11", "expecting Matrix table"),
+        .m15 = luax.getArgTableFloat(lua, f32, index, "m15", "expecting Matrix table"),
     };
 }
 
@@ -97,15 +97,15 @@ fn Matrix(lua: *Lua) i32 {
     return 1;
 }
 
-fn Color_from_lua(lua: *Lua, index:i32) rl.struct_Color {
+fn Color_from_lua(lua: *Lua, index: i32) rl.struct_Color {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Color, index) catch @panic("expecting Color object")).*;
     }
     return .{
-        .r = luax.getArgTableInteger(lua, u8, index, "r","expecting Color table"),
-        .g = luax.getArgTableInteger(lua, u8, index, "g","expecting Color table"),
-        .b = luax.getArgTableInteger(lua, u8, index, "b","expecting Color table"),
-        .a = luax.getArgTableInteger(lua, u8, index, "a","expecting Color table"),
+        .r = luax.getArgTableInteger(lua, u8, index, "r", "expecting Color table"),
+        .g = luax.getArgTableInteger(lua, u8, index, "g", "expecting Color table"),
+        .b = luax.getArgTableInteger(lua, u8, index, "b", "expecting Color table"),
+        .a = luax.getArgTableInteger(lua, u8, index, "a", "expecting Color table"),
     };
 }
 
@@ -115,15 +115,15 @@ fn Color(lua: *Lua) i32 {
     return 1;
 }
 
-fn Rectangle_from_lua(lua: *Lua, index:i32) rl.struct_Rectangle {
+fn Rectangle_from_lua(lua: *Lua, index: i32) rl.struct_Rectangle {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Rectangle, index) catch @panic("expecting Rectangle object")).*;
     }
     return .{
-        .x = luax.getArgTableFloat(lua, f32, index, "x","expecting Rectangle table"),
-        .y = luax.getArgTableFloat(lua, f32, index, "y","expecting Rectangle table"),
-        .width = luax.getArgTableFloat(lua, f32, index, "width","expecting Rectangle table"),
-        .height = luax.getArgTableFloat(lua, f32, index, "height","expecting Rectangle table"),
+        .x = luax.getArgTableFloat(lua, f32, index, "x", "expecting Rectangle table"),
+        .y = luax.getArgTableFloat(lua, f32, index, "y", "expecting Rectangle table"),
+        .width = luax.getArgTableFloat(lua, f32, index, "width", "expecting Rectangle table"),
+        .height = luax.getArgTableFloat(lua, f32, index, "height", "expecting Rectangle table"),
     };
 }
 
@@ -133,16 +133,16 @@ fn Rectangle(lua: *Lua) i32 {
     return 1;
 }
 
-fn Texture_from_lua(lua: *Lua, index:i32) rl.struct_Texture {
+fn Texture_from_lua(lua: *Lua, index: i32) rl.struct_Texture {
     if (lua.typeOf(index) == .userdata) {
         return (lua.toUserdata(rl.struct_Texture, index) catch @panic("expecting Texture object")).*;
     }
     return .{
-        .id = luax.getArgTableInteger(lua, c_uint, index, "id","expecting Texture table"),
-        .width = luax.getArgTableInteger(lua, c_int, index, "width","expecting Texture table"),
-        .height = luax.getArgTableInteger(lua, c_int, index, "height","expecting Texture table"),
-        .mipmaps = luax.getArgTableInteger(lua, c_int, index, "mipmaps","expecting Texture table"),
-        .format = luax.getArgTableInteger(lua, c_int, index, "format","expecting Texture table"),
+        .id = luax.getArgTableInteger(lua, c_uint, index, "id", "expecting Texture table"),
+        .width = luax.getArgTableInteger(lua, c_int, index, "width", "expecting Texture table"),
+        .height = luax.getArgTableInteger(lua, c_int, index, "height", "expecting Texture table"),
+        .mipmaps = luax.getArgTableInteger(lua, c_int, index, "mipmaps", "expecting Texture table"),
+        .format = luax.getArgTableInteger(lua, c_int, index, "format", "expecting Texture table"),
     };
 }
 
@@ -1414,173 +1414,508 @@ pub fn SetAudioStreamBufferSizeDefault(lua: *Lua) i32 {
 }
 
 const exported_functions = [_]zlua.FnReg{
-    .{ .name = "Color", .func = zlua.wrap(Color) },
-    .{ .name = "Matrix", .func = zlua.wrap(Matrix) },
-    .{ .name = "Rectangle", .func = zlua.wrap(Rectangle) },
-    .{ .name = "Texture", .func = zlua.wrap(Texture) },
-    .{ .name = "Vector2", .func = zlua.wrap(Vector2) },
-    .{ .name = "Vector3", .func = zlua.wrap(Vector3) },
-    .{ .name = "Vector4", .func = zlua.wrap(Vector4) },
-    .{ .name = "beginBlendMode", .func = zlua.wrap(BeginBlendMode) },
-    .{ .name = "beginDrawing", .func = zlua.wrap(BeginDrawing) },
-    .{ .name = "beginScissorMode", .func = zlua.wrap(BeginScissorMode) },
-    .{ .name = "changeDirectory", .func = zlua.wrap(ChangeDirectory) },
-    .{ .name = "checkCollisionCircleLine", .func = zlua.wrap(CheckCollisionCircleLine) },
-    .{ .name = "checkCollisionCircleRec", .func = zlua.wrap(CheckCollisionCircleRec) },
-    .{ .name = "checkCollisionCircles", .func = zlua.wrap(CheckCollisionCircles) },
-    .{ .name = "checkCollisionPointCircle", .func = zlua.wrap(CheckCollisionPointCircle) },
-    .{ .name = "checkCollisionPointLine", .func = zlua.wrap(CheckCollisionPointLine) },
-    .{ .name = "checkCollisionPointRec", .func = zlua.wrap(CheckCollisionPointRec) },
-    .{ .name = "checkCollisionPointTriangle", .func = zlua.wrap(CheckCollisionPointTriangle) },
-    .{ .name = "checkCollisionRecs", .func = zlua.wrap(CheckCollisionRecs) },
-    .{ .name = "checkCollisionSpheres", .func = zlua.wrap(CheckCollisionSpheres) },
-    .{ .name = "clearBackground", .func = zlua.wrap(ClearBackground) },
-    .{ .name = "closeAudioDevice", .func = zlua.wrap(CloseAudioDevice) },
-    .{ .name = "closeWindow", .func = zlua.wrap(CloseWindow) },
-    .{ .name = "colorIsEqual", .func = zlua.wrap(ColorIsEqual) },
-    .{ .name = "directoryExists", .func = zlua.wrap(DirectoryExists) },
-    .{ .name = "disableCursor", .func = zlua.wrap(DisableCursor) },
-    .{ .name = "disableEventWaiting", .func = zlua.wrap(DisableEventWaiting) },
-    .{ .name = "drawCapsule", .func = zlua.wrap(DrawCapsule) },
-    .{ .name = "drawCapsuleWires", .func = zlua.wrap(DrawCapsuleWires) },
-    .{ .name = "drawCircle", .func = zlua.wrap(DrawCircle) },
-    .{ .name = "drawCircle3D", .func = zlua.wrap(DrawCircle3D) },
-    .{ .name = "drawCircleGradient", .func = zlua.wrap(DrawCircleGradient) },
-    .{ .name = "drawCircleLines", .func = zlua.wrap(DrawCircleLines) },
-    .{ .name = "drawCircleLinesV", .func = zlua.wrap(DrawCircleLinesV) },
-    .{ .name = "drawCircleSector", .func = zlua.wrap(DrawCircleSector) },
-    .{ .name = "drawCircleSectorLines", .func = zlua.wrap(DrawCircleSectorLines) },
-    .{ .name = "drawCircleV", .func = zlua.wrap(DrawCircleV) },
-    .{ .name = "drawCube", .func = zlua.wrap(DrawCube) },
-    .{ .name = "drawCubeV", .func = zlua.wrap(DrawCubeV) },
-    .{ .name = "drawCubeWires", .func = zlua.wrap(DrawCubeWires) },
-    .{ .name = "drawCubeWiresV", .func = zlua.wrap(DrawCubeWiresV) },
-    .{ .name = "drawCylinder", .func = zlua.wrap(DrawCylinder) },
-    .{ .name = "drawCylinderEx", .func = zlua.wrap(DrawCylinderEx) },
-    .{ .name = "drawCylinderWires", .func = zlua.wrap(DrawCylinderWires) },
-    .{ .name = "drawCylinderWiresEx", .func = zlua.wrap(DrawCylinderWiresEx) },
-    .{ .name = "drawEllipse", .func = zlua.wrap(DrawEllipse) },
-    .{ .name = "drawEllipseLines", .func = zlua.wrap(DrawEllipseLines) },
-    .{ .name = "drawEllipseLinesV", .func = zlua.wrap(DrawEllipseLinesV) },
-    .{ .name = "drawEllipseV", .func = zlua.wrap(DrawEllipseV) },
-    .{ .name = "drawFPS", .func = zlua.wrap(DrawFPS) },
-    .{ .name = "drawGrid", .func = zlua.wrap(DrawGrid) },
-    .{ .name = "drawLine", .func = zlua.wrap(DrawLine) },
-    .{ .name = "drawLine3D", .func = zlua.wrap(DrawLine3D) },
-    .{ .name = "drawLineBezier", .func = zlua.wrap(DrawLineBezier) },
-    .{ .name = "drawLineDashed", .func = zlua.wrap(DrawLineDashed) },
-    .{ .name = "drawLineEx", .func = zlua.wrap(DrawLineEx) },
-    .{ .name = "drawLineV", .func = zlua.wrap(DrawLineV) },
-    .{ .name = "drawPixel", .func = zlua.wrap(DrawPixel) },
-    .{ .name = "drawPixelV", .func = zlua.wrap(DrawPixelV) },
-    .{ .name = "drawPlane", .func = zlua.wrap(DrawPlane) },
-    .{ .name = "drawPoint3D", .func = zlua.wrap(DrawPoint3D) },
-    .{ .name = "drawPoly", .func = zlua.wrap(DrawPoly) },
-    .{ .name = "drawPolyLines", .func = zlua.wrap(DrawPolyLines) },
-    .{ .name = "drawPolyLinesEx", .func = zlua.wrap(DrawPolyLinesEx) },
-    .{ .name = "drawRectangle", .func = zlua.wrap(DrawRectangle) },
-    .{ .name = "drawRectangleGradientEx", .func = zlua.wrap(DrawRectangleGradientEx) },
-    .{ .name = "drawRectangleGradientH", .func = zlua.wrap(DrawRectangleGradientH) },
-    .{ .name = "drawRectangleGradientV", .func = zlua.wrap(DrawRectangleGradientV) },
-    .{ .name = "drawRectangleLines", .func = zlua.wrap(DrawRectangleLines) },
-    .{ .name = "drawRectangleLinesEx", .func = zlua.wrap(DrawRectangleLinesEx) },
-    .{ .name = "drawRectanglePro", .func = zlua.wrap(DrawRectanglePro) },
-    .{ .name = "drawRectangleRec", .func = zlua.wrap(DrawRectangleRec) },
-    .{ .name = "drawRectangleRounded", .func = zlua.wrap(DrawRectangleRounded) },
-    .{ .name = "drawRectangleRoundedLines", .func = zlua.wrap(DrawRectangleRoundedLines) },
-    .{ .name = "drawRectangleRoundedLinesEx", .func = zlua.wrap(DrawRectangleRoundedLinesEx) },
-    .{ .name = "drawRectangleV", .func = zlua.wrap(DrawRectangleV) },
-    .{ .name = "drawRing", .func = zlua.wrap(DrawRing) },
-    .{ .name = "drawRingLines", .func = zlua.wrap(DrawRingLines) },
-    .{ .name = "drawSphere", .func = zlua.wrap(DrawSphere) },
-    .{ .name = "drawSphereEx", .func = zlua.wrap(DrawSphereEx) },
-    .{ .name = "drawSphereWires", .func = zlua.wrap(DrawSphereWires) },
-    .{ .name = "drawSplineSegmentBasis", .func = zlua.wrap(DrawSplineSegmentBasis) },
-    .{ .name = "drawSplineSegmentBezierCubic", .func = zlua.wrap(DrawSplineSegmentBezierCubic) },
-    .{ .name = "drawSplineSegmentBezierQuadratic", .func = zlua.wrap(DrawSplineSegmentBezierQuadratic) },
-    .{ .name = "drawSplineSegmentCatmullRom", .func = zlua.wrap(DrawSplineSegmentCatmullRom) },
-    .{ .name = "drawSplineSegmentLinear", .func = zlua.wrap(DrawSplineSegmentLinear) },
-    .{ .name = "drawText", .func = zlua.wrap(DrawText) },
-    .{ .name = "drawTriangle", .func = zlua.wrap(DrawTriangle) },
-    .{ .name = "drawTriangle3D", .func = zlua.wrap(DrawTriangle3D) },
-    .{ .name = "drawTriangleLines", .func = zlua.wrap(DrawTriangleLines) },
-    .{ .name = "enableCursor", .func = zlua.wrap(EnableCursor) },
-    .{ .name = "enableEventWaiting", .func = zlua.wrap(EnableEventWaiting) },
-    .{ .name = "endBlendMode", .func = zlua.wrap(EndBlendMode) },
-    .{ .name = "endDrawing", .func = zlua.wrap(EndDrawing) },
-    .{ .name = "endMode2D", .func = zlua.wrap(EndMode2D) },
-    .{ .name = "endMode3D", .func = zlua.wrap(EndMode3D) },
-    .{ .name = "endScissorMode", .func = zlua.wrap(EndScissorMode) },
-    .{ .name = "endShaderMode", .func = zlua.wrap(EndShaderMode) },
-    .{ .name = "endTextureMode", .func = zlua.wrap(EndTextureMode) },
-    .{ .name = "endVrStereoMode", .func = zlua.wrap(EndVrStereoMode) },
-    .{ .name = "fileExists", .func = zlua.wrap(FileExists) },
-    .{ .name = "hideCursor", .func = zlua.wrap(HideCursor) },
-    .{ .name = "initAudioDevice", .func = zlua.wrap(InitAudioDevice) },
-    .{ .name = "initWindow", .func = zlua.wrap(InitWindow) },
-    .{ .name = "isAudioDeviceReady", .func = zlua.wrap(IsAudioDeviceReady) },
-    .{ .name = "isCursorHidden", .func = zlua.wrap(IsCursorHidden) },
-    .{ .name = "isCursorOnScreen", .func = zlua.wrap(IsCursorOnScreen) },
-    .{ .name = "isFileDropped", .func = zlua.wrap(IsFileDropped) },
-    .{ .name = "isFileExtension", .func = zlua.wrap(IsFileExtension) },
-    .{ .name = "isFileNameValid", .func = zlua.wrap(IsFileNameValid) },
-    .{ .name = "isGamepadAvailable", .func = zlua.wrap(IsGamepadAvailable) },
-    .{ .name = "isGamepadButtonDown", .func = zlua.wrap(IsGamepadButtonDown) },
-    .{ .name = "isGamepadButtonPressed", .func = zlua.wrap(IsGamepadButtonPressed) },
-    .{ .name = "isGamepadButtonReleased", .func = zlua.wrap(IsGamepadButtonReleased) },
-    .{ .name = "isGamepadButtonUp", .func = zlua.wrap(IsGamepadButtonUp) },
-    .{ .name = "isKeyDown", .func = zlua.wrap(IsKeyDown) },
-    .{ .name = "isKeyPressed", .func = zlua.wrap(IsKeyPressed) },
-    .{ .name = "isKeyPressedRepeat", .func = zlua.wrap(IsKeyPressedRepeat) },
-    .{ .name = "isKeyReleased", .func = zlua.wrap(IsKeyReleased) },
-    .{ .name = "isKeyUp", .func = zlua.wrap(IsKeyUp) },
-    .{ .name = "isMouseButtonDown", .func = zlua.wrap(IsMouseButtonDown) },
-    .{ .name = "isMouseButtonPressed", .func = zlua.wrap(IsMouseButtonPressed) },
-    .{ .name = "isMouseButtonReleased", .func = zlua.wrap(IsMouseButtonReleased) },
-    .{ .name = "isMouseButtonUp", .func = zlua.wrap(IsMouseButtonUp) },
-    .{ .name = "isPathFile", .func = zlua.wrap(IsPathFile) },
-    .{ .name = "isWindowFocused", .func = zlua.wrap(IsWindowFocused) },
-    .{ .name = "isWindowFullscreen", .func = zlua.wrap(IsWindowFullscreen) },
-    .{ .name = "isWindowHidden", .func = zlua.wrap(IsWindowHidden) },
-    .{ .name = "isWindowMaximized", .func = zlua.wrap(IsWindowMaximized) },
-    .{ .name = "isWindowMinimized", .func = zlua.wrap(IsWindowMinimized) },
-    .{ .name = "isWindowReady", .func = zlua.wrap(IsWindowReady) },
-    .{ .name = "isWindowResized", .func = zlua.wrap(IsWindowResized) },
-    .{ .name = "maximizeWindow", .func = zlua.wrap(MaximizeWindow) },
-    .{ .name = "minimizeWindow", .func = zlua.wrap(MinimizeWindow) },
-    .{ .name = "openURL", .func = zlua.wrap(OpenURL) },
-    .{ .name = "pollInputEvents", .func = zlua.wrap(PollInputEvents) },
-    .{ .name = "restoreWindow", .func = zlua.wrap(RestoreWindow) },
-    .{ .name = "saveFileText", .func = zlua.wrap(SaveFileText) },
-    .{ .name = "setAudioStreamBufferSizeDefault", .func = zlua.wrap(SetAudioStreamBufferSizeDefault) },
-    .{ .name = "setAutomationEventBaseFrame", .func = zlua.wrap(SetAutomationEventBaseFrame) },
-    .{ .name = "setClipboardText", .func = zlua.wrap(SetClipboardText) },
-    .{ .name = "setExitKey", .func = zlua.wrap(SetExitKey) },
-    .{ .name = "setGamepadVibration", .func = zlua.wrap(SetGamepadVibration) },
-    .{ .name = "setMasterVolume", .func = zlua.wrap(SetMasterVolume) },
-    .{ .name = "setMouseCursor", .func = zlua.wrap(SetMouseCursor) },
-    .{ .name = "setMouseOffset", .func = zlua.wrap(SetMouseOffset) },
-    .{ .name = "setMousePosition", .func = zlua.wrap(SetMousePosition) },
-    .{ .name = "setMouseScale", .func = zlua.wrap(SetMouseScale) },
-    .{ .name = "setTargetFPS", .func = zlua.wrap(SetTargetFPS) },
-    .{ .name = "setTextLineSpacing", .func = zlua.wrap(SetTextLineSpacing) },
-    .{ .name = "setTraceLogLevel", .func = zlua.wrap(SetTraceLogLevel) },
-    .{ .name = "setWindowFocused", .func = zlua.wrap(SetWindowFocused) },
-    .{ .name = "setWindowMaxSize", .func = zlua.wrap(SetWindowMaxSize) },
-    .{ .name = "setWindowMinSize", .func = zlua.wrap(SetWindowMinSize) },
-    .{ .name = "setWindowMonitor", .func = zlua.wrap(SetWindowMonitor) },
-    .{ .name = "setWindowOpacity", .func = zlua.wrap(SetWindowOpacity) },
-    .{ .name = "setWindowPosition", .func = zlua.wrap(SetWindowPosition) },
-    .{ .name = "setWindowSize", .func = zlua.wrap(SetWindowSize) },
-    .{ .name = "setWindowTitle", .func = zlua.wrap(SetWindowTitle) },
-    .{ .name = "showCursor", .func = zlua.wrap(ShowCursor) },
-    .{ .name = "startAutomationEventRecording", .func = zlua.wrap(StartAutomationEventRecording) },
-    .{ .name = "stopAutomationEventRecording", .func = zlua.wrap(StopAutomationEventRecording) },
-    .{ .name = "swapScreenBuffer", .func = zlua.wrap(SwapScreenBuffer) },
-    .{ .name = "takeScreenshot", .func = zlua.wrap(TakeScreenshot) },
-    .{ .name = "textIsEqual", .func = zlua.wrap(TextIsEqual) },
-    .{ .name = "toggleBorderlessWindowed", .func = zlua.wrap(ToggleBorderlessWindowed) },
-    .{ .name = "toggleFullscreen", .func = zlua.wrap(ToggleFullscreen) },
-    .{ .name = "windowShouldClose", .func = zlua.wrap(WindowShouldClose) },
+    .{ .name = "Color", .func = zlua.wrap(
+        Color,
+    ) },
+    .{ .name = "Matrix", .func = zlua.wrap(
+        Matrix,
+    ) },
+    .{ .name = "Rectangle", .func = zlua.wrap(
+        Rectangle,
+    ) },
+    .{ .name = "Texture", .func = zlua.wrap(
+        Texture,
+    ) },
+    .{ .name = "Vector2", .func = zlua.wrap(
+        Vector2,
+    ) },
+    .{ .name = "Vector3", .func = zlua.wrap(
+        Vector3,
+    ) },
+    .{ .name = "Vector4", .func = zlua.wrap(
+        Vector4,
+    ) },
+    .{ .name = "beginBlendMode", .func = zlua.wrap(
+        BeginBlendMode,
+    ) },
+    .{ .name = "beginDrawing", .func = zlua.wrap(
+        BeginDrawing,
+    ) },
+    .{ .name = "beginScissorMode", .func = zlua.wrap(
+        BeginScissorMode,
+    ) },
+    .{ .name = "changeDirectory", .func = zlua.wrap(
+        ChangeDirectory,
+    ) },
+    .{ .name = "checkCollisionCircleLine", .func = zlua.wrap(
+        CheckCollisionCircleLine,
+    ) },
+    .{ .name = "checkCollisionCircleRec", .func = zlua.wrap(
+        CheckCollisionCircleRec,
+    ) },
+    .{ .name = "checkCollisionCircles", .func = zlua.wrap(
+        CheckCollisionCircles,
+    ) },
+    .{ .name = "checkCollisionPointCircle", .func = zlua.wrap(
+        CheckCollisionPointCircle,
+    ) },
+    .{ .name = "checkCollisionPointLine", .func = zlua.wrap(
+        CheckCollisionPointLine,
+    ) },
+    .{ .name = "checkCollisionPointRec", .func = zlua.wrap(
+        CheckCollisionPointRec,
+    ) },
+    .{ .name = "checkCollisionPointTriangle", .func = zlua.wrap(
+        CheckCollisionPointTriangle,
+    ) },
+    .{ .name = "checkCollisionRecs", .func = zlua.wrap(
+        CheckCollisionRecs,
+    ) },
+    .{ .name = "checkCollisionSpheres", .func = zlua.wrap(
+        CheckCollisionSpheres,
+    ) },
+    .{ .name = "clearBackground", .func = zlua.wrap(
+        ClearBackground,
+    ) },
+    .{ .name = "closeAudioDevice", .func = zlua.wrap(
+        CloseAudioDevice,
+    ) },
+    .{ .name = "closeWindow", .func = zlua.wrap(
+        CloseWindow,
+    ) },
+    .{ .name = "colorIsEqual", .func = zlua.wrap(
+        ColorIsEqual,
+    ) },
+    .{ .name = "directoryExists", .func = zlua.wrap(
+        DirectoryExists,
+    ) },
+    .{ .name = "disableCursor", .func = zlua.wrap(
+        DisableCursor,
+    ) },
+    .{ .name = "disableEventWaiting", .func = zlua.wrap(
+        DisableEventWaiting,
+    ) },
+    .{ .name = "drawCapsule", .func = zlua.wrap(
+        DrawCapsule,
+    ) },
+    .{ .name = "drawCapsuleWires", .func = zlua.wrap(
+        DrawCapsuleWires,
+    ) },
+    .{ .name = "drawCircle", .func = zlua.wrap(
+        DrawCircle,
+    ) },
+    .{ .name = "drawCircle3D", .func = zlua.wrap(
+        DrawCircle3D,
+    ) },
+    .{ .name = "drawCircleGradient", .func = zlua.wrap(
+        DrawCircleGradient,
+    ) },
+    .{ .name = "drawCircleLines", .func = zlua.wrap(
+        DrawCircleLines,
+    ) },
+    .{ .name = "drawCircleLinesV", .func = zlua.wrap(
+        DrawCircleLinesV,
+    ) },
+    .{ .name = "drawCircleSector", .func = zlua.wrap(
+        DrawCircleSector,
+    ) },
+    .{ .name = "drawCircleSectorLines", .func = zlua.wrap(
+        DrawCircleSectorLines,
+    ) },
+    .{ .name = "drawCircleV", .func = zlua.wrap(
+        DrawCircleV,
+    ) },
+    .{ .name = "drawCube", .func = zlua.wrap(
+        DrawCube,
+    ) },
+    .{ .name = "drawCubeV", .func = zlua.wrap(
+        DrawCubeV,
+    ) },
+    .{ .name = "drawCubeWires", .func = zlua.wrap(
+        DrawCubeWires,
+    ) },
+    .{ .name = "drawCubeWiresV", .func = zlua.wrap(
+        DrawCubeWiresV,
+    ) },
+    .{ .name = "drawCylinder", .func = zlua.wrap(
+        DrawCylinder,
+    ) },
+    .{ .name = "drawCylinderEx", .func = zlua.wrap(
+        DrawCylinderEx,
+    ) },
+    .{ .name = "drawCylinderWires", .func = zlua.wrap(
+        DrawCylinderWires,
+    ) },
+    .{ .name = "drawCylinderWiresEx", .func = zlua.wrap(
+        DrawCylinderWiresEx,
+    ) },
+    .{ .name = "drawEllipse", .func = zlua.wrap(
+        DrawEllipse,
+    ) },
+    .{ .name = "drawEllipseLines", .func = zlua.wrap(
+        DrawEllipseLines,
+    ) },
+    .{ .name = "drawEllipseLinesV", .func = zlua.wrap(
+        DrawEllipseLinesV,
+    ) },
+    .{ .name = "drawEllipseV", .func = zlua.wrap(
+        DrawEllipseV,
+    ) },
+    .{ .name = "drawFPS", .func = zlua.wrap(
+        DrawFPS,
+    ) },
+    .{ .name = "drawGrid", .func = zlua.wrap(
+        DrawGrid,
+    ) },
+    .{ .name = "drawLine", .func = zlua.wrap(
+        DrawLine,
+    ) },
+    .{ .name = "drawLine3D", .func = zlua.wrap(
+        DrawLine3D,
+    ) },
+    .{ .name = "drawLineBezier", .func = zlua.wrap(
+        DrawLineBezier,
+    ) },
+    .{ .name = "drawLineDashed", .func = zlua.wrap(
+        DrawLineDashed,
+    ) },
+    .{ .name = "drawLineEx", .func = zlua.wrap(
+        DrawLineEx,
+    ) },
+    .{ .name = "drawLineV", .func = zlua.wrap(
+        DrawLineV,
+    ) },
+    .{ .name = "drawPixel", .func = zlua.wrap(
+        DrawPixel,
+    ) },
+    .{ .name = "drawPixelV", .func = zlua.wrap(
+        DrawPixelV,
+    ) },
+    .{ .name = "drawPlane", .func = zlua.wrap(
+        DrawPlane,
+    ) },
+    .{ .name = "drawPoint3D", .func = zlua.wrap(
+        DrawPoint3D,
+    ) },
+    .{ .name = "drawPoly", .func = zlua.wrap(
+        DrawPoly,
+    ) },
+    .{ .name = "drawPolyLines", .func = zlua.wrap(
+        DrawPolyLines,
+    ) },
+    .{ .name = "drawPolyLinesEx", .func = zlua.wrap(
+        DrawPolyLinesEx,
+    ) },
+    .{ .name = "drawRectangle", .func = zlua.wrap(
+        DrawRectangle,
+    ) },
+    .{ .name = "drawRectangleGradientEx", .func = zlua.wrap(
+        DrawRectangleGradientEx,
+    ) },
+    .{ .name = "drawRectangleGradientH", .func = zlua.wrap(
+        DrawRectangleGradientH,
+    ) },
+    .{ .name = "drawRectangleGradientV", .func = zlua.wrap(
+        DrawRectangleGradientV,
+    ) },
+    .{ .name = "drawRectangleLines", .func = zlua.wrap(
+        DrawRectangleLines,
+    ) },
+    .{ .name = "drawRectangleLinesEx", .func = zlua.wrap(
+        DrawRectangleLinesEx,
+    ) },
+    .{ .name = "drawRectanglePro", .func = zlua.wrap(
+        DrawRectanglePro,
+    ) },
+    .{ .name = "drawRectangleRec", .func = zlua.wrap(
+        DrawRectangleRec,
+    ) },
+    .{ .name = "drawRectangleRounded", .func = zlua.wrap(
+        DrawRectangleRounded,
+    ) },
+    .{ .name = "drawRectangleRoundedLines", .func = zlua.wrap(
+        DrawRectangleRoundedLines,
+    ) },
+    .{ .name = "drawRectangleRoundedLinesEx", .func = zlua.wrap(
+        DrawRectangleRoundedLinesEx,
+    ) },
+    .{ .name = "drawRectangleV", .func = zlua.wrap(
+        DrawRectangleV,
+    ) },
+    .{ .name = "drawRing", .func = zlua.wrap(
+        DrawRing,
+    ) },
+    .{ .name = "drawRingLines", .func = zlua.wrap(
+        DrawRingLines,
+    ) },
+    .{ .name = "drawSphere", .func = zlua.wrap(
+        DrawSphere,
+    ) },
+    .{ .name = "drawSphereEx", .func = zlua.wrap(
+        DrawSphereEx,
+    ) },
+    .{ .name = "drawSphereWires", .func = zlua.wrap(
+        DrawSphereWires,
+    ) },
+    .{ .name = "drawSplineSegmentBasis", .func = zlua.wrap(
+        DrawSplineSegmentBasis,
+    ) },
+    .{ .name = "drawSplineSegmentBezierCubic", .func = zlua.wrap(
+        DrawSplineSegmentBezierCubic,
+    ) },
+    .{ .name = "drawSplineSegmentBezierQuadratic", .func = zlua.wrap(
+        DrawSplineSegmentBezierQuadratic,
+    ) },
+    .{ .name = "drawSplineSegmentCatmullRom", .func = zlua.wrap(
+        DrawSplineSegmentCatmullRom,
+    ) },
+    .{ .name = "drawSplineSegmentLinear", .func = zlua.wrap(
+        DrawSplineSegmentLinear,
+    ) },
+    .{ .name = "drawText", .func = zlua.wrap(
+        DrawText,
+    ) },
+    .{ .name = "drawTriangle", .func = zlua.wrap(
+        DrawTriangle,
+    ) },
+    .{ .name = "drawTriangle3D", .func = zlua.wrap(
+        DrawTriangle3D,
+    ) },
+    .{ .name = "drawTriangleLines", .func = zlua.wrap(
+        DrawTriangleLines,
+    ) },
+    .{ .name = "enableCursor", .func = zlua.wrap(
+        EnableCursor,
+    ) },
+    .{ .name = "enableEventWaiting", .func = zlua.wrap(
+        EnableEventWaiting,
+    ) },
+    .{ .name = "endBlendMode", .func = zlua.wrap(
+        EndBlendMode,
+    ) },
+    .{ .name = "endDrawing", .func = zlua.wrap(
+        EndDrawing,
+    ) },
+    .{ .name = "endMode2D", .func = zlua.wrap(
+        EndMode2D,
+    ) },
+    .{ .name = "endMode3D", .func = zlua.wrap(
+        EndMode3D,
+    ) },
+    .{ .name = "endScissorMode", .func = zlua.wrap(
+        EndScissorMode,
+    ) },
+    .{ .name = "endShaderMode", .func = zlua.wrap(
+        EndShaderMode,
+    ) },
+    .{ .name = "endTextureMode", .func = zlua.wrap(
+        EndTextureMode,
+    ) },
+    .{ .name = "endVrStereoMode", .func = zlua.wrap(
+        EndVrStereoMode,
+    ) },
+    .{ .name = "fileExists", .func = zlua.wrap(
+        FileExists,
+    ) },
+    .{ .name = "hideCursor", .func = zlua.wrap(
+        HideCursor,
+    ) },
+    .{ .name = "initAudioDevice", .func = zlua.wrap(
+        InitAudioDevice,
+    ) },
+    .{ .name = "initWindow", .func = zlua.wrap(
+        InitWindow,
+    ) },
+    .{ .name = "isAudioDeviceReady", .func = zlua.wrap(
+        IsAudioDeviceReady,
+    ) },
+    .{ .name = "isCursorHidden", .func = zlua.wrap(
+        IsCursorHidden,
+    ) },
+    .{ .name = "isCursorOnScreen", .func = zlua.wrap(
+        IsCursorOnScreen,
+    ) },
+    .{ .name = "isFileDropped", .func = zlua.wrap(
+        IsFileDropped,
+    ) },
+    .{ .name = "isFileExtension", .func = zlua.wrap(
+        IsFileExtension,
+    ) },
+    .{ .name = "isFileNameValid", .func = zlua.wrap(
+        IsFileNameValid,
+    ) },
+    .{ .name = "isGamepadAvailable", .func = zlua.wrap(
+        IsGamepadAvailable,
+    ) },
+    .{ .name = "isGamepadButtonDown", .func = zlua.wrap(
+        IsGamepadButtonDown,
+    ) },
+    .{ .name = "isGamepadButtonPressed", .func = zlua.wrap(
+        IsGamepadButtonPressed,
+    ) },
+    .{ .name = "isGamepadButtonReleased", .func = zlua.wrap(
+        IsGamepadButtonReleased,
+    ) },
+    .{ .name = "isGamepadButtonUp", .func = zlua.wrap(
+        IsGamepadButtonUp,
+    ) },
+    .{ .name = "isKeyDown", .func = zlua.wrap(
+        IsKeyDown,
+    ) },
+    .{ .name = "isKeyPressed", .func = zlua.wrap(
+        IsKeyPressed,
+    ) },
+    .{ .name = "isKeyPressedRepeat", .func = zlua.wrap(
+        IsKeyPressedRepeat,
+    ) },
+    .{ .name = "isKeyReleased", .func = zlua.wrap(
+        IsKeyReleased,
+    ) },
+    .{ .name = "isKeyUp", .func = zlua.wrap(
+        IsKeyUp,
+    ) },
+    .{ .name = "isMouseButtonDown", .func = zlua.wrap(
+        IsMouseButtonDown,
+    ) },
+    .{ .name = "isMouseButtonPressed", .func = zlua.wrap(
+        IsMouseButtonPressed,
+    ) },
+    .{ .name = "isMouseButtonReleased", .func = zlua.wrap(
+        IsMouseButtonReleased,
+    ) },
+    .{ .name = "isMouseButtonUp", .func = zlua.wrap(
+        IsMouseButtonUp,
+    ) },
+    .{ .name = "isPathFile", .func = zlua.wrap(
+        IsPathFile,
+    ) },
+    .{ .name = "isWindowFocused", .func = zlua.wrap(
+        IsWindowFocused,
+    ) },
+    .{ .name = "isWindowFullscreen", .func = zlua.wrap(
+        IsWindowFullscreen,
+    ) },
+    .{ .name = "isWindowHidden", .func = zlua.wrap(
+        IsWindowHidden,
+    ) },
+    .{ .name = "isWindowMaximized", .func = zlua.wrap(
+        IsWindowMaximized,
+    ) },
+    .{ .name = "isWindowMinimized", .func = zlua.wrap(
+        IsWindowMinimized,
+    ) },
+    .{ .name = "isWindowReady", .func = zlua.wrap(
+        IsWindowReady,
+    ) },
+    .{ .name = "isWindowResized", .func = zlua.wrap(
+        IsWindowResized,
+    ) },
+    .{ .name = "maximizeWindow", .func = zlua.wrap(
+        MaximizeWindow,
+    ) },
+    .{ .name = "minimizeWindow", .func = zlua.wrap(
+        MinimizeWindow,
+    ) },
+    .{ .name = "openURL", .func = zlua.wrap(
+        OpenURL,
+    ) },
+    .{ .name = "pollInputEvents", .func = zlua.wrap(
+        PollInputEvents,
+    ) },
+    .{ .name = "restoreWindow", .func = zlua.wrap(
+        RestoreWindow,
+    ) },
+    .{ .name = "saveFileText", .func = zlua.wrap(
+        SaveFileText,
+    ) },
+    .{ .name = "setAudioStreamBufferSizeDefault", .func = zlua.wrap(
+        SetAudioStreamBufferSizeDefault,
+    ) },
+    .{ .name = "setAutomationEventBaseFrame", .func = zlua.wrap(
+        SetAutomationEventBaseFrame,
+    ) },
+    .{ .name = "setClipboardText", .func = zlua.wrap(
+        SetClipboardText,
+    ) },
+    .{ .name = "setExitKey", .func = zlua.wrap(
+        SetExitKey,
+    ) },
+    .{ .name = "setGamepadVibration", .func = zlua.wrap(
+        SetGamepadVibration,
+    ) },
+    .{ .name = "setMasterVolume", .func = zlua.wrap(
+        SetMasterVolume,
+    ) },
+    .{ .name = "setMouseCursor", .func = zlua.wrap(
+        SetMouseCursor,
+    ) },
+    .{ .name = "setMouseOffset", .func = zlua.wrap(
+        SetMouseOffset,
+    ) },
+    .{ .name = "setMousePosition", .func = zlua.wrap(
+        SetMousePosition,
+    ) },
+    .{ .name = "setMouseScale", .func = zlua.wrap(
+        SetMouseScale,
+    ) },
+    .{ .name = "setTargetFPS", .func = zlua.wrap(
+        SetTargetFPS,
+    ) },
+    .{ .name = "setTextLineSpacing", .func = zlua.wrap(
+        SetTextLineSpacing,
+    ) },
+    .{ .name = "setTraceLogLevel", .func = zlua.wrap(
+        SetTraceLogLevel,
+    ) },
+    .{ .name = "setWindowFocused", .func = zlua.wrap(
+        SetWindowFocused,
+    ) },
+    .{ .name = "setWindowMaxSize", .func = zlua.wrap(
+        SetWindowMaxSize,
+    ) },
+    .{ .name = "setWindowMinSize", .func = zlua.wrap(
+        SetWindowMinSize,
+    ) },
+    .{ .name = "setWindowMonitor", .func = zlua.wrap(
+        SetWindowMonitor,
+    ) },
+    .{ .name = "setWindowOpacity", .func = zlua.wrap(
+        SetWindowOpacity,
+    ) },
+    .{ .name = "setWindowPosition", .func = zlua.wrap(
+        SetWindowPosition,
+    ) },
+    .{ .name = "setWindowSize", .func = zlua.wrap(
+        SetWindowSize,
+    ) },
+    .{ .name = "setWindowTitle", .func = zlua.wrap(
+        SetWindowTitle,
+    ) },
+    .{ .name = "showCursor", .func = zlua.wrap(
+        ShowCursor,
+    ) },
+    .{ .name = "startAutomationEventRecording", .func = zlua.wrap(
+        StartAutomationEventRecording,
+    ) },
+    .{ .name = "stopAutomationEventRecording", .func = zlua.wrap(
+        StopAutomationEventRecording,
+    ) },
+    .{ .name = "swapScreenBuffer", .func = zlua.wrap(
+        SwapScreenBuffer,
+    ) },
+    .{ .name = "takeScreenshot", .func = zlua.wrap(
+        TakeScreenshot,
+    ) },
+    .{ .name = "textIsEqual", .func = zlua.wrap(
+        TextIsEqual,
+    ) },
+    .{ .name = "toggleBorderlessWindowed", .func = zlua.wrap(
+        ToggleBorderlessWindowed,
+    ) },
+    .{ .name = "toggleFullscreen", .func = zlua.wrap(
+        ToggleFullscreen,
+    ) },
+    .{ .name = "windowShouldClose", .func = zlua.wrap(
+        WindowShouldClose,
+    ) },
 };
-

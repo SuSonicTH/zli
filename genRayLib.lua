@@ -1,14 +1,9 @@
 local io = require("io")
-local json = require("cjson")
 local F = require("F")
 local spec = require("raylib_api")
 local output_path = "./src/raylib.zig"
 
-local LF = "\n"
-local IND = "    "
-
 local out = assert(io.open(output_path, "w"))
-
 
 local type_mapping = setmetatable({
     ["char"] = "u8",
@@ -45,17 +40,17 @@ local type_mapping = setmetatable({
 
 local parameter_mapping = {
     int = function(pos, name)
-        return 'const ' .. name ..
-            ' = luax.getArgIntOrError(c_int, lua, ' .. pos .. ', "expecting ' .. name .. ' as integer");'
+        local line = F 'const {name} = luax.getArgIntOrError(c_int, lua, {pos}, "expecting {name} as integer");'
+        return line
     end,
     float = function(pos, name)
-        return 'const ' .. name ..
-            ' = luax.getArgFloatOrError(lua, ' .. pos .. ', "expecting ' .. name .. ' as number");'
+        local line = F 'const {name} = luax.getArgFloatOrError(lua, {pos}, "expecting {name} as number");'
+        return line
     end,
 
     ["const char *"] = function(pos, name)
-        return 'const ' .. name ..
-            ' = luax.getArgStringOrError(lua, ' .. pos .. ', "expecting ' .. name .. ' as string");'
+        local line = F 'const {name} = luax.getArgStringOrError(lua, {pos}, "expecting {name} as string");'
+        return line
     end,
 }
 
@@ -75,35 +70,40 @@ local function write_structs()
         end
 
         parameter_mapping[struct.name] = function(pos, name)
-            return 'const ' .. name .. ' = ' .. struct.name .. '_from_lua(lua, ' .. pos .. ');'
+            local line = F('const {name} = {struct.name}_from_lua(lua, {pos});', struct)
+            return line
         end
 
-        out:write("fn ", struct.name, "_from_lua(lua: *Lua, index:i32) rl.struct_", struct.name, " {", LF)
-        out:write(IND, "if (lua.typeOf(index) == .userdata) {", LF)
-        out:write(IND, IND, "return (lua.toUserdata(rl.struct_", struct.name, ", index) catch @panic(\"expecting ",
-            struct.name, " object\")).*;", LF)
-        out:write(IND, "}", LF)
-
-        out:write(IND, "return .{", LF)
+        out:write(F [[
+fn {struct.name}_from_lua(lua: *Lua, index:i32) rl.struct_{struct.name} {{
+    if (lua.typeOf(index) == .userdata) {{
+        return (lua.toUserdata(rl.struct_{struct.name}, index) catch @panic("expecting {struct.name} object")).*;
+    }
+    return .{{
+]])
         for _, field in ipairs(struct.fields) do
             if field.type == 'float' then
-                out:write(IND, IND, ".", field.name, " = luax.getArgTableFloat(lua, f32, index, \"", field.name,
-                    "\",\"expecting ", struct.name, " table\"),", LF)
+                out:write(F '        .{field.name} = luax.getArgTableFloat(lua, f32, index, "{field.name}", "expecting {struct.name} table"),\n')
             else
+                out:write(F '        .{field.name} = luax.getArgTableInteger(lua, {type_mapping[field.type]}, index, "{field.name}","expecting {struct.name} table"),\n')
                 print("~~~~~", type_mapping[field.type], type_mapping[field.type]:match("rl%.struct"))
-                out:write(IND, IND, ".", field.name, " = luax.getArgTableInteger(lua, ", type_mapping[field.type],
-                    ", index, \"", field.name,
-                    "\",\"expecting ", struct.name, " table\"),", LF)
             end
         end
-        out:write(IND, "};", LF)
-        out:write("}", LF, LF)
 
-        out:write("fn ", struct.name, "(lua: *Lua) i32 {", LF)
-        out:write(IND, "const val: *rl.struct_", struct.name, " = lua.newUserdata(rl.struct_", struct.name, ", 0);", LF)
-        out:write(IND, "val.* = ", struct.name, "_from_lua(lua, 1);", LF)
-        out:write(IND, "return 1;", LF)
-        out:write("}", LF, LF)
+        out:write(F [[
+    };
+}
+
+]])
+
+        out:write(F [[
+fn {struct.name} (lua: *Lua) i32 {{
+    const val: *rl.struct_{struct.name} = lua.newUserdata(rl.struct_{struct.name}, 0);
+    val.* = {struct.name}_from_lua(lua, 1);
+    return 1;
+}
+
+]])
 
         addExportedFunction(struct.name, struct.name)
 
@@ -153,23 +153,23 @@ local function write_functions()
             if retmapping then
                 addExportedFunction(func.name);
 
-                out:write('pub fn ', func.name, '(lua: *Lua) i32 {', LF)
+                out:write(F 'pub fn {func.name}(lua: *Lua) i32 {{\n')
                 for _, param in ipairs(parameters) do
-                    out:write(IND, param, LF)
+                    out:write(F '    {param}\n')
                 end
                 if #parameters == 0 and retmapping == 'void' then
-                    out:write(IND, '_ = lua;', LF)
+                    out:write('    _ = lua;\n')
                 end
 
                 if retmapping == 'void' then
-                    out:write(IND, 'rl.', func.name, '(', list, ');', LF)
-                    out:write(IND, 'return 0;', LF)
+                    out:write(F '    rl.{func.name}({list});\n')
+                    out:write('    return 0;\n')
                 else
-                    out:write(IND, 'const ret = rl.', func.name, '(', list, ');', LF)
-                    out:write(IND, retmapping, LF)
-                    out:write(IND, 'return 1;', LF)
+                    out:write(F '    const ret = rl.{func.name}({list});\n')
+                    out:write(F '    {retmapping}\n')
+                    out:write('    return 1;\n')
                 end
-                out:write('}', LF, LF)
+                out:write('}\n\n')
             end
         else
             report_missing_param_mapping(err)
@@ -181,7 +181,7 @@ local function write_exported_functions()
     out:write("const exported_functions = [_]zlua.FnReg{\n")
     table.sort(exported_functions, function(a, b) return a.lua < b.lua end)
     for _, func in ipairs(exported_functions) do
-        out:write('    .{ .name = "', func.lua, '", .func = zlua.wrap(', func.name, ') },', LF)
+        out:write(F '    .{{ .name = "{func.lua}", .func = zlua.wrap({func.name}, ) }},\n')
     end
     out:write("};\n\n")
 end
