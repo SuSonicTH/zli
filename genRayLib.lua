@@ -3,7 +3,7 @@ local F = require("F")
 local spec = require("raylib_api")
 local output_path = "./src/raylib.zig"
 
-local out = assert(io.open(output_path, "w"))
+local out = assert(io.open(output_path, "wb"))
 
 local type_mapping = setmetatable({
     ["char"] = "u8",
@@ -75,7 +75,7 @@ local function write_structs()
         end
 
         out:write(F [[
-fn {struct.name}_from_lua(lua: *Lua, index:i32) rl.struct_{struct.name} {{
+fn {struct.name}_from_lua(lua: *Lua, index: i32) rl.struct_{struct.name} {{
     if (lua.typeOf(index) == .userdata) {{
         return (lua.toUserdata(rl.struct_{struct.name}, index) catch @panic("expecting {struct.name} object")).*;
     }
@@ -85,7 +85,7 @@ fn {struct.name}_from_lua(lua: *Lua, index:i32) rl.struct_{struct.name} {{
             if field.type == 'float' then
                 out:write(F '        .{field.name} = luax.getArgTableFloat(lua, f32, index, "{field.name}", "expecting {struct.name} table"),\n')
             else
-                out:write(F '        .{field.name} = luax.getArgTableInteger(lua, {type_mapping[field.type]}, index, "{field.name}","expecting {struct.name} table"),\n')
+                out:write(F '        .{field.name} = luax.getArgTableInteger(lua, {type_mapping[field.type]}, index, "{field.name}", "expecting {struct.name} table"),\n')
                 print("~~~~~", type_mapping[field.type], type_mapping[field.type]:match("rl%.struct"))
             end
         end
@@ -97,7 +97,7 @@ fn {struct.name}_from_lua(lua: *Lua, index:i32) rl.struct_{struct.name} {{
 ]])
 
         out:write(F [[
-fn {struct.name} (lua: *Lua) i32 {{
+fn {struct.name}(lua: *Lua) i32 {{
     const val: *rl.struct_{struct.name} = lua.newUserdata(rl.struct_{struct.name}, 0);
     val.* = {struct.name}_from_lua(lua, 1);
     return 1;
@@ -158,16 +158,16 @@ local function write_functions()
                     out:write(F '    {param}\n')
                 end
                 if #parameters == 0 and retmapping == 'void' then
-                    out:write('    _ = lua;\n')
+                    out:write(F '    _ = lua;\n')
                 end
 
                 if retmapping == 'void' then
                     out:write(F '    rl.{func.name}({list});\n')
-                    out:write('    return 0;\n')
+                    out:write(F '    return 0;\n')
                 else
                     out:write(F '    const ret = rl.{func.name}({list});\n')
                     out:write(F '    {retmapping}\n')
-                    out:write('    return 1;\n')
+                    out:write(F '    return 1;\n')
                 end
                 out:write('}\n\n')
             end
@@ -181,7 +181,7 @@ local function write_exported_functions()
     out:write("const exported_functions = [_]zlua.FnReg{\n")
     table.sort(exported_functions, function(a, b) return a.lua < b.lua end)
     for _, func in ipairs(exported_functions) do
-        out:write(F '    .{{ .name = "{func.lua}", .func = zlua.wrap({func.name}, ) }},\n')
+        out:write(F '    .{{ .name = "{func.lua}", .func = zlua.wrap({func.name}) }},\n')
     end
     out:write("};\n\n")
 end
