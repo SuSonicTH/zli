@@ -360,6 +360,12 @@ pub fn getArgFloatOrError(lua: *Lua, index: i32, message: [:0]const u8) f32 {
     return @floatCast(number);
 }
 
+pub fn getArgDoubleOrError(lua: *Lua, index: i32, message: [:0]const u8) f64 {
+    lua.argCheck(lua.typeOf(index) == .number, index, message);
+    const number = lua.toNumber(index) catch unreachable;
+    return @floatCast(number);
+}
+
 pub fn getArgBooleanOrError(lua: *Lua, index: i32, message: [:0]const u8) bool {
     lua.argCheck(lua.typeOf(index) == .boolean, index, message);
     return lua.toBoolean(index) catch unreachable;

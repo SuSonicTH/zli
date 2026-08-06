@@ -38,21 +38,52 @@ local type_mapping = setmetatable({
     end
 })
 
-local parameter_mapping = {
-    int = function(pos, name)
+local parameter_mapping = setmetatable({
+    ["char"] = function(pos, name)
+        local line = F 'const {name} = luax.getArgIntOrError(u8, lua, {pos}, "expecting {name} as integer");'
+        return line
+    end,
+    ["int"] = function(pos, name)
         local line = F 'const {name} = luax.getArgIntOrError(c_int, lua, {pos}, "expecting {name} as integer");'
         return line
     end,
-    float = function(pos, name)
+    ["const int *"] = function(pos, name)
+        local line = F 'const {name} = &luax.getArgIntOrError(c_int, lua, {pos}, "expecting {name} as integer");'
+        return line
+    end,
+    ["unsigned int"] = function(pos, name)
+        local line = F 'const {name} = luax.getArgIntOrError(c_uint, lua, {pos}, "expecting {name} as integer");'
+        return line
+    end,
+    ["float"] = function(pos, name)
         local line = F 'const {name} = luax.getArgFloatOrError(lua, {pos}, "expecting {name} as number");'
         return line
     end,
-
+    ["double"] = function(pos, name)
+        local line = F 'const {name} = luax.getArgDoubleOrError(lua, {pos}, "expecting {name} as number");'
+        return line
+    end,
     ["const char *"] = function(pos, name)
         local line = F 'const {name} = luax.getArgStringOrError(lua, {pos}, "expecting {name} as string");'
         return line
     end,
-}
+    ["bool"] = function(pos, name)
+        local line = F 'const {name} = luax.getArgBooleanOrError(lua, {pos}, "expecting {name} as string");'
+        return line
+    end,
+}, {
+    __index = function(t, k)
+        if k:sub(-2, -1) == '**' then return nil end --todo: missing **
+
+        local baseType = k:gsub(" ?%*", "")
+        local baseFunc = rawget(t, baseType)
+        if not baseFunc then return nil end
+
+        return function(pos, name)
+            return baseFunc(pos, name):gsub("^const", "var"), true
+        end
+    end
+})
 
 local exported_functions = {}
 
@@ -86,7 +117,6 @@ fn {struct.name}_from_lua(lua: *Lua, index: i32) rl.struct_{struct.name} {{
                 out:write(F '        .{field.name} = luax.getArgTableFloat(lua, f32, index, "{field.name}", "expecting {struct.name} table"),\n')
             else
                 out:write(F '        .{field.name} = luax.getArgTableInteger(lua, {type_mapping[field.type]}, index, "{field.name}", "expecting {struct.name} table"),\n')
-                print("~~~~~", type_mapping[field.type], type_mapping[field.type]:match("rl%.struct"))
             end
         end
 
@@ -119,8 +149,13 @@ local function getParameters(func)
         for i, param in ipairs(func.params) do
             local mapping = parameter_mapping[param.type]
             if mapping then
-                parameters[i] = mapping(i, param.name)
-                list[i] = param.name
+                local p, isptr = mapping(i, param.name)
+                parameters[i] = p
+                if isptr then
+                    list[i] = "&" .. param.name
+                else
+                    list[i] = param.name
+                end
             else
                 return nil, nil, "unknown parameter " .. param.type
             end
@@ -141,8 +176,6 @@ local return_mapping = {
     void = "void",
     bool = "lua.pushBoolean(ret);",
 }
-
-
 
 local function write_functions()
     for _, func in ipairs(spec.functions) do

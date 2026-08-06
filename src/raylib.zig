@@ -214,6 +214,25 @@ pub fn IsWindowResized(lua: *Lua) i32 {
     return 1;
 }
 
+pub fn IsWindowState(lua: *Lua) i32 {
+    const flag = luax.getArgIntOrError(c_uint, lua, 1, "expecting flag as integer");
+    const ret = rl.IsWindowState(flag);
+    lua.pushBoolean(ret);
+    return 1;
+}
+
+pub fn SetWindowState(lua: *Lua) i32 {
+    const flags = luax.getArgIntOrError(c_uint, lua, 1, "expecting flags as integer");
+    rl.SetWindowState(flags);
+    return 0;
+}
+
+pub fn ClearWindowState(lua: *Lua) i32 {
+    const flags = luax.getArgIntOrError(c_uint, lua, 1, "expecting flags as integer");
+    rl.ClearWindowState(flags);
+    return 0;
+}
+
 pub fn ToggleFullscreen(lua: *Lua) i32 {
     _ = lua;
     rl.ToggleFullscreen();
@@ -443,9 +462,33 @@ pub fn PollInputEvents(lua: *Lua) i32 {
     return 0;
 }
 
+pub fn WaitTime(lua: *Lua) i32 {
+    const seconds = luax.getArgDoubleOrError(lua, 1, "expecting seconds as number");
+    rl.WaitTime(seconds);
+    return 0;
+}
+
+pub fn SetRandomSeed(lua: *Lua) i32 {
+    const seed = luax.getArgIntOrError(c_uint, lua, 1, "expecting seed as integer");
+    rl.SetRandomSeed(seed);
+    return 0;
+}
+
+pub fn UnloadRandomSequence(lua: *Lua) i32 {
+    var sequence = luax.getArgIntOrError(c_int, lua, 1, "expecting sequence as integer");
+    rl.UnloadRandomSequence(&sequence);
+    return 0;
+}
+
 pub fn TakeScreenshot(lua: *Lua) i32 {
     const fileName = luax.getArgStringOrError(lua, 1, "expecting fileName as string");
     rl.TakeScreenshot(fileName);
+    return 0;
+}
+
+pub fn SetConfigFlags(lua: *Lua) i32 {
+    const flags = luax.getArgIntOrError(c_uint, lua, 1, "expecting flags as integer");
+    rl.SetConfigFlags(flags);
     return 0;
 }
 
@@ -458,6 +501,12 @@ pub fn OpenURL(lua: *Lua) i32 {
 pub fn SetTraceLogLevel(lua: *Lua) i32 {
     const logLevel = luax.getArgIntOrError(c_int, lua, 1, "expecting logLevel as integer");
     rl.SetTraceLogLevel(logLevel);
+    return 0;
+}
+
+pub fn UnloadFileText(lua: *Lua) i32 {
+    var text = luax.getArgIntOrError(u8, lua, 1, "expecting text as integer");
+    rl.UnloadFileText(&text);
     return 0;
 }
 
@@ -678,6 +727,19 @@ pub fn SetMouseCursor(lua: *Lua) i32 {
     const cursor = luax.getArgIntOrError(c_int, lua, 1, "expecting cursor as integer");
     rl.SetMouseCursor(cursor);
     return 0;
+}
+
+pub fn SetGesturesEnabled(lua: *Lua) i32 {
+    const flags = luax.getArgIntOrError(c_uint, lua, 1, "expecting flags as integer");
+    rl.SetGesturesEnabled(flags);
+    return 0;
+}
+
+pub fn IsGestureDetected(lua: *Lua) i32 {
+    const gesture = luax.getArgIntOrError(c_uint, lua, 1, "expecting gesture as integer");
+    const ret = rl.IsGestureDetected(gesture);
+    lua.pushBoolean(ret);
+    return 1;
 }
 
 pub fn DrawPixel(lua: *Lua) i32 {
@@ -1155,6 +1217,29 @@ pub fn CheckCollisionPointLine(lua: *Lua) i32 {
     return 1;
 }
 
+pub fn CheckCollisionLines(lua: *Lua) i32 {
+    const startPos1 = Vector2_from_lua(lua, 1);
+    const endPos1 = Vector2_from_lua(lua, 2);
+    const startPos2 = Vector2_from_lua(lua, 3);
+    const endPos2 = Vector2_from_lua(lua, 4);
+    var collisionPoint = Vector2_from_lua(lua, 5);
+    const ret = rl.CheckCollisionLines(startPos1, endPos1, startPos2, endPos2, &collisionPoint);
+    lua.pushBoolean(ret);
+    return 1;
+}
+
+pub fn UnloadImageColors(lua: *Lua) i32 {
+    var colors = Color_from_lua(lua, 1);
+    rl.UnloadImageColors(&colors);
+    return 0;
+}
+
+pub fn UnloadImagePalette(lua: *Lua) i32 {
+    var colors = Color_from_lua(lua, 1);
+    rl.UnloadImagePalette(&colors);
+    return 0;
+}
+
 pub fn ColorIsEqual(lua: *Lua) i32 {
     const col1 = Color_from_lua(lua, 1);
     const col2 = Color_from_lua(lua, 2);
@@ -1186,12 +1271,32 @@ pub fn SetTextLineSpacing(lua: *Lua) i32 {
     return 0;
 }
 
+pub fn UnloadUTF8(lua: *Lua) i32 {
+    var text = luax.getArgIntOrError(u8, lua, 1, "expecting text as integer");
+    rl.UnloadUTF8(&text);
+    return 0;
+}
+
+pub fn UnloadCodepoints(lua: *Lua) i32 {
+    var codepoints = luax.getArgIntOrError(c_int, lua, 1, "expecting codepoints as integer");
+    rl.UnloadCodepoints(&codepoints);
+    return 0;
+}
+
 pub fn TextIsEqual(lua: *Lua) i32 {
     const text1 = luax.getArgStringOrError(lua, 1, "expecting text1 as string");
     const text2 = luax.getArgStringOrError(lua, 2, "expecting text2 as string");
     const ret = rl.TextIsEqual(text1, text2);
     lua.pushBoolean(ret);
     return 1;
+}
+
+pub fn TextAppend(lua: *Lua) i32 {
+    var text = luax.getArgIntOrError(u8, lua, 1, "expecting text as integer");
+    const append = luax.getArgStringOrError(lua, 2, "expecting append as string");
+    var position = luax.getArgIntOrError(c_int, lua, 3, "expecting position as integer");
+    rl.TextAppend(&text, append, &position);
+    return 0;
 }
 
 pub fn DrawLine3D(lua: *Lua) i32 {
@@ -1407,6 +1512,12 @@ pub fn SetMasterVolume(lua: *Lua) i32 {
     return 0;
 }
 
+pub fn UnloadWaveSamples(lua: *Lua) i32 {
+    var samples = luax.getArgFloatOrError(lua, 1, "expecting samples as number");
+    rl.UnloadWaveSamples(&samples);
+    return 0;
+}
+
 pub fn SetAudioStreamBufferSizeDefault(lua: *Lua) i32 {
     const size = luax.getArgIntOrError(c_int, lua, 1, "expecting size as integer");
     rl.SetAudioStreamBufferSizeDefault(size);
@@ -1428,6 +1539,7 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "checkCollisionCircleLine", .func = zlua.wrap(CheckCollisionCircleLine) },
     .{ .name = "checkCollisionCircleRec", .func = zlua.wrap(CheckCollisionCircleRec) },
     .{ .name = "checkCollisionCircles", .func = zlua.wrap(CheckCollisionCircles) },
+    .{ .name = "checkCollisionLines", .func = zlua.wrap(CheckCollisionLines) },
     .{ .name = "checkCollisionPointCircle", .func = zlua.wrap(CheckCollisionPointCircle) },
     .{ .name = "checkCollisionPointLine", .func = zlua.wrap(CheckCollisionPointLine) },
     .{ .name = "checkCollisionPointRec", .func = zlua.wrap(CheckCollisionPointRec) },
@@ -1435,6 +1547,7 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "checkCollisionRecs", .func = zlua.wrap(CheckCollisionRecs) },
     .{ .name = "checkCollisionSpheres", .func = zlua.wrap(CheckCollisionSpheres) },
     .{ .name = "clearBackground", .func = zlua.wrap(ClearBackground) },
+    .{ .name = "clearWindowState", .func = zlua.wrap(ClearWindowState) },
     .{ .name = "closeAudioDevice", .func = zlua.wrap(CloseAudioDevice) },
     .{ .name = "closeWindow", .func = zlua.wrap(CloseWindow) },
     .{ .name = "colorIsEqual", .func = zlua.wrap(ColorIsEqual) },
@@ -1529,6 +1642,7 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "isGamepadButtonPressed", .func = zlua.wrap(IsGamepadButtonPressed) },
     .{ .name = "isGamepadButtonReleased", .func = zlua.wrap(IsGamepadButtonReleased) },
     .{ .name = "isGamepadButtonUp", .func = zlua.wrap(IsGamepadButtonUp) },
+    .{ .name = "isGestureDetected", .func = zlua.wrap(IsGestureDetected) },
     .{ .name = "isKeyDown", .func = zlua.wrap(IsKeyDown) },
     .{ .name = "isKeyPressed", .func = zlua.wrap(IsKeyPressed) },
     .{ .name = "isKeyPressedRepeat", .func = zlua.wrap(IsKeyPressedRepeat) },
@@ -1546,6 +1660,7 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "isWindowMinimized", .func = zlua.wrap(IsWindowMinimized) },
     .{ .name = "isWindowReady", .func = zlua.wrap(IsWindowReady) },
     .{ .name = "isWindowResized", .func = zlua.wrap(IsWindowResized) },
+    .{ .name = "isWindowState", .func = zlua.wrap(IsWindowState) },
     .{ .name = "maximizeWindow", .func = zlua.wrap(MaximizeWindow) },
     .{ .name = "minimizeWindow", .func = zlua.wrap(MinimizeWindow) },
     .{ .name = "openURL", .func = zlua.wrap(OpenURL) },
@@ -1555,13 +1670,16 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "setAudioStreamBufferSizeDefault", .func = zlua.wrap(SetAudioStreamBufferSizeDefault) },
     .{ .name = "setAutomationEventBaseFrame", .func = zlua.wrap(SetAutomationEventBaseFrame) },
     .{ .name = "setClipboardText", .func = zlua.wrap(SetClipboardText) },
+    .{ .name = "setConfigFlags", .func = zlua.wrap(SetConfigFlags) },
     .{ .name = "setExitKey", .func = zlua.wrap(SetExitKey) },
     .{ .name = "setGamepadVibration", .func = zlua.wrap(SetGamepadVibration) },
+    .{ .name = "setGesturesEnabled", .func = zlua.wrap(SetGesturesEnabled) },
     .{ .name = "setMasterVolume", .func = zlua.wrap(SetMasterVolume) },
     .{ .name = "setMouseCursor", .func = zlua.wrap(SetMouseCursor) },
     .{ .name = "setMouseOffset", .func = zlua.wrap(SetMouseOffset) },
     .{ .name = "setMousePosition", .func = zlua.wrap(SetMousePosition) },
     .{ .name = "setMouseScale", .func = zlua.wrap(SetMouseScale) },
+    .{ .name = "setRandomSeed", .func = zlua.wrap(SetRandomSeed) },
     .{ .name = "setTargetFPS", .func = zlua.wrap(SetTargetFPS) },
     .{ .name = "setTextLineSpacing", .func = zlua.wrap(SetTextLineSpacing) },
     .{ .name = "setTraceLogLevel", .func = zlua.wrap(SetTraceLogLevel) },
@@ -1572,14 +1690,24 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "setWindowOpacity", .func = zlua.wrap(SetWindowOpacity) },
     .{ .name = "setWindowPosition", .func = zlua.wrap(SetWindowPosition) },
     .{ .name = "setWindowSize", .func = zlua.wrap(SetWindowSize) },
+    .{ .name = "setWindowState", .func = zlua.wrap(SetWindowState) },
     .{ .name = "setWindowTitle", .func = zlua.wrap(SetWindowTitle) },
     .{ .name = "showCursor", .func = zlua.wrap(ShowCursor) },
     .{ .name = "startAutomationEventRecording", .func = zlua.wrap(StartAutomationEventRecording) },
     .{ .name = "stopAutomationEventRecording", .func = zlua.wrap(StopAutomationEventRecording) },
     .{ .name = "swapScreenBuffer", .func = zlua.wrap(SwapScreenBuffer) },
     .{ .name = "takeScreenshot", .func = zlua.wrap(TakeScreenshot) },
+    .{ .name = "textAppend", .func = zlua.wrap(TextAppend) },
     .{ .name = "textIsEqual", .func = zlua.wrap(TextIsEqual) },
     .{ .name = "toggleBorderlessWindowed", .func = zlua.wrap(ToggleBorderlessWindowed) },
     .{ .name = "toggleFullscreen", .func = zlua.wrap(ToggleFullscreen) },
+    .{ .name = "unloadCodepoints", .func = zlua.wrap(UnloadCodepoints) },
+    .{ .name = "unloadFileText", .func = zlua.wrap(UnloadFileText) },
+    .{ .name = "unloadImageColors", .func = zlua.wrap(UnloadImageColors) },
+    .{ .name = "unloadImagePalette", .func = zlua.wrap(UnloadImagePalette) },
+    .{ .name = "unloadRandomSequence", .func = zlua.wrap(UnloadRandomSequence) },
+    .{ .name = "unloadUTF8", .func = zlua.wrap(UnloadUTF8) },
+    .{ .name = "unloadWaveSamples", .func = zlua.wrap(UnloadWaveSamples) },
+    .{ .name = "waitTime", .func = zlua.wrap(WaitTime) },
     .{ .name = "windowShouldClose", .func = zlua.wrap(WindowShouldClose) },
 };
