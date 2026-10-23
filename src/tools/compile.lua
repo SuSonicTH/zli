@@ -25,10 +25,17 @@ local function setup_files(config)
         if type(item) == "table" then
             entry = item
         else
-            entry = { file = item, name = item }
+            local name = item:match("[^/\\]+$") or item
+            entry = { file = item, name = name }
+        end
+        if type(entry.file) ~= "string" then
+            exit_error("file entry is missing a 'file' field")
+        end
+        if entry.name == nil then
+            entry.name = entry.file:match("[^/\\]+$") or entry.file
         end
         if not fs.exists(entry.file) then
-            exit_error(" could not find file '" .. entry.file .. "'")
+            exit_error("could not find file '" .. entry.file .. "'")
         end
         files[#files + 1] = entry
     end
@@ -36,7 +43,14 @@ local function setup_files(config)
 end
 
 local function copy_binary(config)
-    io.write_file(config.output_name, io.read_file(arg[0]))
+    local source = ZLI.exe_path or arg[0]
+    local input, err = io.open(source, "rb")
+    if input == nil then
+        exit_error("could not read executable '" .. tostring(source) .. "': " .. tostring(err))
+    end
+    local data = input:read("a")
+    input:close()
+    io.write_file(config.output_name, data)
 end
 
 local function append_data(config)
@@ -53,6 +67,10 @@ local function execute(config)
 
     copy_binary(config)
     append_data(config)
+
+    if os.is_linux then
+        fs.chmod(config.output_name, "755")
+    end
 end
 
 return {

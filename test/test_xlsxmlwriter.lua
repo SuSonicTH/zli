@@ -55,6 +55,17 @@ function Test_xlsxmlwriter:Test_write_excel_file()
     lu.assertEquals(expected, io.read_file(filename))
 end
 
+function Test_xlsxmlwriter:Test_escapes_xml()
+    local filename = "./test/temp/xlswriter_escape.xls"
+    xlswriter(filename)
+        :newSheet("a & b")
+        :cell("<tag> & \"quoted\"")
+        :close()
+    local content = io.read_file(filename)
+    lu.assertStrContains(content, "a &amp; b")
+    lu.assertStrContains(content, "&lt;tag&gt; &amp; &quot;quoted&quot;")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

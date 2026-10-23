@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     releasebuild(b, release);
 
     //native
-    const native = b.step("native", "Build all cross-compilation targets in native mode");
+    const native = b.step("native", "Build an optimized release binary for the host");
     native.dependOn(nativebuild(b));
 
     //run
@@ -31,6 +31,17 @@ pub fn build(b: *std.Build) void {
     test_cmd.step.dependOn(b.getInstallStep());
     test_cmd.addArgs(&[_][]const u8{"./test/test.lua"});
     test_step.dependOn(&test_cmd.step);
+
+    // Zig unit tests (for example the Lua source stripper)
+    const zig_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/strip.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_zig_tests = b.addRunArtifact(zig_tests);
+    test_step.dependOn(&run_zig_tests.step);
 }
 
 const TargetConfig = struct {

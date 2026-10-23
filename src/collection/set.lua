@@ -17,28 +17,17 @@ end
 
 function set:clear(size)
     self._size = 0
-    local items
-    local init_size
-    if type(size) == 'nil' then
-        self._items = {}
-    elseif type(size) == 'number' then
-        init_size = size
-    elseif type(size) == 'table' then
-        items = size
-        if type(size.size) == 'function' then
-            init_size = size:size()
-        else
-            init_size = #size
-        end
-    else
+    self._items = {}
+    if self._order then
+        self._order = {}
+    end
+
+    if type(size) == 'table' then
+        self:add_all(size)
+    elseif type(size) ~= 'nil' and type(size) ~= 'number' then
         arg_error("set:clear", 1, "expecting size or no argument", 2)
     end
 
-    if init_size then
-        self._items = {}
-        if self._order then self._order = {} end
-    end
-    if items then self:add_all(items) end
     return self
 end
 
@@ -46,10 +35,13 @@ function set:add(item, ...)
     if #{ ... } > 0 then
         arg_error("set:add", 2, "expecting single argument, use set:add_all{} to add mutliple items", 2)
     end
+    if item == nil then
+        arg_error("set:add", 1, "nil is not a valid set element", 2)
+    end
 
     if self._items[item] == nil then
         self._size = self._size + 1
-        self._items[item] = self._size
+        self._items[item] = true
         if self._order then self._order[self._size] = item end
     end
 
@@ -57,11 +49,17 @@ function set:add(item, ...)
 end
 
 function set:remove(item)
-    local index = self._items[item]
-    if index then
+    if self._items[item] ~= nil then
         self._size = self._size - 1
         self._items[item] = nil
-        if self._order then table.remove(self._order, index) end
+        if self._order then
+            for index, value in ipairs(self._order) do
+                if value == item then
+                    table.remove(self._order, index)
+                    break
+                end
+            end
+        end
         return true
     end
     return false
@@ -86,7 +84,7 @@ end
 
 function set:iterate_indexed()
     if self._order then
-        return ipairs(self._ordered)
+        return ipairs(self._order)
     else
         local key
         local index = 0
@@ -136,6 +134,16 @@ function set:retain_all(items)
                 keep[item] = true
             end
         end
+    end
+
+    if self._order then
+        local order = {}
+        for _, item in ipairs(self._order) do
+            if keep[item] ~= nil then
+                order[#order + 1] = item
+            end
+        end
+        self._order = order
     end
 
     self._size = size

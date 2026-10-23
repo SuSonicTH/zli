@@ -22,7 +22,7 @@ local function new(start)
     end
 
     function timer:time()
-        if self._time then
+        if self._stop then
             return self._stop - self._start
         end
     end
@@ -41,7 +41,7 @@ local function new(start)
 
     function timer:reset()
         self._start = nil
-        self._end = nil
+        self._stop = nil
         self.laps = {}
     end
 

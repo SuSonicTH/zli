@@ -122,6 +122,31 @@ const Tokenizer = struct {
         return token;
     }
 
+    fn scan_quoted(self: *Tokenizer, quote: u8) []const u8 {
+        const start = self.pos;
+        self.pos += 1;
+
+        while (self.pos < self.data.len) {
+            if (self.data[self.pos] == quote) {
+                // Count the backslashes directly before the quote. An even
+                // number means the quote is not escaped.
+                var backslashes: usize = 0;
+                var index = self.pos;
+                while (index > start and self.data[index - 1] == '\\') {
+                    backslashes += 1;
+                    index -= 1;
+                }
+                if (backslashes % 2 == 0) {
+                    self.pos += 1;
+                    return self.data[start..self.pos];
+                }
+            }
+            self.pos += 1;
+        }
+
+        return self.data[start..self.pos];
+    }
+
     fn next_token(self: *Tokenizer) []const u8 {
         if (self.pos >= self.data.len) {
             return "\x00";
@@ -162,26 +187,10 @@ const Tokenizer = struct {
                         },
                     }
                 }
-                self.pos += 1;
-                return self.data[start .. self.pos - 1];
-            },
-            '"' => {
-                const start = self.pos;
-                self.pos += 1;
-                while (self.pos < self.data.len - 1 and (self.data[self.pos] != '"' or (self.data[self.pos - 1] == '\\' and self.data[self.pos - 2] != '\\'))) {
-                    self.pos += 1;
-                }
-                self.pos += 1;
                 return self.data[start..self.pos];
             },
-            '\'' => {
-                const start = self.pos;
-                self.pos += 1;
-                while (self.pos < self.data.len - 1 and (self.data[self.pos] != '\'' or (self.data[self.pos - 1] == '\\' and self.data[self.pos - 2] != '\\'))) {
-                    self.pos += 1;
-                }
-                self.pos += 1;
-                return self.data[start..self.pos];
+            '"', '\'' => {
+                return self.scan_quoted(self.data[self.pos]);
             },
             '[' => {
                 const blockLen = getBlockLen(self.data[self.pos..]);
@@ -195,8 +204,8 @@ const Tokenizer = struct {
                 }
             },
             '.' => {
-                if (self.data[self.pos + 1] == '.') {
-                    if (self.data[self.pos + 2] == '.') {
+                if (self.pos + 1 < self.data.len and self.data[self.pos + 1] == '.') {
+                    if (self.pos + 2 < self.data.len and self.data[self.pos + 2] == '.') {
                         self.pos += 3;
                         return "...";
                     } else {
@@ -317,24 +326,33 @@ test "names" {
 }
 
 fn getBlockLen(data: []const u8) usize {
-    const eqals = "========================================================================================================================";
-    if (data[0] != '[') {
+    if (data.len < 2 or data[0] != '[') {
         return 0;
     }
+
     var eqlen: usize = 0;
-    while (data[1 + eqlen] == '=' and eqlen <= eqals.len) {
+    while (1 + eqlen < data.len and data[1 + eqlen] == '=') {
         eqlen += 1;
     }
-    if (data[eqlen + 1] != '[') {
+    if (1 + eqlen >= data.len or data[1 + eqlen] != '[') {
         return 0;
     }
 
     var pos = eqlen + 2;
-    while (pos < data.len - eqlen - 1) : (pos += 1) {
-        if (data[pos] == ']') {
-            if ((eqlen == 0 or std.mem.eql(u8, data[pos + 1 .. pos + 1 + eqlen], eqals[0..eqlen])) and data[pos + 1 + eqlen] == ']') {
-                return pos + eqlen + 2;
+    while (pos + eqlen + 1 < data.len) : (pos += 1) {
+        if (data[pos] != ']') {
+            continue;
+        }
+
+        var matches = true;
+        for (0..eqlen) |offset| {
+            if (data[pos + 1 + offset] != '=') {
+                matches = false;
+                break;
             }
+        }
+        if (matches and data[pos + 1 + eqlen] == ']') {
+            return pos + eqlen + 2;
         }
     }
     return 0;
@@ -367,6 +385,19 @@ test "getBlockLen with multiple eqauls block" {
     const string: []const u8 = "[===[test]===] outside block";
     const len = getBlockLen(string);
     try testing.expectEqualStrings("[===[test]===]", string[0..len]);
+}
+
+test "strip malformed input does not crash" {
+    const allocator = std.testing.allocator;
+    const inputs = [_][]const u8{
+        ".",               "..", "[",   "[[",   "a.",
+        "'",               "\"", "--[", "--[[", "\"unterminated",
+        "[=[unterminated",
+    };
+    for (inputs) |input| {
+        const output = try strip(input, allocator);
+        allocator.free(output);
+    }
 }
 
 test "getBlockLen with simple block with no mathcing end" {

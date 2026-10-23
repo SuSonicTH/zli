@@ -16,13 +16,15 @@ local function cache_free_cycle(time)
     content_cache_free_cycle = time or 0
 end
 
-local function free_cache()
+local function free_cache(cycle)
+    cycle = cycle or content_cache_free_cycle
+    local now = os.time()
     for target, cache in pairs(content_cache) do
-        if cache.content ~= nil and os.difftime(now, cache.time) > time then
+        if cache.content ~= nil and os.difftime(now, cache.time) > cycle then
             content_cache[target] = nil
         end
     end
-    content_cache_last_free = os.time()
+    content_cache_last_free = now
 end
 
 local function clear_cache()
@@ -43,8 +45,8 @@ local function get_cache(opt, header, func, time)
         cache.time = os.time()
     end
 
-    if content_cache_free_cycle > 0 and os.difftime(now, content_cache_free_cycle) > content_cache_last_free then
-        free_cache()
+    if content_cache_free_cycle > 0 and os.difftime(now, content_cache_last_free) > content_cache_free_cycle then
+        free_cache(content_cache_free_cycle)
     end
     return cache.content
 end
@@ -61,8 +63,54 @@ end
 local function content_type_from_file_name(path)
     local _, _, extension = path:find(".+%.(.-)$");
     if extension then
-        return mime[extension]
+        return mime[extension:lower()]
     end
+end
+
+local function html_escape(value)
+    local escaped = tostring(value):gsub("[&<>\"']", {
+        ["&"] = "&amp;",
+        ["<"] = "&lt;",
+        [">"] = "&gt;",
+        ['"'] = "&quot;",
+        ["'"] = "&#39;",
+    })
+    return escaped
+end
+
+local function resolve_web_path(root, target)
+    if root:sub(-1) ~= "/" then
+        root = root .. "/"
+    end
+    target = target:gsub("[?#].*$", "")
+    target = target:gsub("%%(%x%x)", function(hex)
+        return string.char(tonumber(hex, 16))
+    end)
+
+    local parts = {}
+    for part in target:gsub("\\", "/"):gmatch("[^/]+") do
+        if part == ".." then
+            if #parts > 0 then
+                table.remove(parts)
+            end
+        elseif part ~= "." then
+            parts[#parts + 1] = part
+        end
+    end
+
+    return root .. table.concat(parts, "/")
+end
+
+local function is_within(root, path)
+    local real_root = fs.absolute(root)
+    local real_path = fs.absolute(path)
+    if real_root == nil or real_path == nil then
+        -- a missing target is handled by serve_file() as a normal 404
+        return true
+    end
+    real_root = real_root:gsub("\\", "/")
+    real_path = real_path:gsub("\\", "/")
+    return real_path == real_root or real_path:sub(1, #real_root + 1) == real_root .. "/"
 end
 
 local serve_file
@@ -78,9 +126,11 @@ local function serve_directory(path)
         end
     end
 
-    local ret = { "<html><head><title>index of ", path, "</title></head><body><h1>index of " .. path .. "</h1>" }
+    local ret = { "<html><head><title>index of ", html_escape(path), "</title></head><body><h1>index of " .. html_escape(path) .. "</h1>" }
     for name, file in sorted_pairs(fs.dir(path)) do
-        ret[#ret + 1] = '<a href ="' .. path .. name .. '">' .. name .. "</a><br>"
+        local display = name .. (file:is_directory() and "/" or "")
+        ret[#ret + 1] = '<a href="' .. name:urlEncode() .. (file:is_directory() and "/" or "") .. '">' ..
+            html_escape(display) .. "</a><br>"
     end
     ret[#ret + 1] = "</body></html>"
     return { status = status.ok, body = table.concat(ret), header = { content_type = mime.html } }
@@ -111,23 +161,25 @@ end
 local function get_content(opt, header)
     local method = header.method
     local target = header.target
-    for _, paths in ipairs { opt[method], opt["*"] } do
+    for _, paths in ipairs { opt[method] or {}, opt["*"] or {} } do
         local content = paths[target] or match_path(paths, target)
         if content then
             return content
         end
     end
     if method == "GET" and opt.web_root then
-        if opt.cache_web_root then
-            return cache(
-                function(opt, header)
-                    return serve_file(opt.web_root .. target:sub(2, -1))
-                end, opt.cache_web_root
-            )
-        else
-            return function(opt, header)
-                return serve_file(opt.web_root .. target:sub(2, -1))
+        local function serve_web_root(opt, header)
+            local resolved = resolve_web_path(opt.web_root, header.target)
+            if not is_within(opt.web_root, resolved) then
+                return { status = status.forbidden }
             end
+            return serve_file(resolved)
+        end
+
+        if opt.cache_web_root then
+            return cache(serve_web_root, opt.cache_web_root)
+        else
+            return serve_web_root
         end
     end
 end
@@ -153,12 +205,19 @@ local function handle_request(opt, header)
             local response = content(opt, header)
             local response_type = type(response)
             if response_type == "table" then
-                if response.body then
+                if response.body ~= nil then
                     if type(response.body) == "table" then
                         return encode_json(response, response.body)
+                    elseif type(response.body) ~= "string" then
+                        response.body = tostring(response.body)
+                        return response
                     else
                         return response
                     end
+                elseif response.status ~= nil or response.header ~= nil then
+                    -- already a response object, for example serve_file()'s
+                    -- { status = 404 } result
+                    return response
                 else
                     return encode_json({ status = status.ok }, response)
                 end
@@ -554,6 +613,7 @@ mime = {
     ['jpgv'] = 'video/jpeg',
     ['jpm'] = 'video/jpm',
     ['js'] = 'text/javascript',
+    ['lua'] = 'text/x-lua',
     ['json'] = 'application/json',
     ['jsonml'] = 'application/jsonml+json',
     ['jxl'] = 'image/jxl',
@@ -1267,6 +1327,8 @@ return function(httpserver)
     httpserver.serve = serve
     httpserver.status = status
     httpserver.serve_file = serve_file
+    httpserver.resolve_web_path = resolve_web_path
+    httpserver.content_type = content_type_from_file_name
     httpserver.cache = cache
     httpserver.cache_free_cycle = cache_free_cycle
     httpserver.free_cache = free_cache

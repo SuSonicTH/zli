@@ -8,7 +8,7 @@ cl.history.load(history_file)
 
 --[[ Init screen ]]
 cl.screen.clear()
-local dim = cl.screen.dimentions()
+local dim = cl.screen.dimensions()
 local header = "ZLI - SQLite"
 
 cl.set_color(cl.color.fg.blue)
@@ -59,7 +59,12 @@ local function collect_result(result, columns, values, column_names)
         result.columns = columns
         result.column_names = column_names
     end
-    table.insert(result, values)
+    -- lsqlite3 reuses the same values table for every row, so copy it
+    local row = {}
+    for i = 1, columns do
+        row[i] = values[i]
+    end
+    table.insert(result, row)
     return 0
 end
 
@@ -72,13 +77,21 @@ local function collect_result_table(result, columns, values, column_names)
     return 0
 end
 
+local function to_strings(values)
+    local strings = {}
+    for i, value in ipairs(values) do
+        strings[i] = tostring(value)
+    end
+    return strings
+end
+
 local function print_result_csv(result, columns, values, column_names)
     if not result.header then
         cl.paging.start()
-        cl.paging.print(table.concat(column_names, ","))
+        cl.paging.print(table.concat(to_strings(column_names), ","))
         result.header = true
     end
-    if cl.paging.print(table.concat(values, ",")) then
+    if cl.paging.print(table.concat(to_strings(values), ",")) then
         return 0;
     else
         return 1;
@@ -86,8 +99,9 @@ local function print_result_csv(result, columns, values, column_names)
 end
 
 local function print_result_table_get_line(widths, spaces, values)
+    local strings = to_strings(values)
     local line = { "| " }
-    for i, value in ipairs(values) do
+    for i, value in ipairs(strings) do
         line[#line + 1] = (value .. spaces[i]):sub(1, widths[i]) .. " | "
     end
     return table.concat(line)
@@ -96,12 +110,13 @@ end
 local function print_result_table(result)
     local widths = {}
     for i, name in ipairs(result.column_names) do
-        widths[i] = #name
+        widths[i] = #tostring(name)
     end
     for _, row in ipairs(result) do
         for i, name in ipairs(row) do
-            if #name > widths[i] then
-                widths[i] = #name
+            local length = #tostring(name)
+            if length > widths[i] then
+                widths[i] = length
             end
         end
     end
@@ -164,10 +179,10 @@ end
 local execute_file
 local function execute_command(command)
     local lower = command:lower()
-    if lower:find("%s*exit%s*;") or command:find("%s*quit%s*;") then
+    if lower:match("^%s*exit%s*;%s*$") or lower:match("^%s*quit%s*;%s*$") then
         return false;
-    elseif lower:find("%s*open%s*\"(.*)\"%s*;") then
-        local filename = command:match("%s*open%s*\"(.*)\"%s*;")
+    elseif lower:match("^%s*open%s+\"(.*)\"%s*;%s*$") then
+        local filename = command:match("^%s*open%s+\"(.*)\"%s*;%s*$")
         db:close()
         db, _, error = sqlite.open(filename)
         if db then
@@ -175,18 +190,22 @@ local function execute_command(command)
         else
             status_error(error)
         end
-    elseif lower:find("%s*close%s*;") then
+    elseif lower:match("^%s*close%s*;%s*$") then
         print_status(db:close())
-        db = sqlite.open_memory
-    elseif lower:find("%s*file%s*\"(.*)\"%s*;") then
-        local filename = command:match("%s*file%s*\"(.*)\"%s*;")
-        local file = io.open(filename, 'r')
-        execute_file(file)
-        file:close()
-    elseif lower:find("%s*mode%s*;") then
+        db = sqlite.open_memory()
+    elseif lower:match("^%s*file%s+\"(.*)\"%s*;%s*$") then
+        local filename = command:match("^%s*file%s+\"(.*)\"%s*;%s*$")
+        local file, err = io.open(filename, 'r')
+        if file == nil then
+            status_error(err)
+        else
+            execute_file(file)
+            file:close()
+        end
+    elseif lower:match("^%s*mode%s*;%s*$") then
         print("current mode: " .. print_mode)
-    elseif lower:find("%s*mode%s+(%w+)%s*;") then
-        local mode = command:match("%s*mode%s+(%w+)%s*;")
+    elseif lower:match("^%s*mode%s+%w+%s*;%s*$") then
+        local mode = command:match("^%s*mode%s+(%w+)%s*;%s*$"):lower()
         local collector = print_collector[mode]
         if collector then
             print_mode = mode

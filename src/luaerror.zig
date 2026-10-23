@@ -11,7 +11,7 @@ pub const Handling = enum {
 var error_buffer: [1024:0]u8 = undefined;
 var error_message: ?[:0]const u8 = null;
 
-pub fn getGlobalHanding(lua: *Lua) Handling {
+pub fn getGlobalHandling(lua: *Lua) Handling {
     var handling: Handling = .@"return";
 
     if (lua.getGlobal("ZLI") == .table) {
@@ -71,7 +71,10 @@ pub fn callErrorHandler(lua: *Lua, handlerIndex: ?i32, comptime format: [:0]cons
         else => @panic("expecting struct as args"),
     }
 
-    lua.call(.{ .args = 1, .results = 0 });
+    lua.protectedCall(.{ .args = 1, .results = 0 }) catch {
+        // A failing error handler must never take down the interpreter.
+        lua.pop(1);
+    };
 }
 
 pub fn raise(err: anyerror, comptime format: [:0]const u8, args: anytype) anyerror {
@@ -123,7 +126,7 @@ pub fn raiseOrReturnLast(lua: *Lua, err: anyerror, errorHandling: Handling) !i32
         .raise => return err,
         .@"return" => {
             lua.pushNil();
-            _ = lua.pushString(error_message.?);
+            _ = lua.pushString(error_message orelse @errorName(err));
             return 2;
         },
     };
@@ -136,6 +139,7 @@ pub fn wrap(comptime function: anytype) zlua.CFn {
         fn inner(state: ?*zlua.LuaState) callconv(.c) c_int {
             // this is called by Lua, state should never be null
             var lua: *Lua = @ptrCast(state.?);
+            error_message = null;
             if (has_error_union) {
                 return @call(.always_inline, function, .{lua}) catch |err| {
                     if (error_message) |message| {

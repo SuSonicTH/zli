@@ -1,13 +1,13 @@
 local cl
 
 local function print_centered_at(row, text)
-    local dim = cl.screen.dimentions()
+    local dim = cl.screen.dimensions()
     cl.cursor.set(math.floor((dim.x - #text) / 2), row)
     print(text)
 end
 
 local function print_centered(text)
-    local dim = cl.screen.dimentions()
+    local dim = cl.screen.dimensions()
     local pos = cl.cursor.get()
     cl.cursor.set(math.floor((dim.x - #text) / 2), pos.y)
     print(text)

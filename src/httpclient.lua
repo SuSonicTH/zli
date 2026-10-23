@@ -23,7 +23,7 @@ local function call(func, url, options, body)
         end
         local params = {}
         for key, value in pairs(options.query) do
-            params[#params + 1] = key:urlEecode() .. '=' .. value:urlEecode()
+            params[#params + 1] = tostring(key):urlEncode() .. '=' .. tostring(value):urlEncode()
         end
         url = url .. table.concat(params, '&')
     end
@@ -37,7 +37,8 @@ local function call(func, url, options, body)
 
     if options.basicAuth then
         if type(options.basicAuth) == "table" then
-            local userpass = options.basicAuth.user .. ':' .. (options.basicAuth.pass or options.basicAuth.password)
+            local password = options.basicAuth.pass or options.basicAuth.password or ""
+            local userpass = tostring(options.basicAuth.user or "") .. ':' .. tostring(password)
             options.header.authorization = "Basic " .. userpass:base64encode()
         else
             error("unexpected type for basicAuth expecting table with user and password, got " .. type(options.basicAuth))
@@ -65,12 +66,15 @@ local function call(func, url, options, body)
                 for _, value in ipairs(response.content_disposition:to_table(";")) do
                     if value:trim():starts_with("filename") then
                         local _, filename = value:split("=")
-                        path = fs.path(path, filename)
+                        if filename then
+                            filename = filename:gsub('^"(.*)"$', '%1'):match("[^/\\]+$") or filename
+                            path = fs.path(path, filename)
+                        end
                     end
                 end
             end
         end
-        local fh = io.open(path.full_path, "w")
+        local fh = io.open(path.full_path, "wb")
         if fh == nil then
             if options.raiseError then
                 error("could not write to file '" .. path.full_path .. "'", 2)

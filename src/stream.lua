@@ -23,7 +23,7 @@ local function new_stream(next)
         func = get_function(func)
         return new_stream(function()
             local value = self:next()
-            if (value) then
+            if (value ~= nil) then
                 return func(value)
             end
         end
@@ -34,7 +34,7 @@ local function new_stream(next)
         func = get_function(func)
         return new_stream(function()
             local value = self:next()
-            if (value) then
+            if (value ~= nil) then
                 func(value)
             end
             return value
@@ -48,7 +48,7 @@ local function new_stream(next)
             repeat
                 value = self:next()
             until (value == nil or func(value))
-            if (value) then
+            if (value ~= nil) then
                 return value
             end
         end)
@@ -67,7 +67,7 @@ local function new_stream(next)
         local count = 0
         return new_stream(function()
             local value = self:next()
-            if (value and count < limit) then
+            if (value ~= nil and count < limit) then
                 count = count + 1
                 return value
             end
@@ -116,7 +116,7 @@ local function new_stream(next)
                     return table.remove(this, 1)
                 else
                     local value = self:next()
-                    while (value) do
+                    while (value ~= nil) do
                         if (func(value) == flag) then
                             return value
                         end
@@ -149,7 +149,7 @@ local function new_stream(next)
     function stream:foreach(func)
         func = get_function(func)
         local value = self:next()
-        while (value) do
+        while (value ~= nil) do
             func(value)
             value = self:next()
         end
@@ -180,7 +180,7 @@ local function new_stream(next)
     function stream:allmatch(func)
         func = get_function(func)
         local value = self:next()
-        while value do
+        while value ~= nil do
             if not func(value) then
                 return false
             end
@@ -253,7 +253,7 @@ local function new_stream(next)
     function stream:reduce(state, func)
         func = get_function(func)
         local value = self:next()
-        while value do
+        while value ~= nil do
             state = func(state, value)
             value = self:next()
         end

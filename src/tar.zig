@@ -32,7 +32,8 @@ pub fn register(lua: *Lua) i32 {
     TarReader.register(lua);
     TarWriter.register(lua);
     var config = setup(lua);
-    config.errorHandling = luaerror.getGlobalHanding(lua);
+    config.errorHandling = luaerror.getGlobalHandling(lua);
+    luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
     return 1;
 }
 
@@ -42,11 +43,15 @@ fn setup(lua: *Lua) *Config {
 
 pub fn setConfig(lua: *Lua) !i32 {
     lua.checkType(1, .table);
-    var config = setup(lua);
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+    const config_index: i32 = if (lua.typeOf(2) == .table) 2 else 1;
 
-    if (luax.getOptionalString(lua, "error_handling", 1)) |error_handling| {
+    if (luax.getOptionalString(lua, "error_handling", config_index)) |error_handling| {
         config.errorHandling = try luaerror.getHandling(error_handling);
+        luax.setTableString(lua, 1, "error_handling", @tagName(config.errorHandling));
     }
+
+    lua.pushValue(1);
     return 1;
 }
 
@@ -153,7 +158,7 @@ const TarReader = struct {
     file_name_buffer: [std.fs.max_path_bytes]u8 = undefined,
     link_name_buffer: [std.fs.max_path_bytes]u8 = undefined,
 
-    fileReader: FileReader = undefined,
+    fileReader: ?FileReader = null,
     reader: std.Io.File.Reader = undefined,
     iterator: std.tar.Iterator = undefined,
 
@@ -164,10 +169,11 @@ const TarReader = struct {
 
         lua.pushValue(Lua.upvalueIndex(1));
         const tarReader: *TarReader = luax.createUserData(lua, name, TarReader);
+        tarReader.fileReader = null;
         tarReader.fileReader = FileReader.init(path) catch |err|
             return luaerror.raiseOrReturn(lua, err, "could not open tar file '{s}': {any}", .{ path, err }, try get_error_handling(lua));
 
-        const reader = tarReader.fileReader.reader() catch |err|
+        const reader = tarReader.fileReader.?.reader() catch |err|
             return luaerror.raiseOrReturn(lua, err, "could not open tar file '{s}': {any}", .{ path, err }, try get_error_handling(lua));
 
         tarReader.iterator = std.tar.Iterator.init(reader, .{
@@ -180,12 +186,20 @@ const TarReader = struct {
     }
 
     fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
+        if (lua.getMetatableRegistry(name) == .nil) {
+            lua.pop(1);
+            luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
+        } else {
+            lua.pop(1);
+        }
     }
 
     fn garbageCollect(lua: *Lua) i32 {
         const self: *TarReader = luax.getGcUserData(lua, TarReader);
-        self.fileReader.deinit();
+        if (self.fileReader) |*file_reader| {
+            file_reader.deinit();
+            self.fileReader = null;
+        }
         return 0;
     }
 
@@ -271,7 +285,7 @@ const TarReader = struct {
                 return 1;
             }
         }
-        return error.NoRegularFile;
+        return luaerror.raiseOrReturn(lua, error.NoRegularFile, "current tar entry is not a regular file", .{}, try get_error_handling(lua));
     }
 
     fn extract(lua: *Lua) !i32 {
@@ -294,7 +308,7 @@ const TarReader = struct {
                 return 0;
             }
         }
-        return error.NoRegularFile;
+        return luaerror.raiseOrReturn(lua, error.NoRegularFile, "current tar entry is not a regular file", .{}, try get_error_handling(lua));
     }
 };
 
@@ -381,8 +395,8 @@ const TarWriter = struct {
         .{ .name = "close", .func = luaerror.wrap(close) },
     };
 
-    fileWriter: FileWriter = undefined,
-    writer: std.tar.Writer,
+    fileWriter: FileWriter = .{ .tarPath = "", .compression = .uncompressed },
+    writer: std.tar.Writer = undefined,
 
     fn new(lua: *Lua) !i32 {
         const path = try filesystem.get_path(lua);
@@ -394,6 +408,7 @@ const TarWriter = struct {
             compression = .gzip;
         }
         const tarWriter = luax.createUserDataTable(lua, name, TarWriter);
+        tarWriter.fileWriter = .{ .tarPath = "", .compression = .uncompressed };
         lua.pushValue(Lua.upvalueIndex(1));
         lua.setFuncs(&functions, 1);
 
@@ -427,7 +442,12 @@ const TarWriter = struct {
     }
 
     fn register(lua: *Lua) void {
-        luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
+        if (lua.getMetatableRegistry(name) == .nil) {
+            lua.pop(1);
+            luax.registerUserData(lua, name, zlua.wrap(garbageCollect));
+        } else {
+            lua.pop(1);
+        }
     }
 
     fn garbageCollect(lua: *Lua) !i32 {
@@ -516,7 +536,7 @@ const TarWriter = struct {
     }
 };
 
-var pathToTar_buffer: [1024]u8 = undefined;
+var pathToTar_buffer: [std.fs.max_path_bytes]u8 = undefined;
 fn pathToTar(writer: std.tar.Writer, path: [:0]const u8) []const u8 {
     _ = std.mem.replace(u8, path, "\\", "/", &pathToTar_buffer);
     if (writer.prefix.len > 0) {

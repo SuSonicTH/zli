@@ -88,6 +88,11 @@ function Test_auxiliary.Test_base64urlDecode()
 end
 
 function Test_auxiliary.Test_urlEncode()
+    lu.assertEquals("a%20b%2Fc-d_e.f~g", ("a b/c-d_e.f~g"):urlEncode())
+    lu.assertEquals("abc", ("abc"):urlEncode())
+end
+
+function Test_auxiliary.Test_utf8len()
     lu.assertEquals(7, ("ÖÄÜßüäö"):utf8len())
 end
 
@@ -306,16 +311,6 @@ function Test_auxiliary.Test_table_default()
     lu.assertEquals("two", tbl.two)
     lu.assertEquals(true, tbl.three)
     lu.assertIsNil(tbl.not_set)
-end
-
-function Test_auxiliary.Test_table_default_error_func()
-    local miss = {}
-    local tbl = table.default({ zero = 0 }, { one = 1, two = "two", three = true },
-        function(t, k) miss[#miss + 1] = k end)
-    local _ = tbl.not_set
-    local _ = tbl.other
-    local _ = tbl[true]
-    lu.assertEquals({ "not_set", "other", true }, miss)
 end
 
 function Test_auxiliary.Test_table_default_error_func()

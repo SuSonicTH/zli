@@ -138,6 +138,24 @@ function Test_stream:Test_max()
     lu.assertEquals(10, stream({ 10, 3, 5, 7, 8, 9 }):max())
 end
 
+function Test_stream:Test_false_values_are_not_end_of_stream()
+    local filtered = stream({ false, true, false, true }):filter(function() return true end):toarray()
+    lu.assertEquals(4, #filtered)
+    lu.assertEquals(false, filtered[1])
+    lu.assertEquals(true, filtered[2])
+
+    lu.assertEquals(4, stream({ false, true, false, true }):reduce(0, function(count) return count + 1 end))
+
+    local mapped = stream({ 1, 2, 3 }):map(function(v)
+        if v == 2 then
+            return false
+        end
+        return v
+    end):toarray()
+    lu.assertEquals(3, #mapped)
+    lu.assertEquals(false, mapped[2])
+end
+
 function Test_stream:Test_groupby()
     local map = stream({
         { name = 'test',   id = 1 },

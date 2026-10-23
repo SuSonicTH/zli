@@ -19,7 +19,7 @@ zli repl init file
 
 you can put global initialisations here that will get executed on every
 invocation of zli repl before the repl loop starts
-it's usefull to set some local configurations or load default libraries
+it is useful to set local configuration or load default libraries
 
 the ~/.config/zli/init.lua gets executed before this script is executed
 --]================================================================================]
@@ -49,7 +49,7 @@ cl.history.load(history_file)
 --[[ Init screen ]]
 
 cl.screen.clear()
-local dim = cl.screen.dimentions()
+local dim = cl.screen.dimensions()
 local header = "ZIL - REPL"
 
 cl.set_color(cl.color.fg.blue)
@@ -60,7 +60,7 @@ print(header)
 cl.set_color(cl.color.fg.default)
 print([[
 
-    A Zig Lua Interperter - Read Print Eval Loop
+    A Zig Lua Interpreter - Read Print Eval Loop
     Type a command and hit enter to execute it
     the results will be printed and you can enter the next command
 
@@ -90,12 +90,20 @@ function Pretty_print(name, value)
 end
 
 -- [[ REPL loop ]]
+local function exit_repl()
+    cl.screen.clear()
+    cl.history.save(history_file)
+    os.exit(0)
+end
+
 local function quit_if_requested(line)
+    if line == nil then
+        -- Ctrl-D / end of input
+        exit_repl()
+    end
     local lower_line = line:trim():lower()
     if (lower_line == "quit" or lower_line == "exit") then
-        cl.screen.clear()
-        cl.history.save(history_file)
-        os.exit(0)
+        exit_repl()
     end
 end
 
@@ -129,7 +137,7 @@ local function execute()
         if (result) then
             local success, value = pcall(result)
             if (success) then
-                if (value) then
+                if (value ~= nil) then
                     print(value)
                 end
             else

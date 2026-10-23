@@ -24,7 +24,8 @@ const Config = struct {
 
 pub fn register(lua: *Lua) !i32 {
     var config = setup(lua);
-    config.errorHandling = luaerror.getGlobalHanding(lua);
+    config.errorHandling = luaerror.getGlobalHandling(lua);
+    luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
     return 1;
 }
 
@@ -37,11 +38,15 @@ fn setup(lua: *Lua) *Config {
 
 pub fn setConfig(lua: *Lua) !i32 {
     lua.checkType(1, .table);
-    var config = setup(lua);
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+    const config_index: i32 = if (lua.typeOf(2) == .table) 2 else 1;
 
-    if (luax.getOptionalString(lua, "error_handling", 1)) |error_handling| {
+    if (luax.getOptionalString(lua, "error_handling", config_index)) |error_handling| {
         config.errorHandling = try luaerror.getHandling(error_handling);
+        luax.setTableString(lua, 1, "error_handling", @tagName(config.errorHandling));
     }
+
+    lua.pushValue(1);
     return 1;
 }
 

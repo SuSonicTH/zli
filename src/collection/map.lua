@@ -17,32 +17,18 @@ end
 
 function map:clear(size)
     self._size = 0
-    local items
-    local init_size
-    if type(size) == 'nil' then
-        self._items = {}
-        self._order_key = {}
-    elseif type(size) == 'number' then
-        init_size = size
-    elseif type(size) == 'table' then
-        items = size
-        if type(size.size) == 'function' then
-            init_size = size:size()
-        else
-            init_size = #size
-        end
-    else
-        arg_error("set:clear", 1, "expecting size or no argument", 2)
+    self._items = {}
+    self._order_key = {}
+    if self._order then
+        self._order = {}
     end
 
-    if init_size then
-        self._items = {}
-        if self._order then
-            self._order = {}
-            self._order_key = {}
-        end
+    if type(size) == 'table' then
+        self:put_all(size)
+    elseif type(size) ~= 'nil' and type(size) ~= 'number' then
+        arg_error("map:clear", 1, "expecting size or no argument", 2)
     end
-    if items then self:put_all(items) end
+
     return self
 end
 
@@ -127,11 +113,10 @@ end
 function map:put_if_absent(key, value)
     local old = self._items[key]
     if old == nil and value ~= nil then
-        self._size = self._size + 1
-        self._items[key] = value
-    else
-        return old
+        self:put(key, value)
+        return nil
     end
+    return old
 end
 
 function map:remove(key, value)
@@ -140,33 +125,29 @@ function map:remove(key, value)
         return
     end
 
-    if value ~= nil then
-        if old == value then
-            self._size = self._size - 1
-            self._items[key] = nil
-            if self._order then
-                table.remove(self._order, self._order_key[key])
-                self._order_key[key] = nil
-            end
-            return true
-        else
-            return false
-        end
+    if value ~= nil and old ~= value then
+        return false
     end
 
     self._size = self._size - 1
     self._items[key] = nil
     if self._order then
-        table.remove(self._order, self._order_key[key])
-        self._order_key[key] = nil
+        local index = self._order_key[key]
+        if index ~= nil then
+            table.remove(self._order, index)
+            self._order_key[key] = nil
+            for i = index, #self._order do
+                self._order_key[self._order[i]] = i
+            end
+        end
     end
-    return old
+    return value ~= nil and true or old
 end
 
 function map:merge(key, value, func)
     local old_value = self._items[key]
     if self._items[key] ~= nil then
-        value = func(key, value)
+        value = func(key, value, old_value)
     end
     if old_value ~= value then
         self:put(key, value)
@@ -205,7 +186,7 @@ end
 
 function map:entry_set()
     local set = collection.set:new()
-    for k, v in pairs(self._items) do
+    for k, v in self:iterate() do
         set:add({ key = k, value = v })
     end
     return set
@@ -213,7 +194,7 @@ end
 
 function map:key_set()
     local set = collection.set:new()
-    for k, _ in pairs(self._items) do
+    for k, _ in self:iterate() do
         set:add(k)
     end
     return set
@@ -221,7 +202,7 @@ end
 
 function map:values()
     local list = collection.list:new()
-    for _, v in pairs(self._items) do
+    for _, v in self:iterate() do
         list:add(v)
     end
     return list
@@ -249,7 +230,11 @@ end
 
 function map:compute(key, func)
     local value = func(key, self._items[key])
-    self._items[key] = value
+    if value == nil then
+        self:remove(key)
+    else
+        self:put(key, value)
+    end
     return value
 end
 
@@ -257,7 +242,9 @@ function map:compute_if_absent(key, func)
     local value = self._items[key]
     if value == nil then
         value = func(key)
-        self._items[key] = value
+        if value ~= nil then
+            self:put(key, value)
+        end
     end
     return value
 end
@@ -266,9 +253,10 @@ function map:compute_if_present(key, func)
     local value = self._items[key]
     if value ~= nil then
         value = func(key, value)
-        self._items[key] = value
         if value == nil then
-            self._size = self._size - 1
+            self:remove(key)
+        else
+            self:put(key, value)
         end
     end
     return value

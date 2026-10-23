@@ -33,10 +33,10 @@ end
 local function before(bench, run, init)
     randomseed()
     init.before_each(bench, run)
-    local before = init["before_" .. run.name] or no_op
+    local before_run = init["before_" .. run.name] or no_op
 
     randomseed()
-    before(bench, run)
+    before_run(bench, run)
 end
 
 local function after(bench, run, init)
@@ -74,7 +74,7 @@ end
 
 local function benchmark(bench, n)
     local init, runs = collect_runs(bench)
-    local iter = bench.iter == nil and 3 or bench.iter
+    local iter = n or bench.iter or 3
     local summary = grid:new {
         { name = "benchmark", align = "left", },
         { name = "time",      align = "right", fixed_width = 20 },

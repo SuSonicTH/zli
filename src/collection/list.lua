@@ -119,7 +119,7 @@ function list:remove(item)
 end
 
 function list:remove_index(index)
-    arg_check_type("list:remove_index", 1, 3, index, "number")
+    arg_check_type("list:remove_index", 1, index, 3, "number")
     table.remove(self._items, index)
     self._size = self._size - 1
     return self
@@ -168,7 +168,7 @@ end
 function list:retain_all(items)
     arg_check_type("base:retain_all", 1, items, 3, 'table')
 
-    if items.__index ~= 'key' then
+    if not (type(items) == 'table' and items._is_collection) then
         items = collection.set:new(items)
     end
 

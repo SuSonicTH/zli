@@ -19,25 +19,38 @@ local header = [[<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </Styles>
 ]]
 
+local function xml_escape(value)
+    local escaped = tostring(value):gsub("[&<>\"']", {
+        ["&"] = "&amp;",
+        ["<"] = "&lt;",
+        [">"] = "&gt;",
+        ['"'] = "&quot;",
+        ["'"] = "&apos;",
+    })
+    return escaped
+end
+
 local function getDateTime(tbl)
-    if tbl.year ~= nil and tbl.hour ~= nil then
+    local has_date = tbl.year ~= nil and tbl.month ~= nil and tbl.day ~= nil
+    local has_time = tbl.hour ~= nil and tbl.min ~= nil and tbl.sec ~= nil
+
+    if has_date and has_time then
         return 'DateTime',
             string.format("%d-%02d-%02dT%02d:%02d:%02d.000",
                 tbl.year, tbl.month, tbl.day, tbl.hour, tbl.min, tbl.sec
             )
-    elseif tbl.year ~= nil then
+    elseif has_date then
         return 'ShortDate',
             string.format("%d-%02d-%02dT00:00:00.000",
                 tbl.year, tbl.month, tbl.day
             )
-    elseif tbl.hour ~= nil then
+    elseif has_time then
         return 'Time',
             string.format("1899-12-31T%02d:%02d:%02d.000",
                 tbl.hour, tbl.min, tbl.sec
             )
-    else
-        return nil
     end
+    return nil
 end
 
 return function(filename)
@@ -63,7 +76,7 @@ return function(filename)
         if name == nil then
             name = "Sheet" .. (xls.sheetCount + 1)
         end
-        xls.file:write('<Worksheet ss:Name="', name, '">\n')
+        xls.file:write('<Worksheet ss:Name="', xml_escape(name), '">\n')
         xls.file:write('<Table ss:DefaultColumnWidth="48" ss:DefaultRowHeight="14.4">\n')
         xls.sheetCount = xls.sheetCount + 1
         xls.worksheetOpen = true
@@ -127,7 +140,7 @@ return function(filename)
         xls:assertRowOpen()
         local valueType = type(value)
         if valueType == 'string' then
-            xls.file:write('<Cell><Data ss:Type="String">', value, '</Data></Cell>')
+            xls.file:write('<Cell><Data ss:Type="String">', xml_escape(value), '</Data></Cell>')
         elseif valueType == 'number' then
             xls.file:write('<Cell><Data ss:Type="Number">', value, '</Data></Cell>')
         elseif valueType == 'table' then

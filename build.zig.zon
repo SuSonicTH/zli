@@ -1,7 +1,7 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.1.8",
+    .version = "0.1.9",
     .minimum_zig_version = "0.17.0",
     .paths = .{""},
     .dependencies = .{
@@ -14,32 +14,32 @@
             .hash = "N-V-__8AAPqeFQDipy0CdI6MKBmwYYarybBTO3IIJPrSzH_w",
         },
         .argparse = .{
-            .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
-            .hash = "N-V-__8AAA48AwAs-qNuEPo0PXKQAuwnMXVIW49MY0tYwoDQ",
+            .url = "https://github.com/luarocks/argparse/archive/a5ab54f8161f9f508b058411f64c2c72d974733b.tar.gz",
+            .hash = "N-V-__8AAGs_AwD0mwHdNIQchtj7pdWKE2IxKeOTsEtcgnKm",
         },
         .fstring = .{
             .url = "https://github.com/dsidirop/f-strings/archive/bf7cf102cadb0fa6b59b4233054cee2c29f31036.tar.gz",
             .hash = "N-V-__8AANUoAABZy2z8_DNNh7W51acj8f9rGMgkL5VZkk1g",
         },
         .luaunit = .{
-            .url = "https://github.com/bluebird75/luaunit/archive/9678c933e71cb26adcdfa6cf1baceb926398eb48.tar.gz",
-            .hash = "N-V-__8AAJt9CwA40H8rjR1sdMelyexccCz3zgDiF2LlLN65",
+            .url = "https://github.com/bluebird75/luaunit/archive/f268175c64fb568dfa5e1e95c047fa5acaa7d8cc.tar.gz",
+            .hash = "N-V-__8AADivCwAQX-yCr-DXRJij9rrxGYXfXDfoeuBcwdCU",
         },
         .serpent = .{
             .url = "https://github.com/pkulchenko/serpent/archive/139fc18263bc5ffecc1729147891f1eb383046bf.tar.gz",
             .hash = "N-V-__8AAF6tAAC5_fRzNVLqIKz6X6tdb1ZwGbG3rHHAeB_6",
         },
         .ftcsv = .{
-            .url = "https://github.com/FourierTransformer/ftcsv/archive/edf705c3708d899079a21ba7496285f35525fac5.tar.gz",
-            .hash = "N-V-__8AAEWhAQDx45lj6FwRVh6Rj_cRgVj_Bb5fJ4Qryl3e",
+            .url = "https://github.com/FourierTransformer/ftcsv/archive/db8e27f7db213f458ef91aaebbb784a6bbb88050.tar.gz",
+            .hash = "N-V-__8AAK68AQD3MYM77UTOFcsS_6MaFIgQx2GcAZwhBHSp",
         },
         .crossline = .{
             .url = "https://github.com/jcwangxp/Crossline/archive/60b4bb5b2adb4eb9f83654dc983a191048250b2e.tar.gz",
             .hash = "N-V-__8AAL3wAgDYGd4yVnS8P67B6igVxx3vVTlKWZjiIvZ8",
         },
         .cjson = .{
-            .url = "https://github.com/openresty/lua-cjson/archive/617164a0fe3bb647128178f9caefb304b8573bb6.tar.gz",
-            .hash = "N-V-__8AAFhWBQCZ87Zf3JzcGOG8M5YbAbPPpVrE_RfnhZl1",
+            .url = "https://github.com/openresty/lua-cjson/archive/5f53e878d0441e1555f53060178c61d161079e06.tar.gz",
+            .hash = "N-V-__8AAJuSBQADQ7hPyVAbRiFH6JCktHkrRLvUxHv7rq-I",
         },
         .lua_zlib = .{
             .url = "https://github.com/brimworks/lua-zlib/archive/82132912c82337abcafaab2b586090d7783713e3.tar.gz",

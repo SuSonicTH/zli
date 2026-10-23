@@ -69,6 +69,8 @@ const filesystem_path_lua = [_][:0]const u8{
     "stream_tree",
     "tree",
     "to_relative",
+    "chmod",
+    "chown",
 };
 
 const separator = switch (builtin.os.tag) {
@@ -96,7 +98,7 @@ const Config = struct {
 
 pub fn register(lua: *Lua) !i32 {
     var config = setup(lua);
-    config.errorHandling = luaerror.getGlobalHanding(lua);
+    config.errorHandling = luaerror.getGlobalHandling(lua);
     luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
 
     if (lua.getMetatableRegistry(zli_mt_path) == .nil) {
@@ -129,11 +131,13 @@ pub fn setConfig(lua: *Lua) !i32 {
     luax.isFirstArgLibTableOrError(lua, "expecting filesystem library as 1st argument use \"require('filesystem'):config{}\" syntax");
     lua.argCheck(lua.typeOf(2) == .table, 2, "expecting config table");
 
-    var config = setup(lua);
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
     if (luax.getTableStringOptional(lua, "error_handling", 2)) |error_handling| {
         config.errorHandling = try luaerror.getHandling(error_handling);
-        luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
+        luax.setTableString(lua, 1, "error_handling", @tagName(config.errorHandling));
     }
+
+    lua.pushValue(1);
     return 1;
 }
 
@@ -248,13 +252,23 @@ fn create_path_sub(lua: *Lua, path: [:0]const u8, name: [:0]const u8) !void {
 }
 
 fn full_path(path: [:0]const u8, name: [:0]const u8) ![:0]u8 {
-    const len = path.len + separator_string.len + name.len + 1;
-    const buffer = try allocator.alloc(u8, len);
+    if (path.len == 0) {
+        return try allocator.dupeSentinel(u8, name, 0);
+    }
+    if (name.len == 0) {
+        return try allocator.dupeSentinel(u8, path, 0);
+    }
+
+    const needs_separator = path[path.len - 1] != separator;
+    const separator_len: usize = if (needs_separator) separator_string.len else 0;
+    const len = path.len + separator_len + name.len;
+    const buffer = try allocator.allocSentinel(u8, len, 0);
     @memcpy(buffer[0..path.len], path);
-    @memcpy(buffer[path.len .. path.len + separator_string.len], separator_string);
-    @memcpy(buffer[path.len + separator_string.len .. path.len + separator_string.len + name.len], name);
-    buffer[len - 1] = 0;
-    return buffer[0 .. len - 1 :0];
+    if (needs_separator) {
+        @memcpy(buffer[path.len .. path.len + separator_len], separator_string);
+    }
+    @memcpy(buffer[path.len + separator_len .. len], name);
+    return buffer;
 }
 
 fn current_directory(lua: *Lua) !i32 {
@@ -394,7 +408,7 @@ fn access_time_ms(lua: *Lua) !i32 {
     const stats = get_stat(path) catch |err|
         return luaerror.raiseOrReturn(lua, err, "Could not get stats for '{s}': {any}", .{ path, err }, try get_error_handling(lua));
     if (stats.atime) |atime| {
-        lua.pushInteger(atime.toSeconds());
+        lua.pushInteger(atime.toMilliseconds());
     } else {
         lua.pushNil();
     }
@@ -405,7 +419,7 @@ fn create_time_ms(lua: *Lua) !i32 {
     const path = try get_path(lua);
     const stats = get_stat(path) catch |err|
         return luaerror.raiseOrReturn(lua, err, "Could not get stats for '{s}': {any}", .{ path, err }, try get_error_handling(lua));
-    lua.pushInteger(stats.ctime.toSeconds());
+    lua.pushInteger(stats.ctime.toMilliseconds());
     return 1;
 }
 
@@ -413,7 +427,7 @@ fn modify_time_ms(lua: *Lua) !i32 {
     const path = try get_path(lua);
     const stats = get_stat(path) catch |err|
         return luaerror.raiseOrReturn(lua, err, "Could not get stats for '{s}': {any}", .{ path, err }, try get_error_handling(lua));
-    lua.pushInteger(stats.mtime.toSeconds());
+    lua.pushInteger(stats.mtime.toMilliseconds());
     return 1;
 }
 

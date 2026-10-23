@@ -14,7 +14,7 @@ const crossline = [_]zlua.FnReg{
 };
 
 const crossline_screen = [_]zlua.FnReg{
-    .{ .name = "dimentions", .func = zlua.wrap(crossline_screen_get) },
+    .{ .name = "dimensions", .func = zlua.wrap(crossline_screen_get) },
     .{ .name = "clear", .func = zlua.wrap(crossline_screen_clear) },
 };
 
@@ -118,6 +118,10 @@ fn crossline_readline(lua: *Lua) i32 {
     const prompt = lua.optString(1) orelse "> ";
     const init = lua.optString(2) orelse "";
     var buffer: [bufferSize]u8 = undefined;
+
+    if (init.len >= bufferSize) {
+        lua.argError(2, "initial input is too long");
+    }
 
     @memcpy(buffer[0..init.len], init);
     buffer[init.len] = 0;
@@ -297,14 +301,15 @@ fn crossline_paging_print(lua: *Lua) i32 {
 fn crossline_paging_print_table(lua: *Lua) i32 {
     const len = lua.lenRaw(1);
 
-    for (1..len) |i| {
+    for (1..len + 1) |i| {
         _ = lua.getIndexRaw(1, @intCast(i));
         _ = crossline_paging_print_output(lua);
-        if (lua.toBoolean(-1)) {
+        if (!lua.toBoolean(-1)) {
             return 1;
         }
         lua.pop(1);
     }
+    lua.pushBoolean(true);
     return 1;
 }
 

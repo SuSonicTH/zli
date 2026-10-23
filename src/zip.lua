@@ -18,7 +18,7 @@ local function add_directory_sub(fh, path, base_path, include_top, level)
     for _, file in ipairs(path:list()) do
         local zip_path = file:to_relative(base_path, include_top)
         if file:is_directory() then
-            local added_sub = add_directory_sub(fh, file, base_path, include_top)
+            local added_sub = add_directory_sub(fh, file, base_path, include_top, level)
             added = added + added_sub
             if added_sub == 0 then
                 fh:create_directory(zip_path)

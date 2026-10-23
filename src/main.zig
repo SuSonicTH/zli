@@ -24,6 +24,10 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(allocator);
     defer allocator.free(args);
 
+    // argv[0] is not necessarily a path (for example when the binary is found
+    // through PATH). Resolve the real executable path for payload lookup.
+    prog_name = std.process.executablePathAlloc(init.io, allocator) catch args[0];
+
     try createArgTable(lua, args);
     _ = lua.gcSetGenerational(0, 0);
     _ = libraries.openlibs(init.io, lua);
@@ -43,12 +47,11 @@ fn createZliTable(lua: *Lua) void {
     lua.newTable();
     luax.setTableString(lua, -1, "version", @embedFile("version"));
     luax.setTableString(lua, -1, "error_handling", "return");
+    luax.setTableString(lua, -1, "exe_path", prog_name);
     lua.setGlobal("ZLI");
 }
 
 fn createArgTable(lua: *Lua, args: []const [:0]const u8) !void {
-    prog_name = args[0];
-
     lua.createTable(@intCast(args.len), 1);
     for (args, 0..) |arg, i| {
         _ = lua.pushString(arg);
@@ -90,16 +93,16 @@ fn create_payload_searcher(lua: *Lua) !void {
     lua.setTop(top);
 }
 
-const extention_lua = ".lua";
-const extention_init = "init.lua";
+const extension_lua = ".lua";
+const extension_init = "/init.lua";
 
 fn payload_searcher(lua: *Lua) i32 {
     const arg = lua.checkString(1);
-    const filename = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
+    const filename = std.fmt.allocPrintSentinel(allocator, "{s}{s}", .{ arg, extension_lua }, 0) catch unreachable;
     defer allocator.free(filename);
 
     if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
-        const initName = std.fmt.allocPrintSentinel(allocator, "{s}.lua", .{arg}, 0) catch unreachable;
+        const initName = std.fmt.allocPrintSentinel(allocator, "{s}{s}", .{ arg, extension_init }, 0) catch unreachable;
         defer allocator.free(initName);
 
         if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
@@ -124,7 +127,8 @@ var buffer: [BUFFER_SIZE]u8 = undefined;
 fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.c) [*c]const u8 {
     _ = data;
     _ = state;
-    size.* = @intCast(c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE));
+    const read = c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE);
+    size.* = if (read > 0) @intCast(read) else 0;
     return &buffer;
 }
 

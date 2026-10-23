@@ -63,12 +63,12 @@ pub fn pushRegistryFunction(lua: *Lua, module: [:0]const u8, function: [:0]const
     _ = lua.pushString(module);
     _ = lua.getTable(zlua.registry_index);
     if (lua.isNil(-1)) {
-        raiseFormattedError(lua, "internal error: could not get module '%s' from registry", .{module.ptr});
+        lua.raiseErrorStr("internal error: could not get module '%s' from registry", .{module.ptr});
     }
     _ = lua.pushString(function);
     _ = lua.getTable(-2);
     if (lua.isNil(-1)) {
-        raiseFormattedError(lua, "internal error: could not get function '%s' from module '%s'", .{ function.ptr, module.ptr });
+        lua.raiseErrorStr("internal error: could not get function '%s' from module '%s'", .{ function.ptr, module.ptr });
     }
     lua.remove(-2);
 }
@@ -81,27 +81,8 @@ pub fn setTableRegistryFunctions(lua: *Lua, comptime module: [:0]const u8, compt
     }
 }
 
-///deprecated: use luaerror instead
-pub fn raiseFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) noreturn {
-    _ = lua.pushFString(message, args);
-    lua.raiseError();
-}
-
-///deprecated: use luaerror instead
-pub fn raiseError(lua: *Lua, message: [:0]const u8) noreturn {
-    _ = lua.pushString(message);
-    lua.raiseError();
-}
-
-///deprecated: use luaerror instead
-pub fn returnFormattedError(lua: *Lua, message: [:0]const u8, args: anytype) i32 {
-    lua.pushNil();
-    _ = lua.pushFString(message, args);
-    return 2;
-}
-
 pub fn registerUserData(lua: *Lua, name: [:0]const u8, function: zlua.CFn) void {
-    lua.newMetatable(name) catch raiseError(lua, "could not register userData");
+    lua.newMetatable(name) catch lua.raiseErrorStr("could not register userData", .{});
     _ = lua.pushString("__gc");
     lua.pushFunction(function);
     lua.setTable(-3);
@@ -138,9 +119,9 @@ pub fn getUserDataIndex(lua: *Lua, name: [:0]const u8, comptime T: type, index: 
     _ = lua.pushString(name);
     _ = lua.getTable(table_index);
     if (lua.isNil(-1)) {
-        raiseError(lua, "expected userdata got nil");
+        lua.raiseErrorStr("expected userdata got nil", .{});
     }
-    const udata: *T = lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
+    const udata: *T = lua.toUserdata(T, -1) catch lua.raiseErrorStr("could not get UserData", .{});
     lua.pop(1);
     return udata;
 }
@@ -172,7 +153,7 @@ pub fn debugLogStack(lua: *Lua, tag: []const u8, upvalues: bool) !void {
 }
 
 pub fn getGcUserData(lua: *Lua, comptime T: type) *T {
-    return lua.toUserdata(T, -1) catch raiseError(lua, "could not get UserData");
+    return lua.toUserdata(T, -1) catch lua.raiseErrorStr("could not get UserData", .{});
 }
 
 pub fn getTable(lua: *Lua, key: [:0]const u8, index: i32) void {
@@ -198,7 +179,7 @@ pub fn getTableStringOrError(lua: *Lua, key: [:0]const u8, index: i32) ![:0]cons
 }
 
 pub fn getTableString(lua: *Lua, key: [:0]const u8, index: i32) [:0]const u8 {
-    return getTableStringOrError(lua, key, index) catch raiseError(lua, "illegal option, expecting String");
+    return getTableStringOrError(lua, key, index) catch lua.raiseErrorStr("illegal option, expecting String", .{});
 }
 
 pub fn getTableStringOptional(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8 {
@@ -218,7 +199,7 @@ pub fn getOptionString(lua: *Lua, key: [:0]const u8, index: i32, default: [:0]co
         lua.pop(1);
         return default;
     }
-    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
+    const value = lua.toString(-1) catch lua.raiseErrorStr("illegal option '%s', expecting String", .{key.ptr});
     lua.pop(1);
     return std.mem.sliceTo(value, 0);
 }
@@ -229,7 +210,7 @@ pub fn getOptionalString(lua: *Lua, key: [:0]const u8, index: i32) ?[:0]const u8
         lua.pop(1);
         return null;
     }
-    const value = lua.toString(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting String", .{key.ptr});
+    const value = lua.toString(-1) catch lua.raiseErrorStr("illegal option '%s', expecting String", .{key.ptr});
     lua.pop(1);
     return std.mem.sliceTo(value, 0);
 }
@@ -240,7 +221,7 @@ pub fn getOptionInteger(lua: *Lua, key: [:0]const u8, index: i32, default: zlua.
         lua.pop(1);
         return default;
     }
-    const value = lua.toInteger(-1) catch raiseFormattedError(lua, "illegal option '%s', expecting Integer", .{key.ptr});
+    const value = lua.toInteger(-1) catch lua.raiseErrorStr("illegal option '%s', expecting Integer", .{key.ptr});
     lua.pop(1);
     return value;
 }

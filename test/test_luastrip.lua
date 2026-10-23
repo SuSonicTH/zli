@@ -35,6 +35,13 @@ function Test_luastrip.Test_bigger_block()
     lu.assertEquals(blockStripped, luastrip.string(block))
 end
 
+function Test_luastrip.Test_malformed_input_does_not_crash()
+    for _, source in ipairs { ".", "..", "[", "[[", "a.", "'", '"', "--[", "--[[", "\"unterminated", "[=[unterminated" } do
+        local ok, result = pcall(luastrip.string, source)
+        lu.assertIsTrue(ok, "input '" .. source .. "' failed: " .. tostring(result))
+    end
+end
+
 function Test_luastrip.Test_file_stripping()
     local source = "./test/temp/luastrip.in";
     local stripped = "./test/temp/luastrip.out";

@@ -47,7 +47,11 @@ local function streamAppender(handle)
 end
 
 local function fileAppender(filename, mode)
-    return streamAppender(io.open(filename, (mode == nil) and 'a' or mode))
+    local handle, err = io.open(filename, (mode == nil) and 'a' or mode)
+    if handle == nil then
+        error("could not open log file '" .. tostring(filename) .. "': " .. tostring(err), 2)
+    end
+    return streamAppender(handle)
 end
 
 local function stdoutAppender()

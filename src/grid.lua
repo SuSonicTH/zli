@@ -162,6 +162,9 @@ function grid:row_string(...)
 end
 
 function grid:last_string()
+    if not self.spaces then
+        calculate_templates(self)
+    end
     return borders(self, border.bottom)
 end
 
@@ -178,9 +181,10 @@ function grid:print_last()
 end
 
 function grid:tostring()
-    local tbl = {}
+    local tbl = self:get_header()
     for _, row in ipairs(self.rows) do
-        table.add_all(tbl, self:row(row, self.align))
+        tbl[#tbl + 1] = borders(self, border.center)
+        tbl[#tbl + 1] = padd(self, self.align, row)
     end
     tbl[#tbl + 1] = self:last_string()
     return table.concat(tbl, "\n")
@@ -188,9 +192,18 @@ end
 
 grid_mt = {
     __index = grid,
-    __tostring = grid.toString,
+    __tostring = grid.tostring,
 }
 
-return {
-    new = grid.new
-}
+-- `grid:new` is a colon method internally. Export a function that accepts both
+-- `grid.new(config, rows)` and `grid:new(config, rows)`.
+local module = {}
+
+function module.new(first, second, third)
+    if first == module then
+        return grid.new(grid, second, third)
+    end
+    return grid.new(grid, first, second)
+end
+
+return module

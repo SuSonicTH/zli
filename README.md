@@ -1,88 +1,152 @@
 # ZLI - Zig Lua Interpreter
 
-ZLI is a portable lua interpreter statically compiled (on non windows with musl) with additional libraries.
-The binary can be moved from system to system without any dependencies on installed ibraries.
+ZLI is a portable Lua interpreter with a large set of bundled libraries. Release builds are statically linked on non-Windows targets (musl), so a single binary can be copied from system to system without any installed libraries.
 
-Currently supported platforms
-* Windows on x86_64
-* linux on x86_64
-* linux on aarch64
+## Supported platforms
 
-Other platforms that are supported by zig could work but are untested.
+Tested by the release build:
 
-Examples:
-* Windows on x86 and aarch64
-* linux on x86, armv7a, riscv64 and powerpc64le
-* macOS on aarch64 and x86_64
+| platform       | status |
+| -------------- | ------ |
+| Windows x86_64 | tested |
+| Linux x86_64   | tested |
+| Linux aarch64  | tested |
+
+Other targets supported by Zig are expected to work but are not part of `zig build release` and have not been tested:
+
+- Windows aarch64
+- Linux x86, armv7a, riscv64, powerpc64le
+- macOS x86_64, aarch64
 
 ## Batteries included
-There are many libraries included in the ZLI binary, some 3rd party lua libraries and some developed specifically for ZLI.
 
-### included lua libraries
-3rd party lua libraries included in ZLI
+There are many libraries included in the ZLI binary: third-party Lua libraries, custom bindings, and libraries developed specifically for ZLI.
 
-| library    | link                                        | licence | description                                                                                                                            |
-| ---------- | ------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| argparse   | https://github.com/mpeterv/argparse         | MIT     | Argparse is a feature-rich command line parser for Lua inspired by argparse for Python                                                 |
-| f-string   | https://github.com/dsidirop/f-strings       | MIT     | String interpolation for Lua, inspired by f-strings, a form of string interpolation coming in Python 3.6.                              |
-| ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | ftcsv is a fast csv library written in pure Lua                                                                                        |
-| LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | LPeg is a new pattern-matching library for Lua, based on Parsing Expression Grammars (PEGs)                                            |
-| lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                                                                                             |
-| lua-zlib   | https://github.com/brimworks/lua-zlib       | MIT     | lua binding to the [zlib](https://zlib.net/) to compress/decompress                                                                    |
-| LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | LuaSQLite 3 is a thin wrapper around the public domain [SQLite3](https://www.sqlite.org/) database engine.                             |
-| luaunit    | https://github.com/bluebird75/luaunit       | BSD     | LuaUnit is a popular unit-testing framework for Lua, with an interface typical of xUnit libraries (Python unittest, Junit, NUnit, ...) |
-| Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer.                                                                                                     |
+### Included Lua libraries
 
-### Custom ZLI bindings to 3rd party libraries
-there are some custom lua bindings for 3rd party libraries
+| library    | link                                        | licence | description                                                            |
+| ---------- | ------------------------------------------- | ------- | ---------------------------------------------------------------------- |
+| argparse   | https://github.com/mpeterv/argparse         | MIT     | Feature-rich command line parser for Lua inspired by Python's argparse |
+| f-string   | https://github.com/dsidirop/f-strings       | MIT     | String interpolation for Lua, inspired by Python f-strings             |
+| ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | Fast CSV library written in pure Lua                                   |
+| LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | Pattern-matching library for Lua based on Parsing Expression Grammars  |
+| lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                             |
+| lua-zlib   | https://github.com/brimworks/lua-zlib       | MIT     | Lua binding to zlib                                                    |
+| LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | Thin wrapper around the SQLite3 database engine                        |
+| luaunit    | https://github.com/bluebird75/luaunit       | BSD     | Unit-testing framework for Lua                                         |
+| Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer                                      |
 
-| library     | link                                  | licence | description                                                                                                        |
-| ----------- | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
-| Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Crossline is a small, self-contained, zero-config, MIT licensed, cross-platform, readline and libedit replacement. |
-| unzip / zip | https://zlib.net/                     | MIT     | binding to the minizip library included in zlib for zip file handling                                              |
+### Custom bindings to third-party libraries
 
-### Inhouse ZLI libraries
-libraries developed specifically for ZLI that don't use any external libraries
+| library     | link                                  | licence | description                                           |
+| ----------- | ------------------------------------- | ------- | ----------------------------------------------------- |
+| Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Small, self-contained readline/libedit replacement    |
+| unzip / zip | https://zlib.net/                     | MIT     | Bindings to the minizip library for zip file handling |
 
-| library      | description                                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| auxiliary    | some auxiliary functions to improve the string, table and file handling                                                  |
-| benchmark    | a small library to run benchmarks with nano second precision                                                             |
-| collection   | a collection library simmilar to java's collection. (Hash)Set, (Hash)map and (Array)list are implemented                 |
-| filesystem   | providing filesystem functions like listing/creating/changing directories, deleting/renaming/moving files & directories  |
-| grid         | a library to output line-drawing text grids (tables) with per column alignment,padding, min/max width                    |
-| httpclient   | a convinient httpclient library based on zig's httpclient, supports get,post,put,patch,delete with many options          |
-| httpserver   | a convinient httpserver library based on zig's httpcserver, includes optional caching                                    |
-| logger       | a very simple logging library                                                                                            |
-| luastrip     | a lua source code stripping/compacting library to remove comments and unnessessary whitespace from lua source code       |
-| memoize      | a library to memoize/cache expensive function results                                                                    |
-| stream       | a stream library enspired by the java stream library that brings the functional style programming to lua                 |
-| tar          | a tar library that can read and write tar files (with optional gz compression) and read .xz .zstd compressed tar files   |
-| timer        | a nanosecond timer for high precision timings available as os.nanotime                                                   |
-| uuid         | a library to create V4 and v7 uuids in string form                                                                       |
-| xlsxmlwriter | a very simple library to write an excel file in the xml format. Not space efficient nor feature rich but simple and fast |
+### ZLI libraries
 
-Each inhouse library, that has functions that can error, can be configured to either return or raise the error at runtime. Returning the error is the default mode. For simple scripts, that should fail early without you having to check for each possible runtime error, you can set the global `ZLI.error_handling = 'raise'`to automatically raise the error end stop execution at any error. Simmilar to the standard lua libraries some functions might still raise an error, even if error_handiling is set to return, if the arguments to the fuction are wrong. (i.e. errors that can be catched at writing instead of runtime)
+| library      | description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| auxiliary    | Extra string, table, file and OS helpers                                                                    |
+| benchmark    | Small benchmark runner with nanosecond precision                                                            |
+| collection   | Collection library similar to Java collections: (Hash)Set, (Hash)Map and (Array)List                        |
+| filesystem   | Filesystem functions: listing/creating/changing directories, deleting/renaming/moving files and directories |
+| grid         | Line-drawing text grids (tables) with per-column alignment, padding and min/max width                       |
+| httpclient   | Convenient HTTP client based on Zig's HTTP client (GET, HEAD, POST, PUT, PATCH, DELETE)                     |
+| httpserver   | Convenient HTTP server based on Zig's HTTP server, with optional file caching and static file serving       |
+| logger       | Very simple logging library                                                                                 |
+| luastrip     | Lua source stripping/compacting library that removes comments and unnecessary whitespace                    |
+| memoize      | Function result memoization/caching                                                                         |
+| stream       | Stream library inspired by Java streams for functional-style Lua                                            |
+| tar          | Read/write tar files (optional gzip compression) and read `.xz`/`.zstd` compressed tar files                |
+| timer        | Nanosecond timer, also available as `os.nanotime`                                                           |
+| uuid         | V4 and V7 UUID generation                                                                                   |
+| xlsxmlwriter | Simple Excel XML writer                                                                                     |
 
-### Included tools
-In the main binary there are also some commandline tools embedded. 
+See [doc/README.md](doc/README.md) for the command line tools and configuration and [doc/libraries.md](doc/libraries.md) for the library API reference.
 
-| commandline option | description                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| --compiler         | a tool to package lua scripts and files into a zip attached to an executable (alpha) |
-| --repl             | a Read Print Eval Loop with a nice interface                                         |
-| --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
+## Command line
+
+```
+Usage: zli [-h|--help] [-v|--version] [--test <test>] [--repl] [--sqlite]
+           [--compile <config>] [--manual] [--serve [directory]] [<script>]
+```
+
+| option                | description                                    |
+| --------------------- | ---------------------------------------------- |
+| `-h`, `--help`        | Show usage                                     |
+| `-v`, `--version`     | Print the version and exit                     |
+| `--test <file>`       | Run a LuaUnit test file                        |
+| `--repl`              | Start the interactive REPL                     |
+| `--sqlite`            | Start the SQLite CLI                           |
+| `--compile <config>`  | Package Lua files into a standalone executable |
+| `--manual`            | Serve the bundled Lua 5.5 manual over HTTP     |
+| `--serve [directory]` | Serve a directory over HTTP (defaults to `./`) |
+| `<script>`            | Run a Lua script; use `-` to read from stdin   |
+
+Without a script (or with `--repl`) ZLI starts the REPL. If no payload is attached, the interpreter also looks for scripts in the following order: `main.lua`, `init.lua`, `<executable-name>.lua`.
+
+Two configuration files are read automatically when they exist:
+
+- `~/.config/zli/init.lua` — executed before every script and REPL session
+- `~/.config/zli/repl_init.lua` — executed only when the REPL starts
+
+## Error handling
+
+ZLI libraries that can fail at runtime can either return an error or raise one. Returning errors is the default:
+
+```lua
+local filesystem = require "filesystem"
+local text, err = filesystem.read_all("missing.txt")
+if not text then
+    print("error:", err)
+end
+```
+
+For simple scripts that should fail early, set the global before requiring the library:
+
+```lua
+ZLI.error_handling = "raise"
+local filesystem = require "filesystem"
+local text = filesystem.read_all("missing.txt") -- raises on failure
+```
+
+Notes:
+
+- The setting is read when a library module is required. Set it before `require`.
+- A loaded library can be reconfigured in place: `filesystem:config { error_handling = "raise" }`. This returns the same table.
+- Argument errors (wrong types, missing required arguments) always raise, as they indicate a bug in the calling script.
 
 ## Build
-The build ist tested under linux and windows for x86_64 platforms and on linux arm64. All it needs git and zig version 0.17.0 on the path
+
+The build is tested under Linux and Windows for x86_64 and on Linux aarch64. It needs `zig` 0.17.0 on the `PATH`; the first build downloads the dependencies.
+
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli
 zig build
 ```
-this will create a debug build in `zig-out/bin`.
-You can run `zig build test`to run all included tests and for a *realease build* for your native architecture just run 
+
+This creates a debug build in `zig-out/bin`. Run the included test suite with:
+
+```bash
+zig build test
+```
+
+For an optimized build for your native architecture:
+
 ```bash
 zig build native
 ```
-And if you want to compile a release build for all the supported platforms use the `zig build release`, all binaries are saved to the zig-out/bin directory with the platform suffix. 
+
+For optimized builds of all release targets (UPX-compressed, statically linked on Linux):
+
+```bash
+zig build release
+```
+
+Release binaries are written to `zig-out/bin` with a platform and version suffix (for example `zli-x86_64-linux-0.1.9`).
+
+> A plain `zig build` and `zig build native` use the host ABI and may link against the host's shared libc (glibc on Linux). Use `zig build release` or pass an explicit target, such as `zig build -Dtarget=x86_64-linux`, for a static musl binary. Note that `zig build native` always uses the host target and ignores `-Dtarget`.
+>
+> `zig build native` and `zig build release` UPX-compress their output. Tools such as `file` and `ldd` may report a compressed native binary as statically linked because UPX removes section headers; unpack it with `upx -d` to inspect its original linking.

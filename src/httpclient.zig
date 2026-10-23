@@ -22,7 +22,8 @@ const Config = struct {
 
 pub fn register(lua: *Lua) !i32 {
     var config = setup(lua);
-    config.errorHandling = luaerror.getGlobalHanding(lua);
+    config.errorHandling = luaerror.getGlobalHandling(lua);
+    luax.setTableString(lua, -1, "error_handling", @tagName(config.errorHandling));
     return 1;
 }
 
@@ -32,11 +33,15 @@ fn setup(lua: *Lua) *Config {
 
 pub fn setConfig(lua: *Lua) !i32 {
     lua.checkType(1, .table);
-    var config = setup(lua);
+    const config = try lua.toUserdata(Config, Lua.upvalueIndex(1));
+    const config_index: i32 = if (lua.typeOf(2) == .table) 2 else 1;
 
-    if (luax.getOptionalString(lua, "error_handling", 1)) |error_handling| {
+    if (luax.getOptionalString(lua, "error_handling", config_index)) |error_handling| {
         config.errorHandling = try luaerror.getHandling(error_handling);
+        luax.setTableString(lua, 1, "error_handling", @tagName(config.errorHandling));
     }
+
+    lua.pushValue(1);
     return 1;
 }
 
@@ -88,23 +93,26 @@ fn call(lua: *Lua) !i32 {
         .POST, .PUT, .PATCH => true,
         else => false,
     };
-    if (writeBody) request.transfer_encoding = .chunked;
 
-    if (lua.typeOf(bodyIndex) != .nil and writeBody) {
-        const body = lua.toString(bodyIndex) catch |err|
-            return luaerror.raiseOrReturn(lua, err, "could not get body for '{s}': {any}", .{ url, err }, try get_error_handling(lua));
-        _ = request.sendBodyComplete(@constCast(body)) catch |err|
-            return luaerror.raiseOrReturn(lua, err, "could not get body to '{s}': {any}", .{ url, err }, try get_error_handling(lua));
+    if (writeBody) {
+        const body = if (lua.typeOf(bodyIndex) != .nil)
+            lua.toString(bodyIndex) catch |err|
+                return luaerror.raiseOrReturn(lua, err, "could not get body for '{s}': {any}", .{ url, err }, try get_error_handling(lua))
+        else
+            "";
+
+        request.sendBodyComplete(@constCast(body)) catch |err|
+            return luaerror.raiseOrReturn(lua, err, "could not send body to '{s}': {any}", .{ url, err }, try get_error_handling(lua));
     } else {
         request.sendBodiless() catch |err|
             return luaerror.raiseOrReturn(lua, err, "could not send to '{s}': {any}", .{ url, err }, try get_error_handling(lua));
     }
 
     var redirect_buffer: [readLength]u8 = undefined;
-    const response = request.receiveHead(&redirect_buffer) catch |err|
+    var response = request.receiveHead(&redirect_buffer) catch |err|
         return luaerror.raiseOrReturn(lua, err, "could not receive header from '{s}': {any}", .{ url, err }, try get_error_handling(lua));
     pushHeader(lua, &response.head);
-    readAndPushBody(lua, &request) catch |err|
+    readAndPushBody(lua, &response) catch |err|
         return luaerror.raiseOrReturn(lua, err, "could not read response from '{s}': {any}", .{ url, err }, try get_error_handling(lua));
     return 2;
 }
@@ -113,7 +121,7 @@ fn pushHeader(lua: *Lua, head: *const std.http.Client.Response.Head) void {
     lua.newTable();
     const responseIndex = lua.getTop();
 
-    const status = @intFromEnum(head.status);
+    const status = @backingInt(head.status);
     luax.setTableString(lua, responseIndex, "version", @tagName(head.version));
     luax.setTableInteger(lua, responseIndex, "status", status);
     luax.setTableString(lua, responseIndex, "status_name", @tagName(head.status));
@@ -134,20 +142,23 @@ fn pushHeader(lua: *Lua, head: *const std.http.Client.Response.Head) void {
     }
 }
 
-fn readAndPushBody(lua: *Lua, request: *std.http.Client.Request) !void {
+fn readAndPushBody(lua: *Lua, response: *std.http.Client.Response) !void {
     var lua_buffer: zlua.Buffer = undefined;
     lua_buffer.init(lua);
     var buffer = lua_buffer.prepSize(readLength);
 
-    const reader = &request.reader.interface;
+    // `Response.reader` initializes the body reader with the supplied transfer
+    // buffer. It must be called after the head has been copied out.
+    var transfer_buffer: [readLength]u8 = undefined;
+    const reader = response.reader(&transfer_buffer);
+
     while (true) {
         const length = try reader.readSliceShort(buffer);
         lua_buffer.addSize(length);
-        if (length == readLength) {
-            buffer = lua_buffer.prepSize(readLength);
-        } else {
+        if (length < readLength) {
             break;
         }
+        buffer = lua_buffer.prepSize(readLength);
     }
 
     lua_buffer.pushResult();
@@ -186,6 +197,7 @@ const Header = struct {
 
     fn parseHeader(self: *Header, lua: *Lua, index: i32) !void {
         if (!luax.getOptionalTable(lua, "header", index)) {
+            lua.pop(1);
             self.headers = .{};
             return;
         }
@@ -219,7 +231,10 @@ const Header = struct {
             .content_type = if (self.content_type) |content_type| .{ .override = content_type } else .default,
         };
 
-        if (!luax.getOptionalTable(lua, "privileged_headers", 2)) return;
+        if (!luax.getOptionalTable(lua, "privileged_headers", 2)) {
+            lua.pop(1);
+            return;
+        }
         lua.pushNil();
         while (lua.next(-2)) {
             lua.pushValue(-2);

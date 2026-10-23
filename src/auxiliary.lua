@@ -75,9 +75,10 @@ function lambda(lambda_str)
     local success, lambda = pcall(compiled)
     if success and type(lambda) == 'function' then
         return lambda
-    else
-        error("error compiling lambda '" .. lambda_str .. "': " .. error_message)
     end
+
+    local message = success and ("expected a function, got " .. type(lambda)) or tostring(lambda)
+    error("error compiling lambda '" .. lambda_str .. "': " .. message)
 end
 
 L = lambda
@@ -234,20 +235,24 @@ function table.save(filename, tbl)
 end
 
 local function default_index(self, key)
-    local value = self.tbl[key]
+    local tbl = rawget(self, "tbl") or {}
+    local defaults = rawget(self, "default") or {}
+
+    local value = tbl[key]
     if value ~= nil then
         return value
     end
-    value = self.default[key]
+    value = defaults[key]
 
-    if value == nil and rawget(self, "error") then
-        local error_type = type(self.error)
+    local error_handler = rawget(self, "error")
+    if value == nil and error_handler then
+        local error_type = type(error_handler)
         if error_type == 'function' then
-            return self.error(self.tbl, key)
+            return error_handler(tbl, key)
         elseif error_type == 'string' then
-            error(self.error:format(key), 2)
+            error(error_handler:format(key), 2)
         else
-            error(string.format("option '%s' is not set and is not optional", key, 2))
+            error(string.format("option '%s' is not set and is not optional", tostring(key)), 2)
         end
     end
 
@@ -258,8 +263,8 @@ local default_meta = { __index = default_index }
 
 function table.default(tbl, default, error)
     return setmetatable({
-        tbl = tbl,
-        default = default,
+        tbl = tbl or {},
+        default = default or {},
         error = error
     }, default_meta)
 end
@@ -293,7 +298,7 @@ end
 local function home()
     local home = os.getenv("HOME")
     if (home == nil and os.get_name() == "windows") then
-        home = os.getenv("homedrive") .. os.getenv("homepath")
+        home = (os.getenv("homedrive") or "") .. (os.getenv("homepath") or "")
     end
     return home
 end
