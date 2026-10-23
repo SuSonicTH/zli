@@ -1,5 +1,4 @@
-local version = "v0.1.7"
-local version_string = "zli - Zig Lua Interpreter " .. version
+local version_string = "zli - Zig Lua Interpreter " .. ZLI.version
 local fs = require "filesystem"
 
 local config = os.home .. "/.config"
