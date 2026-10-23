@@ -4,9 +4,7 @@ const luax = @import("luax.zig");
 
 const Lua = zlua.Lua;
 
-const c = @cImport({
-    @cInclude("crossline.h");
-});
+const c = @import("c");
 
 const crossline = [_]zlua.FnReg{
     .{ .name = "readline", .func = zlua.wrap(crossline_readline) },

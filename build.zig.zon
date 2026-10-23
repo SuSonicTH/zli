@@ -2,16 +2,16 @@
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
     .version = "0.1.6",
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "https://github.com/natecraddock/ziglua/archive/d59103e257b25ae892cdede9a671366e8d4f3e51.tar.gz",
-            .hash = "zlua-0.1.0-hGRpC4aUBQCOTE7WgTqCz0YBVUUaIpqDu1cNBu8nN6jH",
+            .url = "git+https://github.com/natecraddock/ziglua#ce59a325718d00c4b24364d482f9efa370a9bf09",
+            .hash = "zlua-0.1.0-hGRpCwmZBQDixqie-LjxX4vsguYaVT77Hd17csjHvQ5Y",
         },
         .lua55 = .{
-            .url = "https://www.lua.org/ftp/lua-5.5.0.tar.gz",
-            .hash = "N-V-__8AAGuAFQAFQL34FRuOIGC9klkZq44uTTan4cUS9vas",
+            .url = "https://www.lua.org/ftp/lua-5.5.1.tar.gz",
+            .hash = "N-V-__8AAPqeFQDipy0CdI6MKBmwYYarybBTO3IIJPrSzH_w",
         },
         .argparse = .{
             .url = "https://github.com/luarocks/argparse/archive/27967d7b52295ea7885671af734332038c132837.tar.gz",
@@ -58,8 +58,8 @@
             .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",
         },
         .zupx = .{
-            .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.1.0.tar.gz",
-            .hash = "zupx-0.1.0-rouXWTMbAAAcnIF88vaaszszL3xgbsMdPFeVQ8HtxZWX",
+            .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.2.0.tar.gz",
+            .hash = "zupx-0.2.0-rouXWVAbAAAFN_K6ds95pGAgwMm0vkUf1VPaMDRRYG3o",
         },
     },
 }

@@ -74,7 +74,7 @@ In the main binary there are also some commandline tools embedded.
 | --sqlite           | a sqlite interface. open, query and manipulate any sqlite database                   |
 
 ## Build
-The build ist tested under linux and windows for x86_64 platforms and on linux arm64. All it needs git and zig version 0.16.0 on the path
+The build ist tested under linux and windows for x86_64 platforms and on linux arm64. All it needs git and zig version 0.17.0 on the path
 ```bash
 git clone https://github.com/SuSonicTH/zli.git
 cd zli

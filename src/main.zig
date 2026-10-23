@@ -4,9 +4,7 @@ const libraries = @import("libraries.zig");
 const Utf8Output = @import("Utf8Output.zig");
 const luax = @import("luax.zig");
 
-const c = @cImport({
-    @cInclude("unzip.h");
-});
+const c = @import("c");
 
 const Lua = zlua.Lua;
 

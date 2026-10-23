@@ -39,7 +39,7 @@ pub fn argError(lua: *Lua, arg: i32, comptime format: []const u8, args: anytype)
 
     switch (info) {
         .@"struct" => |struct_info| {
-            if (struct_info.fields.len == 0) {
+            if (struct_info.field_names.len == 0) {
                 lua.argError(arg, format);
             } else {
                 const message = std.fmt.bufPrintSentinel(&error_buffer, format[0..format.len], args, 0) catch @panic("error message is too long");
@@ -61,7 +61,7 @@ pub fn callErrorHandler(lua: *Lua, handlerIndex: ?i32, comptime format: [:0]cons
 
     switch (info) {
         .@"struct" => |struct_info| {
-            if (struct_info.fields.len == 0) {
+            if (struct_info.field_names.len == 0) {
                 _ = lua.pushString(format);
             } else {
                 const message = std.fmt.bufPrintSentinel(&error_buffer, format[0..format.len], args, 0) catch @panic("error message is too long");
@@ -80,7 +80,7 @@ pub fn raise(err: anyerror, comptime format: [:0]const u8, args: anytype) anyerr
 
     switch (info) {
         .@"struct" => |struct_info| {
-            if (struct_info.fields.len == 0) {
+            if (struct_info.field_names.len == 0) {
                 error_message = format;
             } else {
                 error_message = std.fmt.bufPrintSentinel(&error_buffer, format[0..format.len], args, 0) catch @panic("error message is too long");
@@ -97,7 +97,7 @@ pub fn ret(lua: *Lua, comptime format: []const u8, args: anytype) i32 {
 
     switch (info) {
         .@"struct" => |struct_info| {
-            if (struct_info.fields.len == 0) {
+            if (struct_info.field_names.len == 0) {
                 lua.pushNil();
                 _ = lua.pushString(format);
             } else {

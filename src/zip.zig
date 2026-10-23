@@ -9,10 +9,7 @@ const luax = @import("luax.zig");
 
 const allocator = std.heap.c_allocator;
 
-const c = @cImport({
-    @cInclude("zip.h");
-    @cInclude("zip_util.h");
-});
+const c = @import("c");
 
 const filesystem = @import("filesystem.zig");
 

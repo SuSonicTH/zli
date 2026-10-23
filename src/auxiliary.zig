@@ -7,9 +7,7 @@ const luaerror = @import("luaerror.zig");
 
 const builtin = @import("builtin");
 
-const timer = @cImport({
-    @cInclude("timer.h");
-});
+const c = @import("c");
 
 const string_functions = [_]zlua.FnReg{
     .{ .name = "split", .func = zlua.wrap(split) },
@@ -64,7 +62,7 @@ fn os_get_name(lua: *Lua) i32 {
 }
 
 fn nanotime(lua: *Lua) i32 {
-    lua.pushNumber(timer.nanotime());
+    lua.pushNumber(c.nanotime());
     return 1;
 }
 

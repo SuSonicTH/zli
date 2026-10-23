@@ -22,9 +22,7 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
     run_step.dependOn(&run_cmd.step);
 
     //test
@@ -48,39 +46,44 @@ const release_targets = [_]TargetConfig{
 
 fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
     const zupx = b.dependency("zupx", .{
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
     });
 
     for (release_targets) |config| {
         const target = b.resolveTargetQuery(config.query);
         const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, @embedFile("src/version") });
-        const exe = compileStep(b, target, std.builtin.OptimizeMode.ReleaseFast, exe_name);
-        const install_artifact = b.addInstallArtifact(exe, .{});
-
-        //upx
-        const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
-        upx_cmd.addArgs(&.{ "--lzma", b.getInstallPath(.bin, exe.out_filename) });
-        upx_cmd.step.dependOn(&install_artifact.step);
-
-        release.dependOn(&upx_cmd.step);
+        const exe = compileStep(b, target, std.builtin.OptimizeMode.fast, exe_name);
+        const install_artifact = upxInstall(b, zupx, exe, exe_name);
+        release.dependOn(&install_artifact.step);
     }
+}
+
+/// Compresses the compiled executable with upx, installing only the packed
+/// output so that the cached artifact is never modified in place.
+fn upxInstall(
+    b: *std.Build,
+    zupx: *std.Build.Dependency,
+    exe: *std.Build.Step.Compile,
+    exe_name: []const u8,
+) *std.Build.Step.InstallFile {
+    const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
+    upx_cmd.addArg("--lzma");
+    upx_cmd.addArg("-o");
+    const packed_path = upx_cmd.addOutputFileArg(exe_name);
+    upx_cmd.addFileArg(exe.getEmittedBin());
+    return b.addInstallFileWithDir(packed_path, .bin, exe_name);
 }
 
 fn nativebuild(b: *std.Build) *std.Build.Step {
     const zupx = b.dependency("zupx", .{
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
     });
 
-    const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.ReleaseFast, "zli");
-    const install_artifact = b.addInstallArtifact(exe, .{});
-
-    //upx
-    const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
-    upx_cmd.addArgs(&.{ "--lzma", b.getInstallPath(.bin, exe.out_filename) });
-    upx_cmd.step.dependOn(&install_artifact.step);
-    return &upx_cmd.step;
+    const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.fast, "zli");
+    const install_artifact = upxInstall(b, zupx, exe, "zli");
+    return &install_artifact.step;
 }
 
 fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, exe_name: []const u8) *std.Build.Step.Compile {
@@ -103,7 +106,7 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .strip = optimize != std.builtin.OptimizeMode.Debug,
+            .strip = optimize != .debug,
         }),
     });
     exe.root_module.addIncludePath(b.path("src/"));
@@ -119,6 +122,19 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     exe.root_module.linkLibrary(zlib(b, target, optimize, zlib_dep));
     exe.root_module.linkLibrary(luaZlib(b, target, optimize, zlib_dep, luaPath));
     exe.root_module.linkLibrary(miniZip(b, target, optimize, zlib_dep));
+
+    //translate the C headers used by the Zig sources
+    const crossline_dep = b.dependency("crossline", .{});
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path("src/c.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    translate_c.addIncludePath(b.path("src/"));
+    translate_c.addIncludePath(zlib_dep.path(""));
+    translate_c.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    translate_c.addIncludePath(crossline_dep.path(""));
+    exe.root_module.addImport("c", translate_c.createModule());
 
     //libraries
     exe.root_module.linkLibrary(lsqlite3(b, target, optimize, luaPath));
@@ -175,19 +191,20 @@ fn luaLibs(b: *std.Build, optimize: std.builtin.OptimizeMode, module: *std.Build
         var source: []const u8 = undefined;
 
         if (script.dependency[0] == 0) {
-            if (optimize == .Debug) {
-                source = readFile(b, script.input);
+            if (optimize == .debug) {
+                source = readFile(b, b.path(script.input));
             } else {
-                source = strip(readFile(b, script.input), b.allocator) catch |err| {
+                source = strip(readFile(b, b.path(script.input)), b.allocator) catch |err| {
                     std.debug.panic("Failed to strip Lua script '{s}': {any}\n", .{ script.name, err });
                 };
             }
         } else {
             const dependency = b.dependency(script.dependency, .{});
-            if (optimize == .Debug) {
-                source = readFile(b, dependency.path(script.input).getPath(b));
+            const path = dependency.path(script.input);
+            if (optimize == .debug) {
+                source = readFile(b, path);
             } else {
-                source = strip(readFile(b, dependency.path(script.input).getPath(b)), b.allocator) catch |err| {
+                source = strip(readFile(b, path), b.allocator) catch |err| {
                     std.debug.panic("Failed to strip Lua script '{s}': {any}\n", .{ script.name, err });
                 };
             }
@@ -198,14 +215,23 @@ fn luaLibs(b: *std.Build, optimize: std.builtin.OptimizeMode, module: *std.Build
     }
 }
 
-fn readFile(b: *std.Build, path: []const u8) []const u8 {
-    return b.build_root.handle.readFileAlloc(
+fn readFile(b: *std.Build, path: std.Build.LazyPath) []const u8 {
+    b.dependOnFileContents(path);
+
+    const root, const sub_path = switch (path) {
+        .src_path => |sp| .{ sp.owner.root, sp.sub_path },
+        .dependency => |dep| .{ dep.dependency.builder.root, dep.sub_path },
+        else => @panic("unsupported build-time file path"),
+    };
+
+    const rel_path = std.fs.path.join(b.allocator, &.{ root.sub_path, sub_path }) catch @panic("OOM");
+    return root.root_dir.handle.readFileAlloc(
         b.graph.io,
-        path,
+        rel_path,
         b.graph.arena,
         std.Io.Limit.unlimited,
     ) catch |err| {
-        std.debug.panic("Failed to read {s}: {any}\n", .{ path, err });
+        std.debug.panic("Failed to read {s}: {any}\n", .{ rel_path, err });
     };
 }
 

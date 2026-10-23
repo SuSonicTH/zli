@@ -312,7 +312,7 @@ fn stat(lua: *Lua) !i32 {
     push_time_stamp(lua, stats.mtime.toSeconds());
     lua.setTable(table);
 
-    luax.setTableInteger(lua, table, "mode", @intFromEnum(stats.permissions));
+    luax.setTableInteger(lua, table, "mode", @backingInt(stats.permissions));
 
     _ = lua.pushString("mode_flags");
     push_mode_flags(lua, stats);
@@ -456,7 +456,7 @@ fn mode(lua: *Lua) !i32 {
     const path = try get_path(lua);
     const stats = get_stat(path) catch |err|
         return luaerror.raiseOrReturn(lua, err, "Could not get stats for '{s}': {any}", .{ path, err }, try get_error_handling(lua));
-    lua.pushInteger(@intFromEnum(stats.permissions));
+    lua.pushInteger(@backingInt(stats.permissions));
     return 1;
 }
 
@@ -508,15 +508,15 @@ const TB = GB * 1024.0;
 pub fn size_human_readable(file_size: u64) ![:0]u8 {
     const float_size = @as(f64, @floatFromInt(file_size));
     if (file_size >= TB) {
-        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} TB", .{float_size / TB});
+        return std.fmt.bufPrintSentinel(&size_hr_buffer, "{d:0>1.2} TB", .{float_size / TB}, 0);
     } else if (file_size >= GB) {
-        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} GB", .{float_size / GB});
+        return std.fmt.bufPrintSentinel(&size_hr_buffer, "{d:0>1.2} GB", .{float_size / GB}, 0);
     } else if (file_size >= MB) {
-        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} MB", .{float_size / MB});
+        return std.fmt.bufPrintSentinel(&size_hr_buffer, "{d:0>1.2} MB", .{float_size / MB}, 0);
     } else if (file_size >= KB) {
-        return std.fmt.bufPrintZ(&size_hr_buffer, "{d:0>1.2} KB", .{float_size / KB});
+        return std.fmt.bufPrintSentinel(&size_hr_buffer, "{d:0>1.2} KB", .{float_size / KB}, 0);
     } else {
-        return std.fmt.bufPrintZ(&size_hr_buffer, "{d} B", .{@as(u64, @intCast(file_size))});
+        return std.fmt.bufPrintSentinel(&size_hr_buffer, "{d} B", .{@as(u64, @intCast(file_size))}, 0);
     }
 }
 

@@ -9,9 +9,7 @@ const luax = @import("luax.zig");
 
 const allocator = std.heap.c_allocator;
 
-const c = @cImport({
-    @cInclude("unzip.h");
-});
+const c = @import("c");
 
 const filesystem = @import("filesystem.zig");
 
@@ -180,14 +178,14 @@ const UnzipUdata = struct {
         lua.setTable(table);
 
         var timestamp: [30:0]u8 = undefined;
-        luax.setTableString(lua, table, "timestamp", std.fmt.bufPrintZ(&timestamp, "{}/{d:0>2}/{d:0>2} {d:0>2}:{d:0>2}:{d:0>2}", .{
+        luax.setTableString(lua, table, "timestamp", std.fmt.bufPrintSentinel(&timestamp, "{}/{d:0>2}/{d:0>2} {d:0>2}:{d:0>2}:{d:0>2}", .{
             @as(u32, @intCast(uzfi.tmu_date.tm_year)),
             @as(u32, @intCast(uzfi.tmu_date.tm_mon + 1)),
             @as(u32, @intCast(uzfi.tmu_date.tm_mday)),
             @as(u32, @intCast(uzfi.tmu_date.tm_hour)),
             @as(u32, @intCast(uzfi.tmu_date.tm_min)),
             @as(u32, @intCast(uzfi.tmu_date.tm_sec)),
-        }) catch luax.raiseError(lua, "internal error: could not format timestamp"));
+        }, 0) catch luax.raiseError(lua, "internal error: could not format timestamp"));
     }
 
     fn pushTime(lua: *Lua, uzfi: c.unz_file_info) void {
