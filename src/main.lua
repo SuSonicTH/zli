@@ -15,7 +15,8 @@ Tools:
     @sqlite              run the SQLite CLI tool
     @compile <config>    create a standalone executable from <config>
     @test <test>         run unit tests in file <test>
-    @manual              serve the Lua manual in a browser
+    @manual              serve the bundled reference manual in a browser
+    @help [query]        look up documentation on the command line
     @serve [directory]   serve a directory over http, defaults to ./
 
 Without a tool, zli starts the REPL.

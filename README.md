@@ -63,7 +63,25 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | uuid         | V4 and V7 UUID generation                                                                                   |
 | xlsxmlwriter | Simple Excel XML writer                                                                                     |
 
-See [doc/README.md](doc/README.md) for the command line tools and configuration and [doc/libraries.md](doc/libraries.md) for the library API reference.
+See [doc/README.md](doc/README.md) for the command line tools and configuration and [doc/libraries.md](doc/libraries.md) for the library API reference.  The latter is generated from [doc/libraries.lua](doc/libraries.lua); do not edit it by hand.
+
+## Documentation
+
+The ZLI binary carries a complete reference manual in its payload.  It combines
+the Lua 5.5 language and standard-library manual with documentation for every
+bundled library, the command line tools and ZLI itself.  The Lua manual part is
+extracted from the `lua55` build dependency; the rest is authored in
+`doc/libraries.lua`.
+
+```bash
+zli @manual                 # browse the manual at http://127.0.0.1:8080/
+zli @help string.byte       # command line lookup
+zli @help --search trim     # full-text search
+```
+
+Inside the REPL use `:help`, `:help <name>` or `:help --search <term>`.  Scripts
+can `require "docs"` to use the same structured documentation (`find`, `search`
+and render helpers).
 
 ## Command line
 
@@ -80,16 +98,19 @@ Usage: zli [-h|--help] [-v|--version] [@tool [arguments...]]
 | `@sqlite`              | Start the SQLite CLI                           |
 | `@compile <config>`    | Package Lua files into a standalone executable |
 | `@test <file>`         | Run a LuaUnit test file                        |
-| `@manual`              | Serve the bundled Lua 5.5 manual over HTTP     |
+| `@help [query]`        | Look up the bundled documentation              |
+| `@manual`              | Serve the bundled reference manual over HTTP   |
 | `@serve [directory]`   | Serve a directory over HTTP (defaults to `./`) |
 | `<script>`             | Run a Lua script; use `-` to read from stdin   |
 
-Without a tool or script, ZLI starts the REPL. Scripts are selected in this order:
+Scripts are selected in this order:
 
 1. `zli @name [args]` runs `name` or `name.lua` from the attached payload; `@dir/name` is supported.
 2. `zli - [args]` reads the program from stdin.
 3. `zli script.lua [args]` runs an existing file from the filesystem.
 4. `zli [args]` runs `<executable-name>.lua`, then `main.lua`, then `init.lua` from the payload.
+
+The executable basename comes from `argv[0]` (with `.exe` stripped on Windows), so one payload can provide several tools through differently named symlinks. The bundled `main.lua` starts the REPL, which is why the standard binary starts the REPL when given no arguments. `arg[0]` remains the executable name used to invoke ZLI; the selected payload script is not substituted into the argument table.
 
 The ZLI binary itself carries a payload containing `main.lua` and the command line tools. Compiled executables replace that payload with their own files.
 

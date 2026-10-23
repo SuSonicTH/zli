@@ -11,7 +11,8 @@ executable and are started with `zli @tool`.
 | `@sqlite` | a sqlite interface. open, query and manipulate any sqlite database           |
 | `@compile`| a tool to package lua scripts and files into a zip attached to an executable |
 | `@test`   | run a LuaUnit test file                                                      |
-| `@manual` | serve the Lua manual in a browser                                            |
+| `@manual` | serve the bundled reference manual in a browser                              |
+| `@help`   | look up documentation, list entries or emit the Markdown mirror              |
 | `@serve`  | serve a directory over http                                                  |
 
-`serve_lib.lua` is an internal helper shared by `@serve` and `@manual`.
+`serve_lib.lua` is an internal helper used by `@serve`.

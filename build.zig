@@ -1,24 +1,27 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
 const strip = @import("src/strip.zig").strip;
+const docgen = @import("src/docgen.zig");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const docs_payload = createDocsPayload(b);
+
     //normal build
     const exe = compileStep(b, target, optimize, "zli");
-    const payload_exe = attachPayload(b, exe.getEmittedBin(), exe.out_filename, optimize);
+    const payload_exe = attachPayload(b, exe.getEmittedBin(), exe.out_filename, optimize, docs_payload);
     const install_exe = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
     b.getInstallStep().dependOn(&install_exe.step);
 
     //release
     const release = b.step("release", "Build all cross-compilation targets in release mode");
-    releasebuild(b, release);
+    releasebuild(b, release, docs_payload);
 
     //native
     const native = b.step("native", "Build an optimized release binary for the host");
-    native.dependOn(nativebuild(b));
+    native.dependOn(nativebuild(b, docs_payload));
 
     //run
     const run_step = b.step("run", "Run the app");
@@ -32,6 +35,12 @@ pub fn build(b: *std.Build) void {
     test_cmd.addArgs(&[_][]const u8{"./test/test.lua"});
     test_step.dependOn(&test_cmd.step);
 
+    //regenerate the committed Markdown documentation mirror
+    const docs_step = b.step("docs", "Regenerate doc/libraries.md from doc/libraries.lua");
+    const docs_cmd = b.addRunFile(payload_exe);
+    docs_cmd.addArgs(&[_][]const u8{ "@help", "--markdown", "--output", "doc/libraries.md" });
+    docs_step.dependOn(&docs_cmd.step);
+
     // Zig unit tests (for example the Lua source stripper)
     const zig_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -42,6 +51,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_zig_tests = b.addRunArtifact(zig_tests);
     test_step.dependOn(&run_zig_tests.step);
+
+    const docgen_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/docgen.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_docgen_tests = b.addRunArtifact(docgen_tests);
+    test_step.dependOn(&run_docgen_tests.step);
 }
 
 const TargetConfig = struct {
@@ -55,7 +74,7 @@ const release_targets = [_]TargetConfig{
     .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows }, .suffix = "x86_64-windows" },
 };
 
-fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
+fn releasebuild(b: *std.Build, release: *std.Build.Step, docs_payload: std.Build.LazyPath) void {
     const zupx = b.dependency("zupx", .{
         .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
@@ -66,7 +85,7 @@ fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
         const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, @embedFile("src/version") });
         const exe = compileStep(b, target, std.builtin.OptimizeMode.fast, exe_name);
         const packed_path = upxPack(b, zupx, exe, exe.out_filename);
-        const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast);
+        const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast, docs_payload);
         const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
         release.dependOn(&install_artifact.step);
     }
@@ -87,7 +106,7 @@ fn upxPack(
     return packed_path;
 }
 
-fn nativebuild(b: *std.Build) *std.Build.Step {
+fn nativebuild(b: *std.Build, docs_payload: std.Build.LazyPath) *std.Build.Step {
     const zupx = b.dependency("zupx", .{
         .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
@@ -95,7 +114,7 @@ fn nativebuild(b: *std.Build) *std.Build.Step {
 
     const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.fast, "zli");
     const packed_path = upxPack(b, zupx, exe, exe.out_filename);
-    const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast);
+    const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast, docs_payload);
     const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
     return &install_artifact.step;
 }
@@ -174,6 +193,9 @@ const payload_entries = [_]payload_entry{
     .{ .input = "src/tools/manual.lua", .name = "manual.lua" },
     .{ .input = "src/tools/serve.lua", .name = "serve.lua" },
     .{ .input = "src/tools/serve_lib.lua", .name = "serve_lib.lua" },
+    .{ .input = "src/tools/help.lua", .name = "help.lua" },
+    .{ .input = "src/docs.lua", .name = "docs.lua" },
+    .{ .input = "src/docs_markdown.lua", .name = "docs_markdown.lua" },
 };
 
 /// Copies a compiled executable and appends the zli Lua payload to it.
@@ -182,6 +204,7 @@ fn attachPayload(
     exe: std.Build.LazyPath,
     output_name: []const u8,
     optimize: std.builtin.OptimizeMode,
+    docs_payload: std.Build.LazyPath,
 ) std.Build.LazyPath {
     const tool = payloadTool(b);
     const run = b.addRunArtifact(tool);
@@ -193,7 +216,32 @@ fn attachPayload(
         run.addFileArg(payloadFile(b, optimize, entry.input, entry.name));
     }
 
+    // The generated Lua manual is already text; never run the source stripper
+    // over it (it contains large Markdown literals).
+    run.addArg("docs_manual.lua");
+    run.addFileArg(docs_payload);
+
+    // The authored structured library documentation.
+    run.addArg("docs_libraries.lua");
+    run.addFileArg(b.path("doc/libraries.lua"));
+
     return output;
+}
+
+/// Generate docs_manual.lua from the Lua manual bundled with the lua55
+/// dependency.  This runs on the host, so it works for cross-compiled builds.
+fn createDocsPayload(b: *std.Build) std.Build.LazyPath {
+    const lua = b.dependency("lua55", .{
+        .target = b.graph.host,
+        .optimize = .fast,
+    });
+    const manual_html = readFile(b, lua.path("doc/manual.html"));
+    const lua_header = readFile(b, lua.path("src/lua.h"));
+    const generated = docgen.generate(b.allocator, manual_html, lua_header) catch |err| {
+        std.debug.panic("Failed to generate the Lua manual: {any}\n", .{err});
+    };
+    const files = b.addWriteFiles();
+    return files.add("docs_manual.lua", generated);
 }
 
 fn payloadFile(

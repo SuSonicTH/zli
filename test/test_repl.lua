@@ -112,6 +112,67 @@ function Test_repl.Test_runs_user_init_file()
     lu.assertStrContains(stdout, "initialized = 42")
 end
 
+function Test_repl.Test_help_command()
+    local home = new_home()
+    local stdout, status = run_repl([[
+:help string.byte
+:help --search trim
+quit
+]], home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "string.byte")
+    lu.assertStrContains(stdout, "string.trim")
+end
+
+function Test_repl.Test_help_search_accepts_whitespace()
+    local home = new_home()
+    local stdout, status = run_repl(":help    --search    trim\nquit\n", home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "string.trim")
+
+    stdout, status = run_repl(":help\t--search\ttrim\nquit\n", home)
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "string.trim")
+end
+
+function Test_repl.Test_help_search_requires_term()
+    local home = new_home()
+    local stdout, status = run_repl(":help --search\nquit\n", home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "usage: :help --search <term>")
+end
+
+function Test_repl.Test_help_output_is_plain_text()
+    local home = new_home()
+    local stdout, status = run_repl([[
+:help --search call func
+:help --search trim
+quit
+]], home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "collection.list:for_each")
+    lu.assertStrContains(stdout, "Call func for every item.")
+    lu.assertStrContains(stdout, "string.trim")
+    lu.assertNotStrContains(stdout, "`")
+    lu.assertNotStrContains(stdout, "**")
+end
+
+function Test_repl.Test_labels_are_not_treated_as_commands()
+    local home = new_home()
+    local stdout, status = run_repl([[
+::again::
+print("label ok")
+quit
+]], home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "label ok")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

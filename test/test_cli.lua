@@ -90,6 +90,7 @@ function Test_cli.Test_version_and_help_come_from_payload()
     lu.assertStrContains(help, "@compile")
     lu.assertStrContains(help, "@test")
     lu.assertStrContains(help, "@manual")
+    lu.assertStrContains(help, "@help")
     lu.assertStrContains(help, "@serve")
 end
 
@@ -222,6 +223,48 @@ function Test_cli.Test_local_module_wins_over_payload()
     local stdout, status = support.run({ local_dir }, { exe = output })
     lu.assertEquals(0, status, stdout)
     lu.assertStrContains(stdout, "shadow=local")
+end
+
+function Test_cli.Test_help_without_docs_reports_clear_error()
+    local dir = support.temp_dir("cli_help_no_docs")
+    local output = build(dir .. "/help-only", {
+        { file = "src/tools/help.lua", name = "help.lua" },
+    })
+
+    local stdout, status = support.run({ "@help" }, {
+        exe = output,
+        home = new_home(),
+    })
+    lu.assertNotEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "documentation is not available in this payload")
+end
+
+function Test_cli.Test_help_without_docs_manual_reports_clear_error()
+    local dir = support.temp_dir("cli_help_no_manual")
+    local output = build(dir .. "/help-no-manual", {
+        { file = "src/tools/help.lua", name = "help.lua" },
+        { file = "src/docs.lua", name = "docs.lua" },
+        { file = "src/docs_markdown.lua", name = "docs_markdown.lua" },
+        { file = "doc/libraries.lua", name = "docs_libraries.lua" },
+    })
+
+    local stdout, status = support.run({ "@help" }, {
+        exe = output,
+        home = new_home(),
+    })
+    lu.assertNotEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "ZLI documentation is not available in this payload")
+    lu.assertStrContains(stdout, "missing docs_manual")
+end
+
+function Test_cli.Test_manual_rejects_invalid_port()
+    for _, value in ipairs({ "0", "-1", "1.5", "65536", "not-a-port" }) do
+        local stdout, status = support.run({ "@manual", "--port", value }, {
+            home = new_home(),
+        })
+        lu.assertEquals(2, status, value .. ": " .. stdout)
+        lu.assertStrContains(stdout, "--port requires an integer between 1 and 65535")
+    end
 end
 
 function Test_cli.Test_test_tool_runs_luaunit()

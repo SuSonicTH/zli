@@ -6,7 +6,7 @@
 zli script.lua arg1 arg2
 zli - < script.lua            # read the program from stdin
 zli @name arg1 arg2           # run name.lua from the attached payload
-zli                           # if the script is omitted, the REPL starts
+zli                           # select <exe-name>.lua, main.lua or init.lua
 ```
 
 Scripts are selected in this order:
@@ -20,11 +20,15 @@ Scripts are selected in this order:
 5. `main.lua` from the payload.
 6. `init.lua` from the payload.
 
-If none matches, ZLI prints an error and a short usage line.
+If none matches, ZLI prints an error and a short usage line. The standard
+payload's `main.lua` starts the REPL, so the bundled `zli` binary starts the
+REPL when no arguments are given.
 
-Inside a script, `arg[0]` is the executable name and `arg[1]` onwards are the
-script arguments, matching the standard Lua interpreter convention. Local Lua
-files always take precedence over files with the same name in the payload.
+Inside a script, `arg[0]` is the executable name used to invoke ZLI and
+`arg[1]` onwards are the script arguments, matching the standard Lua
+interpreter convention. The selected payload script is not substituted into
+`arg[0]`. Local Lua files always take precedence over files with the same name
+in the payload.
 
 ## Init files
 
@@ -47,6 +51,8 @@ zli                 # no arguments also starts the REPL
 
 - `quit` or `exit` leaves the REPL; `Ctrl-D` also exits.
 - `?expression` pretty-prints tables and strings.
+- `:help` shows the documentation index; `:help <name>` looks up an entry and
+  `:help --search <term>` searches all documentation.
 - Incomplete statements continue on the next line.
 - `F1` shows the crossline editing help.
 
@@ -82,15 +88,46 @@ directories, falls back to a directory listing, and blocks `..` traversal and
 percent-encoded traversal outside the web root. MIME types are taken from a
 built-in table.
 
-The Lua manual can be served with:
+The manual can be served with:
 
 ```bash
 zli @manual
 ```
 
-`@manual` looks for `doc/lua_55_manual/` relative to the current directory
-and then relative to the executable. The manual is part of the source tree, not
-part of the release binary.
+`@manual` renders the bundled reference manual (the Lua 5.5 language and
+standard libraries, all bundled libraries, the command line tools and ZLI
+topics) and serves it at `http://127.0.0.1:8080/`.  The manual is part of the
+payload; it is generated at build time from the `lua55` dependency's
+`doc/manual.html` plus `doc/libraries.lua`.  Options:
+
+| option          | description                                      |
+| --------------- | ------------------------------------------------ |
+| `--port <port>` | listen port (default `8080`)                     |
+| `--address <a>` | bind address (default `127.0.0.1`)               |
+| `--no-open`     | do not open the system browser                   |
+| `--output <f>`  | write the rendered HTML manual to a file and exit |
+
+## Documentation lookup
+
+```bash
+zli @help                      # documentation index
+zli @help string.byte          # exact entry (or a ranked result list)
+zli @help --search trim        # full-text search
+zli @help --list               # all documented names
+zli @help --markdown --output doc/libraries.md
+```
+
+Inside the REPL, `:help` shows the index, `:help <name>` looks up an entry and
+`:help --search <term>` searches.  Scripts can use `require "docs"`; it exposes
+`docs.find(name)`, `docs.search(query, options)`, `docs.render_markdown(text)`
+and `docs.render_text(text)`.
+
+`doc/libraries.lua` is the source of truth for bundled-library documentation.
+`doc/libraries.md` is generated from it and is checked by the test suite for
+freshness.  Regenerate it with `zig build docs` (or
+`zli @help --markdown --output doc/libraries.md`).  The Lua manual itself is
+never stored in the repository: it is extracted from the Lua dependency on every
+build.
 
 ## Test tool
 

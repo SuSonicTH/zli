@@ -1,0 +1,2 @@
+# Generated documentation must compare byte-for-byte across platforms.
+doc/libraries.md text eol=lf
