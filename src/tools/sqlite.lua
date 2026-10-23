@@ -263,7 +263,4 @@ local function execute()
     end
 end
 
-return {
-    execute = execute,
-    execute_file = execute_file,
-}
+execute()

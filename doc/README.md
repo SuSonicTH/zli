@@ -5,11 +5,26 @@
 ```bash
 zli script.lua arg1 arg2
 zli - < script.lua            # read the program from stdin
-zli script.lua               # if the script is omitted, the REPL starts
+zli @name arg1 arg2           # run name.lua from the attached payload
+zli                           # if the script is omitted, the REPL starts
 ```
 
+Scripts are selected in this order:
+
+1. `@name`: `name` or `name.lua` from the payload (`@dir/name` is supported).
+2. `-`: read the program from stdin.
+3. An existing file in the filesystem.
+4. `<executable-name>.lua` from the payload. On Windows `.exe` is stripped from
+   the executable name. This also works through symlinks, so one payload can
+   provide several tools.
+5. `main.lua` from the payload.
+6. `init.lua` from the payload.
+
+If none matches, ZLI prints an error and a short usage line.
+
 Inside a script, `arg[0]` is the executable name and `arg[1]` onwards are the
-script arguments, matching the standard Lua interpreter convention.
+script arguments, matching the standard Lua interpreter convention. Local Lua
+files always take precedence over files with the same name in the payload.
 
 ## Init files
 
@@ -20,12 +35,14 @@ script arguments, matching the standard Lua interpreter convention.
 
 `init.lua` is useful for setting `ZLI.error_handling`, defining global helper
 functions, or configuring libraries. Both files are created with a short
-comment header on first use if they do not exist.
+comment header on first use if they do not exist. This also applies to scripts
+run from a compiled executable.
 
 ## REPL
 
 ```bash
-zli --repl
+zli @repl
+zli                 # no arguments also starts the REPL
 ```
 
 - `quit` or `exit` leaves the REPL; `Ctrl-D` also exits.
@@ -36,7 +53,7 @@ zli --repl
 ## SQLite CLI
 
 ```bash
-zli --sqlite
+zli @sqlite
 ```
 
 The CLI starts with an in-memory database. Statements end with `;`.
@@ -56,8 +73,8 @@ The CLI starts with an in-memory database. Statements end with `;`.
 ## Static file server
 
 ```bash
-zli --serve ./public
-zli --serve                 # serves ./
+zli @serve ./public
+zli @serve                 # serves ./
 ```
 
 The server listens on `127.0.0.1:8080`. It serves `index.html`/`index.htm` for
@@ -68,17 +85,27 @@ built-in table.
 The Lua manual can be served with:
 
 ```bash
-zli --manual
+zli @manual
 ```
 
-`--manual` looks for `doc/lua_55_manual/` relative to the current directory
+`@manual` looks for `doc/lua_55_manual/` relative to the current directory
 and then relative to the executable. The manual is part of the source tree, not
 part of the release binary.
 
+## Test tool
+
+```bash
+zli @test test/test_foo.lua
+```
+
+Runs a LuaUnit test file. The test file may define tests in global tables whose
+names match `Test`.
+
 ## Compile tool
 
-`zli --compile <config>` copies the current executable and appends a zip payload
-to it. The payload is searched for scripts on startup.
+`zli @compile <config>` copies the current executable, removes any payload it
+already has, and appends a new zip payload. The payload is searched for scripts
+on startup.
 
 The config file may be either a table constructor or a `return { ... }`
 statement:
@@ -103,15 +130,17 @@ files = {
 }
 ```
 
-Entry scripts are resolved from the payload in this order: `main.lua`,
-`init.lua`, `<executable-name>.lua`. A specific script can be selected with
-`zli @scriptname`.
+Entry scripts are resolved from the payload in this order:
+`<executable-name>.lua`, `main.lua`, `init.lua`. A specific script can be
+selected with `zli @scriptname`; `@dir/scriptname` is also supported.
 
 On Linux the output file is made executable (`chmod 755`). On Windows the
 `.exe` suffix is added automatically.
 
 ## Payload/`argv[0]` note
 
-Payload lookup uses the real executable path rather than trusting `argv[0]`,
-so compiled executables work when launched through `PATH`. The Lua `arg[0]`
-value still reflects the name used to invoke the program.
+The payload zip is opened through the real executable path rather than trusting
+`argv[0]`, so compiled executables work when launched through `PATH`. The
+`<executable-name>.lua` payload entry is selected from the basename of
+`argv[0]`, which allows one payload to provide several tools through symlinks.
+The Lua `arg[0]` value still reflects the name used to invoke the program.

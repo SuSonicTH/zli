@@ -6,14 +6,14 @@ local json = require "cjson"
 local sqlite = require "sqlite3"
 local support = require "test/support"
 
-Test_sqlite_cli = {}
+Test_sqlite = {}
 
 local function new_home()
     return support.temp_dir("sqlite_home")
 end
 
 local function run_sqlite(input, home)
-    return support.run({ "--sqlite" }, {
+    return support.run({ "@sqlite" }, {
         home = home,
         stdin = input,
     })
@@ -29,7 +29,7 @@ local function find_json_array(output)
     return nil
 end
 
-function Test_sqlite_cli.Test_executes_statements_and_prints_table()
+function Test_sqlite.Test_executes_statements_and_prints_table()
     local home = new_home()
     local stdout, status = run_sqlite([[
 create table people (id integer primary key, name text);
@@ -49,7 +49,7 @@ quit;
     lu.assertTrue(fs.exists(home .. "/.config/zli/sqlite_history"))
 end
 
-function Test_sqlite_cli.Test_accepts_commands_spanning_multiple_lines()
+function Test_sqlite.Test_accepts_commands_spanning_multiple_lines()
     local home = new_home()
     local stdout, status = run_sqlite([[
 create table multi (
@@ -65,7 +65,7 @@ quit;
     lu.assertStrContains(stdout, "multi line")
 end
 
-function Test_sqlite_cli.Test_switches_output_modes()
+function Test_sqlite.Test_switches_output_modes()
     local home = new_home()
     local stdout, status = run_sqlite([[
 create table people (id integer primary key, name text);
@@ -95,7 +95,7 @@ quit;
     lu.assertStrContains(stdout, "current mode: lua")
 end
 
-function Test_sqlite_cli.Test_reports_errors_and_continues()
+function Test_sqlite.Test_reports_errors_and_continues()
     local home = new_home()
     local stdout, status = run_sqlite([[
 select * from missing;
@@ -112,7 +112,7 @@ quit;
     lu.assertStrContains(stdout, "sqlite-missing.sql")
 end
 
-function Test_sqlite_cli.Test_executes_sql_file()
+function Test_sqlite.Test_executes_sql_file()
     local home = new_home()
     local sql = support.temp_file("sqlite_script", [[
 create table scripted (id integer, name text);
@@ -126,7 +126,7 @@ insert into scripted values (1, 'from-file');
     lu.assertStrContains(stdout, "from-file")
 end
 
-function Test_sqlite_cli.Test_open_and_close_persist_database()
+function Test_sqlite.Test_open_and_close_persist_database()
     local home = new_home()
     local db_path = support.temp_path("sqlite_db") .. ".sqlite"
     if fs.exists(db_path) then

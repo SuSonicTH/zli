@@ -68,23 +68,30 @@ See [doc/README.md](doc/README.md) for the command line tools and configuration 
 ## Command line
 
 ```
-Usage: zli [-h|--help] [-v|--version] [--test <test>] [--repl] [--sqlite]
-           [--compile <config>] [--manual] [--serve [directory]] [<script>]
+Usage: zli [-h|--help] [-v|--version] [@tool [arguments...]]
+       zli [<script> [arguments...]]
 ```
 
-| option                | description                                    |
-| --------------------- | ---------------------------------------------- |
-| `-h`, `--help`        | Show usage                                     |
-| `-v`, `--version`     | Print the version and exit                     |
-| `--test <file>`       | Run a LuaUnit test file                        |
-| `--repl`              | Start the interactive REPL                     |
-| `--sqlite`            | Start the SQLite CLI                           |
-| `--compile <config>`  | Package Lua files into a standalone executable |
-| `--manual`            | Serve the bundled Lua 5.5 manual over HTTP     |
-| `--serve [directory]` | Serve a directory over HTTP (defaults to `./`) |
-| `<script>`            | Run a Lua script; use `-` to read from stdin   |
+| invocation             | description                                    |
+| ---------------------- | ---------------------------------------------- |
+| `-h`, `--help`         | Show usage                                     |
+| `-v`, `--version`      | Print the version and exit                     |
+| `@repl`                | Start the interactive REPL                     |
+| `@sqlite`              | Start the SQLite CLI                           |
+| `@compile <config>`    | Package Lua files into a standalone executable |
+| `@test <file>`         | Run a LuaUnit test file                        |
+| `@manual`              | Serve the bundled Lua 5.5 manual over HTTP     |
+| `@serve [directory]`   | Serve a directory over HTTP (defaults to `./`) |
+| `<script>`             | Run a Lua script; use `-` to read from stdin   |
 
-Without a script (or with `--repl`) ZLI starts the REPL. If no payload is attached, the interpreter also looks for scripts in the following order: `main.lua`, `init.lua`, `<executable-name>.lua`.
+Without a tool or script, ZLI starts the REPL. Scripts are selected in this order:
+
+1. `zli @name [args]` runs `name` or `name.lua` from the attached payload; `@dir/name` is supported.
+2. `zli - [args]` reads the program from stdin.
+3. `zli script.lua [args]` runs an existing file from the filesystem.
+4. `zli [args]` runs `<executable-name>.lua`, then `main.lua`, then `init.lua` from the payload.
+
+The ZLI binary itself carries a payload containing `main.lua` and the command line tools. Compiled executables replace that payload with their own files.
 
 Two configuration files are read automatically when they exist:
 

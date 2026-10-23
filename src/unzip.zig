@@ -49,6 +49,7 @@ const UnzipUdata = struct {
         // individual file entries returned by list()/dir().
         .{ .name = "read_all", .func = zlua.wrap(read_all) },
         .{ .name = "lines", .func = zlua.wrap(lines) },
+        .{ .name = "payload_start", .func = luaerror.wrap(payload_start) },
         .{ .name = "close", .func = zlua.wrap(close) },
     };
 
@@ -283,6 +284,43 @@ const UnzipUdata = struct {
         }
 
         lua.pushBoolean(true);
+        return 1;
+    }
+
+    fn payload_start(lua: *Lua) !i32 {
+        const ud: *UnzipUdata = luax.getUserData(lua, name, UnzipUdata);
+        if (ud.uzfh == null) {
+            return luaerror.ret(lua, "zip archive is closed", .{});
+        }
+
+        if (c.unzGoToFirstFile(ud.uzfh) != c.UNZ_OK) {
+            lua.pushNil();
+            return 1;
+        }
+
+        if (c.unzOpenCurrentFile(ud.uzfh) != c.UNZ_OK) {
+            return luaerror.ret(lua, "could not open first file in zip archive", .{});
+        }
+        defer _ = c.unzCloseCurrentFile(ud.uzfh);
+
+        const data_pos = c.unzGetCurrentFileZStreamPos64(ud.uzfh);
+
+        var file_info: c.unz_file_info = undefined;
+        if (c.unzGetCurrentFileInfo(ud.uzfh, &file_info, null, 0, null, 0, null, 0) != c.UNZ_OK) {
+            return luaerror.ret(lua, "could not read zip file information", .{});
+        }
+
+        const local_extra = c.unzGetLocalExtrafield(ud.uzfh, null, 0);
+        if (local_extra < 0) {
+            return luaerror.ret(lua, "could not read zip local extra field", .{});
+        }
+
+        const header_size: u64 = 30 + @as(u64, file_info.size_filename) + @as(u64, @intCast(local_extra));
+        if (data_pos < header_size) {
+            return luaerror.ret(lua, "could not determine payload offset", .{});
+        }
+
+        lua.pushInteger(@intCast(data_pos - header_size));
         return 1;
     }
 

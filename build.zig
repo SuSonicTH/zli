@@ -8,7 +8,9 @@ pub fn build(b: *std.Build) void {
 
     //normal build
     const exe = compileStep(b, target, optimize, "zli");
-    b.installArtifact(exe);
+    const payload_exe = attachPayload(b, exe.getEmittedBin(), exe.out_filename, optimize);
+    const install_exe = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
+    b.getInstallStep().dependOn(&install_exe.step);
 
     //release
     const release = b.step("release", "Build all cross-compilation targets in release mode");
@@ -20,15 +22,13 @@ pub fn build(b: *std.Build) void {
 
     //run
     const run_step = b.step("run", "Run the app");
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+    const run_cmd = b.addRunFile(payload_exe);
     run_cmd.addPassthruArgs();
     run_step.dependOn(&run_cmd.step);
 
     //test
     const test_step = b.step("test", "Test the interpreter and libs");
-    const test_cmd = b.addRunArtifact(exe);
-    test_cmd.step.dependOn(b.getInstallStep());
+    const test_cmd = b.addRunFile(payload_exe);
     test_cmd.addArgs(&[_][]const u8{"./test/test.lua"});
     test_step.dependOn(&test_cmd.step);
 
@@ -65,25 +65,26 @@ fn releasebuild(b: *std.Build, release: *std.Build.Step) void {
         const target = b.resolveTargetQuery(config.query);
         const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, @embedFile("src/version") });
         const exe = compileStep(b, target, std.builtin.OptimizeMode.fast, exe_name);
-        const install_artifact = upxInstall(b, zupx, exe, exe_name);
+        const packed_path = upxPack(b, zupx, exe, exe.out_filename);
+        const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast);
+        const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
         release.dependOn(&install_artifact.step);
     }
 }
 
-/// Compresses the compiled executable with upx, installing only the packed
-/// output so that the cached artifact is never modified in place.
-fn upxInstall(
+/// Compresses the compiled executable with upx into a separate cached file.
+fn upxPack(
     b: *std.Build,
     zupx: *std.Build.Dependency,
     exe: *std.Build.Step.Compile,
     exe_name: []const u8,
-) *std.Build.Step.InstallFile {
+) std.Build.LazyPath {
     const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
     upx_cmd.addArg("--lzma");
     upx_cmd.addArg("-o");
     const packed_path = upx_cmd.addOutputFileArg(exe_name);
     upx_cmd.addFileArg(exe.getEmittedBin());
-    return b.addInstallFileWithDir(packed_path, .bin, exe_name);
+    return packed_path;
 }
 
 fn nativebuild(b: *std.Build) *std.Build.Step {
@@ -93,7 +94,9 @@ fn nativebuild(b: *std.Build) *std.Build.Step {
     });
 
     const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.fast, "zli");
-    const install_artifact = upxInstall(b, zupx, exe, "zli");
+    const packed_path = upxPack(b, zupx, exe, exe.out_filename);
+    const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast);
+    const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
     return &install_artifact.step;
 }
 
@@ -157,6 +160,93 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     return exe;
 }
 
+const payload_entry = struct {
+    input: []const u8,
+    name: []const u8,
+};
+
+const payload_entries = [_]payload_entry{
+    .{ .input = "src/main.lua", .name = "main.lua" },
+    .{ .input = "src/tools/repl.lua", .name = "repl.lua" },
+    .{ .input = "src/tools/sqlite.lua", .name = "sqlite.lua" },
+    .{ .input = "src/tools/compile.lua", .name = "compile.lua" },
+    .{ .input = "src/tools/test.lua", .name = "test.lua" },
+    .{ .input = "src/tools/manual.lua", .name = "manual.lua" },
+    .{ .input = "src/tools/serve.lua", .name = "serve.lua" },
+    .{ .input = "src/tools/serve_lib.lua", .name = "serve_lib.lua" },
+};
+
+/// Copies a compiled executable and appends the zli Lua payload to it.
+fn attachPayload(
+    b: *std.Build,
+    exe: std.Build.LazyPath,
+    output_name: []const u8,
+    optimize: std.builtin.OptimizeMode,
+) std.Build.LazyPath {
+    const tool = payloadTool(b);
+    const run = b.addRunArtifact(tool);
+    run.addFileArg(exe);
+    const output = run.addOutputFileArg(output_name);
+
+    for (&payload_entries) |*entry| {
+        run.addArg(entry.name);
+        run.addFileArg(payloadFile(b, optimize, entry.input, entry.name));
+    }
+
+    return output;
+}
+
+fn payloadFile(
+    b: *std.Build,
+    optimize: std.builtin.OptimizeMode,
+    input: []const u8,
+    name: []const u8,
+) std.Build.LazyPath {
+    if (optimize == .debug) {
+        return b.path(input);
+    }
+
+    const files = b.addWriteFiles();
+    const source = readFile(b, b.path(input));
+    const stripped = strip(source, b.allocator) catch |err| {
+        std.debug.panic("Failed to strip Lua script '{s}': {any}\n", .{ name, err });
+    };
+    return files.add(name, stripped);
+}
+
+fn payloadTool(b: *std.Build) *std.Build.Step.Compile {
+    const zlib_dep = b.dependency("zlib", .{});
+    const host = b.graph.host;
+
+    const tool = b.addExecutable(.{
+        .name = "attach_payload",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/attach_payload.zig"),
+            .target = host,
+            .optimize = .fast,
+            .strip = true,
+        }),
+    });
+    tool.root_module.addIncludePath(b.path("src/"));
+    tool.root_module.addIncludePath(zlib_dep.path(""));
+    tool.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    tool.root_module.link_libc = true;
+    tool.root_module.linkLibrary(zlib(b, host, .fast, zlib_dep));
+    tool.root_module.linkLibrary(miniZip(b, host, .fast, zlib_dep));
+
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path("src/c_zip.h"),
+        .target = host,
+        .optimize = .fast,
+    });
+    translate_c.addIncludePath(b.path("src/"));
+    translate_c.addIncludePath(zlib_dep.path(""));
+    translate_c.addIncludePath(zlib_dep.path("contrib/minizip/"));
+    tool.root_module.addImport("c_zip", translate_c.createModule());
+
+    return tool;
+}
+
 const lualib_entry = struct {
     input: [:0]const u8,
     name: [:0]const u8,
@@ -183,14 +273,11 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/grid.lua", .name = "grid.lua" },
     .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },
     .{ .input = "src/httpserver.lua", .name = "httpserver.lua" },
+    .{ .input = "src/init.lua", .name = "init.lua" },
     .{ .input = "src/logger.lua", .name = "logger.lua" },
-    .{ .input = "src/main.lua", .name = "main.lua" },
     .{ .input = "src/memoize.lua", .name = "memoize.lua" },
     .{ .input = "src/stream.lua", .name = "stream.lua" },
     .{ .input = "src/timer.lua", .name = "timer.lua" },
-    .{ .input = "src/tools/compile.lua", .name = "compile.lua" },
-    .{ .input = "src/tools/repl.lua", .name = "repl.lua" },
-    .{ .input = "src/tools/sqlite_cli.lua", .name = "sqlite_cli.lua" },
     .{ .input = "src/unzip.lua", .name = "unzip.lua" },
     .{ .input = "src/xlsxmlwriter.lua", .name = "xlsxmlwriter.lua" },
     .{ .input = "src/zip.lua", .name = "zip.lua" },

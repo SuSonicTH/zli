@@ -11,7 +11,7 @@ local function new_home()
 end
 
 local function run_repl(input, home)
-    return support.run({ "--repl" }, {
+    return support.run({ "@repl" }, {
         home = home,
         stdin = input,
     })
@@ -86,6 +86,18 @@ function Test_repl.Test_end_of_input_exits_cleanly()
     lu.assertEquals(0, status, stdout)
     lu.assertStrContains(stdout, "before eof")
     lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history"))
+end
+
+function Test_repl.Test_no_arguments_starts_repl()
+    local home = new_home()
+    local stdout, status = support.run({}, {
+        home = home,
+        stdin = "print(\"auto repl\")\nquit\n",
+    })
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "ZIL - REPL")
+    lu.assertStrContains(stdout, "auto repl")
 end
 
 function Test_repl.Test_runs_user_init_file()

@@ -1,4 +1,4 @@
--- Shared helpers for tests that exercise the embedded commandline tools.
+-- Shared helpers for tests that exercise the payload commandline tools.
 -- This file is intentionally not named test_* so the test runner will not
 -- execute it as a test suite.
 

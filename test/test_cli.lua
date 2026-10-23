@@ -1,0 +1,249 @@
+local lu = require 'luaunit'
+lu.ORDER_ACTUAL_EXPECTED = false
+
+local fs = require "filesystem"
+local unzip = require "unzip"
+local support = require "test/support"
+
+Test_cli = {}
+
+local function new_home()
+    return support.temp_dir("cli_home")
+end
+
+local function write_user_init(home)
+    local config = home .. "/.config/zli"
+    fs.create_tree(config)
+    io.write_file(config .. "/init.lua", "FROM_INIT = 42\n")
+end
+
+local function compiled_name(name)
+    if os.is_windows and not name:ends_with(".exe") then
+        return name .. ".exe"
+    end
+    return name
+end
+
+local function build(output_name, files)
+    local entries = {}
+    for _, entry in ipairs(files) do
+        if entry.name then
+            entries[#entries + 1] = string.format(
+                '{ file = %q, name = %q }', entry.file, entry.name)
+        else
+            entries[#entries + 1] = string.format('%q', entry.file)
+        end
+    end
+
+    local source = string.format(
+        'return { output_name = %q, files = { %s } }',
+        output_name, table.concat(entries, ", "))
+    local config = support.temp_file("cli_compile_config", source)
+
+    local stdout, status = support.run({ "@compile", config })
+    lu.assertEquals(0, status, stdout)
+
+    local output = compiled_name(output_name)
+    if os.is_mac then
+        os.execute("chmod 755 " .. support.quote(output))
+    end
+    return output
+end
+
+function Test_cli.Test_runs_filesystem_script_after_init()
+    local home = new_home()
+    write_user_init(home)
+
+    local script = support.temp_file("cli_script", [[
+        print("arg1=" .. tostring(arg[1]))
+        print("init=" .. tostring(FROM_INIT))
+    ]])
+
+    local stdout, status = support.run({ script, "hello" }, { home = home })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "arg1=hello")
+    lu.assertStrContains(stdout, "init=42")
+end
+
+function Test_cli.Test_runs_program_from_stdin_after_init()
+    local home = new_home()
+    write_user_init(home)
+
+    local stdout, status = support.run({ "-", "world" }, {
+        home = home,
+        stdin = 'print("stdin=" .. tostring(arg[1]))\nprint("init=" .. tostring(FROM_INIT))\n',
+    })
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "stdin=world")
+    lu.assertStrContains(stdout, "init=42")
+end
+
+function Test_cli.Test_version_and_help_come_from_payload()
+    local version = support.run({ "--version" })
+    lu.assertStrContains(version, "zli - Zig Lua Interpreter")
+
+    local help = support.run({ "--help" })
+    lu.assertStrContains(help, "Usage: zli")
+    lu.assertStrContains(help, "@repl")
+    lu.assertStrContains(help, "@sqlite")
+    lu.assertStrContains(help, "@compile")
+    lu.assertStrContains(help, "@test")
+    lu.assertStrContains(help, "@manual")
+    lu.assertStrContains(help, "@serve")
+end
+
+function Test_cli.Test_at_selector_errors()
+    local missing_name, name_status = support.run({ "@" })
+    lu.assertNotEquals(0, name_status)
+    lu.assertStrContains(missing_name, "missing script name")
+
+    local missing_entry, entry_status = support.run({ "@does-not-exist" })
+    lu.assertNotEquals(0, entry_status)
+    lu.assertStrContains(missing_entry, "not found in payload")
+end
+
+function Test_cli.Test_at_selector_supports_exact_names_and_directories()
+    local dir = support.temp_dir("cli_at")
+    local exact = support.temp_file("cli_at_exact", 'print("exact=" .. tostring(arg[1]))\n')
+    local nested = support.temp_file("cli_at_nested", 'print("nested=" .. tostring(arg[1]))\n')
+
+    local output = build(dir .. "/at-app", {
+        { file = exact, name = "tool" },
+        { file = nested, name = "dir/nested.lua" },
+    })
+
+    local stdout, status = support.run({ "@tool", "one" }, { exe = output })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "exact=one")
+
+    stdout, status = support.run({ "@dir/nested", "two" }, { exe = output })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "nested=two")
+end
+
+function Test_cli.Test_executable_name_selects_script_through_symlink()
+    if os.is_windows then
+        return
+    end
+
+    local dir = support.temp_dir("cli_exe_name")
+    local script = support.temp_file("cli_exe_name_script", 'print("tool=" .. tostring(arg[1]))\n')
+    local output = build(dir .. "/app", {
+        { file = script, name = "tool.lua" },
+    })
+
+    local link = dir .. "/tool"
+    local target = fs.cwd() .. "/" .. output
+    local ok = os.execute("ln -s " .. support.quote(target) .. " " .. support.quote(link))
+    lu.assertNotEquals(nil, ok)
+
+    local stdout, status = support.run({ "hello" }, { exe = link })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "tool=hello")
+end
+
+function Test_cli.Test_payload_falls_back_to_main_then_init()
+    local dir = support.temp_dir("cli_fallback")
+    local main = support.temp_file("cli_fallback_main", 'print("from main")\n')
+    local init = support.temp_file("cli_fallback_init", 'print("from init")\n')
+
+    local both = build(dir .. "/both", {
+        { file = main, name = "main.lua" },
+        { file = init, name = "init.lua" },
+    })
+    local stdout, status = support.run({}, { exe = both })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "from main")
+    lu.assertNotStrContains(stdout, "from init")
+
+    local init_only = build(dir .. "/init-only", {
+        { file = init, name = "init.lua" },
+    })
+    stdout, status = support.run({}, { exe = init_only })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "from init")
+end
+
+function Test_cli.Test_no_matching_script_prints_usage()
+    local dir = support.temp_dir("cli_none")
+    local helper = support.temp_file("cli_none_helper", 'return {}\n')
+    local output = build(dir .. "/none", {
+        { file = helper, name = "helper.lua" },
+    })
+
+    local stdout, status = support.run({}, { exe = output })
+    lu.assertEquals(1, status, stdout)
+    lu.assertStrContains(stdout, "no script found")
+    lu.assertStrContains(stdout, "Usage:")
+end
+
+function Test_cli.Test_compile_replaces_existing_payload()
+    local dir = support.temp_dir("cli_replace")
+    local home = new_home()
+    write_user_init(home)
+    local main = support.temp_file("cli_replace_main", 'print("replacement " .. tostring(FROM_INIT))\n')
+    local output = build(dir .. "/replacement", {
+        { file = main, name = "main.lua" },
+    })
+
+    local payload = assert(unzip.open(output))
+    local files = payload:dir()
+    payload:close()
+
+    lu.assertNotIsNil(files["main.lua"])
+    lu.assertIsNil(files["repl.lua"])
+    lu.assertIsNil(files["compile.lua"])
+    lu.assertIsNil(files["sqlite.lua"])
+    lu.assertIsNil(files["test.lua"])
+    lu.assertIsNil(files["serve.lua"])
+
+    local stdout, status = support.run({}, { exe = output, home = home })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "replacement 42")
+end
+
+function Test_cli.Test_local_module_wins_over_payload()
+    local dir = support.temp_dir("cli_local")
+    local local_dir = support.temp_dir("cli_local_modules")
+    io.write_file(local_dir .. "/shadow.lua", 'return "local"\n')
+
+    local payload_module = support.temp_file("cli_payload_module", 'return "payload"\n')
+    local main = support.temp_file("cli_local_main", [[
+        package.path = arg[1] .. "/?.lua;" .. package.path
+        print("shadow=" .. require("shadow"))
+    ]])
+
+    local output = build(dir .. "/local", {
+        { file = main, name = "main.lua" },
+        { file = payload_module, name = "shadow.lua" },
+    })
+
+    local stdout, status = support.run({ local_dir }, { exe = output })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "shadow=local")
+end
+
+function Test_cli.Test_test_tool_runs_luaunit()
+    local test_file = support.temp_file("cli_luaunit", [[
+Test_cli_tool = {}
+
+function Test_cli_tool.Test_ok()
+    assert(true)
+end
+]])
+
+    local stdout, status = support.run({ "@test", test_file })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "1 success")
+end
+
+function Test_cli.Test_test_tool_requires_file()
+    local stdout, status = support.run({ "@test" })
+    lu.assertEquals(1, status, stdout)
+    lu.assertStrContains(stdout, "missing script argument to test")
+end
+
+if not RUN_ALL then
+    os.exit(lu.LuaUnit.run('-v'))
+end
