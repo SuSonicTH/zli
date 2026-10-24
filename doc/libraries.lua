@@ -6291,10 +6291,13 @@ scripts in their payload.
 Start the interactive Read-Eval-Print Loop.
 
 The REPL runs `~/.config/zli/init.lua`, then `~/.config/zli/repl_init.lua`,
-before showing the prompt. The generated `repl_init.lua` preloads common modules
-such as `csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`, `filesystem`,
-`sqlite3`, `stream`, `zip`, `gzip`, `crossline` and `collection`; edit that file
-to change the defaults. History is kept in `~/.config/zli/repl_history`.
+before showing the prompt. The generated `repl_init.lua` preloads every bundled
+library: `argparse`, `benchmark`, `crossline`, `collection`, `csv`, `F`,
+`filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`, `log`,
+`lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
+`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter` and `zip`;
+edit that file to change the defaults. History is kept in
+`~/.config/zli/repl_history`.
 
 Enter `quit` or `exit`, or press Ctrl-D, to leave. `?expression` pretty-prints
 tables and strings, `:help` shows the index, and `:help <name>` or
@@ -6521,8 +6524,10 @@ REPL-only init script.
 
 The file lives at `~/.config/zli/repl_init.lua` and is executed by `@repl`
 after the global `init.lua`. If missing, the REPL creates it with assignments
-for commonly used modules (`csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`,
-`filesystem`, `sqlite3`, `stream`, `zip`, `gzip`, `crossline`, `collection`).
+for every bundled library: `argparse`, `benchmark`, `crossline`, `collection`,
+`csv`, `F`, `filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`,
+`log`, `lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
+`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter` and `zip`.
 Use it for prompt helpers and other state that should exist only in interactive
 sessions; errors abort the REPL.
 

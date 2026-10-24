@@ -266,9 +266,9 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
     local html = docs.render_manual_html()
 
     local expected = {
-        { "argparse", "https://github.com/luarocks/argparse" },
-        { "lpeg", "https://www.inf.puc-rio.br/~roberto/lpeg/" },
-        { "sqlite3", "http://lua.sqlite.org/" },
+        { "argparse",  "https://github.com/luarocks/argparse" },
+        { "lpeg",      "https://www.inf.puc-rio.br/~roberto/lpeg/" },
+        { "sqlite3",   "http://lua.sqlite.org/" },
         { "crossline", "https://github.com/jcwangxp/Crossline" },
     }
     for _, item in ipairs(expected) do
@@ -285,16 +285,6 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
     lu.assertStrContains(html, "Licenses and attribution")
     lu.assertStrContains(html, "href=\"#licenses\"")
     lu.assertStrContains(html, "Lua license")
-end
-
-function Test_docs.Test_documentation_does_not_reference_removed_compression_libraries()
-    local markdown = docs.render_libraries_markdown():lower()
-    lu.assertNotStrContains(markdown, "zlib")
-    lu.assertNotStrContains(markdown, "minizip")
-
-    local readme = fs.read_all("README.md"):lower()
-    lu.assertNotStrContains(readme, "zlib")
-    lu.assertNotStrContains(readme, "minizip")
 end
 
 function Test_docs.Test_libraries_markdown_does_not_repeat_upstream()

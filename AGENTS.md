@@ -15,36 +15,36 @@ Use this file as the map. User-facing documentation lives in:
 
 ## At a glance
 
-| Item | Value |
-| --- | --- |
-| Host language | Zig 0.17.0, using the modern `std.Io` APIs |
-| Lua | Lua 5.5.1, via the `zlua` (ziglua) dependency |
-| Package name/version | `zli`, version in `build.zig.zon` and `src/version` |
-| Native deps | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline |
-| Lua deps | argparse, f-strings, ftcsv, luaunit, Serpent |
-| Output | one executable with an appended zip payload |
-| Release platforms | x86_64 Linux, aarch64 Linux, x86_64 Windows |
-| Release output | UPX-compressed, stripped, static musl on Linux |
-| License | MIT |
+| Item                 | Value                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| Host language        | Zig 0.17.0, using the modern `std.Io` APIs                 |
+| Lua                  | Lua 5.5.1, via the `zlua` (ziglua) dependency              |
+| Package name/version | `zli`, version in `build.zig.zon` and `src/version`        |
+| Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline |
+| Lua deps             | argparse, f-strings, ftcsv, luaunit, Serpent               |
+| Output               | one executable with an appended zip payload                |
+| Release platforms    | x86_64 Linux, aarch64 Linux, x86_64 Windows                |
+| Release output       | UPX-compressed, stripped, static musl on Linux             |
+| License              | MIT                                                        |
 
 ## Commands
 
 Run from the repository root:
 
-| Command | What it does |
-| --- | --- |
-| `zig build` | Debug build in `zig-out/bin/zli` (with payload). |
-| `zig build run -- <args>` | Build and run `zli` with arguments. |
-| `zig build test` | Build the debug binary, run `test/test.lua` through it, then run Zig unit tests in `src/strip.zig` and `src/docgen.zig`. |
-| `zig build docs` | Regenerate `doc/libraries.md` from `doc/libraries.lua`. Commit the result. |
-| `zig build native` | Optimized host build, UPX-compressed. |
-| `zig build release` | All three release targets, UPX-compressed, with version suffix. |
-| `./clean.sh` | Remove `zig-out`, `.zig-cache`, and `zig-pkg`. |
-| `zig build -Dtarget=x86_64-linux` | Explicit cross-target build; static musl for Linux. |
-| `./zig-out/bin/zli @test test/test_filesystem.lua` | Run one LuaUnit test file against the built payload. |
-| `./zig-out/bin/zli @help string.byte` | Query the bundled manual. |
-| `./zig-out/bin/zli @manual` | Serve the full reference manual at `http://127.0.0.1:8080/`. |
-| `zig build --watch` | Continuous rebuild (see `watch.sh`). |
+| Command                                            | What it does                                                                                                             |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `zig build`                                        | Debug build in `zig-out/bin/zli` (with payload).                                                                         |
+| `zig build run -- <args>`                          | Build and run `zli` with arguments.                                                                                      |
+| `zig build test`                                   | Build the debug binary, run `test/test.lua` through it, then run Zig unit tests in `src/strip.zig` and `src/docgen.zig`. |
+| `zig build docs`                                   | Regenerate `doc/libraries.md` from `doc/libraries.lua`. Commit the result.                                               |
+| `zig build native`                                 | Optimized host build, UPX-compressed.                                                                                    |
+| `zig build release`                                | All three release targets, UPX-compressed, with version suffix.                                                          |
+| `./clean.sh`                                       | Remove `zig-out`, `.zig-cache`, and `zig-pkg`.                                                                           |
+| `zig build -Dtarget=x86_64-linux`                  | Explicit cross-target build; static musl for Linux.                                                                      |
+| `./zig-out/bin/zli @test test/test_filesystem.lua` | Run one LuaUnit test file against the built payload.                                                                     |
+| `./zig-out/bin/zli @help string.byte`              | Query the bundled manual.                                                                                                |
+| `./zig-out/bin/zli @manual`                        | Serve the full reference manual at `http://127.0.0.1:8080/`.                                                             |
+| `zig build --watch`                                | Continuous rebuild (see `watch.sh`).                                                                                     |
 
 Notes:
 
@@ -181,39 +181,39 @@ pub fn register(lua: *Lua) !i32 {
 
 ## Repository map
 
-| Path | Purpose |
-| --- | --- |
-| `build.zig` | Build graph, payload manifest (`payload_entries`), embedded Lua manifest (`lualib_list`), C/Zig library compilation, release targets, docs generation. |
-| `build.zig.zon` | Dependencies and package version. |
-| `src/main.zig` | Entrypoint: startup, program selection, payload loader, module searcher, `ZLI` table, `arg`. |
-| `src/libraries.zig` | `package.preload` registration for native modules and embedded Lua modules; `setIo` wiring. |
-| `src/file_reader.zig` | Shared local-filesystem-first/payload-fallback whole-file reader. |
-| `src/markdown.zig` | `markdown` module: md4c event parser and md4c-html renderer. |
-| `src/luax.zig` | Lua stack/table/userdata/config helpers used by bindings. |
-| `src/luaerror.zig` | Raise-vs-return error handling and `luaerror.wrap`. |
-| `src/init.lua` | Embedded bootstrap: creates `~/.config/zli`, runs user init, reloads `filesystem`. |
-| `src/main.lua` | Payload fallback for `-h`/`--help` and `-v`/`--version`; starts the REPL when there are no arguments, otherwise prints usage. |
-| `src/tools/*.lua` | Payload tools: `repl`, `sqlite`, `compile`, `test`, `manual`, `serve`, `help`; `serve_lib.lua` is internal. |
-| `src/auxiliary.{zig,lua}` | Always-loaded helpers: string/table/io/os extensions, lambdas, payload-aware `io` functions. |
-| `src/filesystem.{zig,lua}` | `filesystem` module and the path-object abstraction. |
-| `src/docs.lua` | Structured documentation index, search, text/HTML/Markdown rendering, manual assembly. |
-| `src/docs_markdown.lua` | Small Markdown subset renderer shared by all doc output. |
-| `src/docgen.zig` | Build-time extraction of the Lua manual into `docs_manual.lua`; excludes the C API and grammar-only chapter. |
-| `src/strip.zig` | Lua source stripper used for release payloads; also has Zig unit tests. |
-| `src/attach_payload.zig` | Host tool that appends the zip payload to an executable. |
-| `src/zip_reader.zig`, `src/zip_writer.zig` | Lua-free zip primitives used by the runtime, `zip`, `unzip`, and `@compile`. |
-| `src/zip.{zig,lua}`, `src/unzip.{zig,lua}` | Lua-facing zip modules and high-level helpers. |
-| `src/gzip.zig`, `src/tar.zig`, `src/tar.lua` | Compression and tar support. |
-| `src/httpclient.{zig,lua}`, `src/httpserver.{zig,lua}` | HTTP client/server bindings. |
-| `src/uuid.zig`, `src/luastrip.zig`, `src/crossline.zig`, `src/xlsxmlwriter.lua`, ... | Individual libraries; see `doc/libraries.md`. |
-| `src/collection/*.lua` | Pure-Lua collection submodules. |
-| `doc/libraries.lua` | Authored structured documentation, source of truth for all bundled-library docs. |
-| `doc/libraries.md` | Generated Markdown mirror; never edit by hand. |
-| `doc/README.md` | CLI, tools, init files, payload behavior. |
-| `test/` | LuaUnit suites, auto-discovered; `support.lua` has shared helpers. |
-| `test/temp/` | Scratch directory cleaned before/after the suite (`.gitignore` tracked). |
-| `benchmark/` | Standalone benchmark scripts run by `require "benchmark"`. |
-| `zig-pkg/`, `.zig-cache/`, `zig-out/` | Generated/downloaded; ignored, do not edit. |
+| Path                                                                                 | Purpose                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `build.zig`                                                                          | Build graph, payload manifest (`payload_entries`), embedded Lua manifest (`lualib_list`), C/Zig library compilation, release targets, docs generation. |
+| `build.zig.zon`                                                                      | Dependencies and package version.                                                                                                                      |
+| `src/main.zig`                                                                       | Entrypoint: startup, program selection, payload loader, module searcher, `ZLI` table, `arg`.                                                           |
+| `src/libraries.zig`                                                                  | `package.preload` registration for native modules and embedded Lua modules; `setIo` wiring.                                                            |
+| `src/file_reader.zig`                                                                | Shared local-filesystem-first/payload-fallback whole-file reader.                                                                                      |
+| `src/markdown.zig`                                                                   | `markdown` module: md4c event parser and md4c-html renderer.                                                                                           |
+| `src/luax.zig`                                                                       | Lua stack/table/userdata/config helpers used by bindings.                                                                                              |
+| `src/luaerror.zig`                                                                   | Raise-vs-return error handling and `luaerror.wrap`.                                                                                                    |
+| `src/init.lua`                                                                       | Embedded bootstrap: creates `~/.config/zli`, runs user init, reloads `filesystem`.                                                                     |
+| `src/main.lua`                                                                       | Payload fallback for `-h`/`--help` and `-v`/`--version`; starts the REPL when there are no arguments, otherwise prints usage.                          |
+| `src/tools/*.lua`                                                                    | Payload tools: `repl`, `sqlite`, `compile`, `test`, `manual`, `serve`, `help`; `serve_lib.lua` is internal.                                            |
+| `src/auxiliary.{zig,lua}`                                                            | Always-loaded helpers: string/table/io/os extensions, lambdas, payload-aware `io` functions.                                                           |
+| `src/filesystem.{zig,lua}`                                                           | `filesystem` module and the path-object abstraction.                                                                                                   |
+| `src/docs.lua`                                                                       | Structured documentation index, search, text/HTML/Markdown rendering, manual assembly.                                                                 |
+| `src/docs_markdown.lua`                                                              | Small Markdown subset renderer shared by all doc output.                                                                                               |
+| `src/docgen.zig`                                                                     | Build-time extraction of the Lua manual into `docs_manual.lua`; excludes the C API and grammar-only chapter.                                           |
+| `src/strip.zig`                                                                      | Lua source stripper used for release payloads; also has Zig unit tests.                                                                                |
+| `src/attach_payload.zig`                                                             | Host tool that appends the zip payload to an executable.                                                                                               |
+| `src/zip_reader.zig`, `src/zip_writer.zig`                                           | Lua-free zip primitives used by the runtime, `zip`, `unzip`, and `@compile`.                                                                           |
+| `src/zip.{zig,lua}`, `src/unzip.{zig,lua}`                                           | Lua-facing zip modules and high-level helpers.                                                                                                         |
+| `src/gzip.zig`, `src/tar.zig`, `src/tar.lua`                                         | Compression and tar support.                                                                                                                           |
+| `src/httpclient.{zig,lua}`, `src/httpserver.{zig,lua}`                               | HTTP client/server bindings.                                                                                                                           |
+| `src/uuid.zig`, `src/luastrip.zig`, `src/crossline.zig`, `src/xlsxmlwriter.lua`, ... | Individual libraries; see `doc/libraries.md`.                                                                                                          |
+| `src/collection/*.lua`                                                               | Pure-Lua collection submodules.                                                                                                                        |
+| `doc/libraries.lua`                                                                  | Authored structured documentation, source of truth for all bundled-library docs.                                                                       |
+| `doc/libraries.md`                                                                   | Generated Markdown mirror; never edit by hand.                                                                                                         |
+| `doc/README.md`                                                                      | CLI, tools, init files, payload behavior.                                                                                                              |
+| `test/`                                                                              | LuaUnit suites, auto-discovered; `support.lua` has shared helpers.                                                                                     |
+| `test/temp/`                                                                         | Scratch directory cleaned before/after the suite (`.gitignore` tracked).                                                                               |
+| `benchmark/`                                                                         | Standalone benchmark scripts run by `require "benchmark"`.                                                                                             |
+| `zig-pkg/`, `.zig-cache/`, `zig-out/`                                                | Generated/downloaded; ignored, do not edit.                                                                                                            |
 
 ## Documentation system
 
@@ -236,9 +236,9 @@ entry(name, signature, kind, summary, markdown, aliases)
 - `doc/libraries.md` is produced by `zli @help --markdown --output doc/libraries.md`
   (`zig build docs`). `test/test_docs.lua` compares the rendered output with
   the committed file, so always regenerate and commit it with the source change.
-- Always document every exposed flag or dialect with a description.  When a
+- Always document every exposed flag or dialect with a description. When a
   group has more than two entries, use a Markdown table with the flag or
-  dialect name in the first column and its description in the second.  Keep
+  dialect name in the first column and its description in the second. Keep
   flags and dialects in `doc/libraries.lua` in sync with the names exported by
   the module.
 - Documentation tests also:
@@ -270,6 +270,7 @@ entry(name, signature, kind, summary, markdown, aliases)
 
   `zli @test file.lua` appends its own LuaUnit run, so this makes a suite work
   both standalone and under the full runner.
+
 - `test/support.lua` provides `temp_path`, `temp_dir`, `temp_file`, `quote`,
   and `run(args, options)`. `run` captures stdout+stderr and status, supports
   `HOME=` overrides and stdin, and defaults to `ZLI.exe_path`/`arg[0]` as the
@@ -353,12 +354,10 @@ The documentation tests are strict by design.
   the binary (documentation payload files are exempt).
 - Do not edit generated/vendor directories (`zig-pkg/`, `.zig-cache/`,
   `zig-out/`) or `doc/libraries.md` by hand.
-- Avoid stale mentions of removed compression dependencies: the docs test
-  rejects "zlib" and "minizip" in `README.md` and the generated docs.
 - Use `zig fmt` for edited Zig files; keep the existing import ordering and
   helper patterns.
 - Never add `.h` files under `src/` when the same setup can be expressed in
-  `build.zig`.  Point `addTranslateC` at an existing dependency header and add
+  `build.zig`. Point `addTranslateC` at an existing dependency header and add
   the required include paths there instead.
 
 ## Gotchas

@@ -99,7 +99,6 @@ fn upxPack(
     exe_name: []const u8,
 ) std.Build.LazyPath {
     const upx_cmd = b.addRunArtifact(zupx.artifact("upx"));
-    upx_cmd.addArg("--lzma");
     upx_cmd.addArg("-o");
     const packed_path = upx_cmd.addOutputFileArg(exe_name);
     upx_cmd.addFileArg(exe.getEmittedBin());

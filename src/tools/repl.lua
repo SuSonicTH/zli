@@ -24,19 +24,34 @@ it is useful to set local configuration or load default libraries
 the ~/.config/zli/init.lua gets executed before this script is executed
 --]================================================================================]
 
+argparse = require "argparse"
+benchmark = require "benchmark"
+cl = require "crossline"
+collection = require "collection"
 csv = require "csv"
+F = require "F"
+fs = require "filesystem"
+grid = require "grid"
+gzip = require "gzip"
+httpclient = require "httpclient"
+httpserver = require "httpserver"
 json = require "cjson"
 log = require "log"
 lpeg = require "lpeg"
 lu = require "luaunit"
+luastrip = require "luastrip"
+markdown = require "markdown"
+memoize = require "memoize"
 re = require "re"
-fs = require "filesystem"
+serpent = require "serpent"
 sqlite3 = require "sqlite3"
 stream = require "stream"
+tar = require "tar"
+timer = require "timer"
+unzip = require "unzip"
+uuid = require "uuid"
+xlsxmlwriter = require "xlsxmlwriter"
 zip = require "zip"
-gzip = require "gzip"
-cl = require "crossline"
-collection = require "collection"
 
 ]==])
 end

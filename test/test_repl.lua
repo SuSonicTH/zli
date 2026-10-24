@@ -47,6 +47,29 @@ quit
     lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history"))
 end
 
+function Test_repl.Test_default_init_preloads_all_libraries()
+    local home = new_home()
+    local stdout, status = run_repl([[
+names = {
+    "argparse", "benchmark", "cl", "collection", "csv", "F", "fs", "grid",
+    "gzip", "httpclient", "httpserver", "json", "log", "lpeg", "lu",
+    "luastrip", "markdown", "memoize", "re", "serpent", "sqlite3", "stream",
+    "tar", "timer", "unzip", "uuid", "xlsxmlwriter", "zip",
+}
+missing = {}
+for _, name in ipairs(names) do
+    if _G[name] == nil then
+        missing[#missing + 1] = name
+    end
+end
+print(#missing == 0 and "all libraries loaded" or table.concat(missing, ","))
+quit
+]], home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "all libraries loaded")
+end
+
 function Test_repl.Test_multiline_expressions_and_errors()
     local home = new_home()
     local stdout, status = run_repl([[
