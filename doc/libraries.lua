@@ -455,6 +455,8 @@ Read a text file into an array of lines and return the array.
 
 Line terminators are removed and empty lines are preserved. The file is opened read-only and closed before returning. An open failure raises an error through `assert`.
 
+Local files take priority. If the file does not exist locally, it is read from the payload attached to the executable.
+
 ```lua
 local lines = io.read_lines("data.txt")
 print(lines[1])
@@ -477,6 +479,8 @@ io.write_lines("out.txt", { "one", "two" })
 Read an entire file as a string.
 
 The file is opened in binary read mode and closed before returning. An open failure raises an error through `assert`, so check the path or wrap the call in `pcall` if missing files are expected.
+
+Local files take priority. If the file does not exist locally, it is read from the payload attached to the executable. The same fallback applies to read-only files opened directly with `io.open` or iterated with `io.lines`.
 ]]),
                     entry("io.write_file", "io.write_file(filename, data)", "function",
                         "Write a string to a file, replacing its contents.",

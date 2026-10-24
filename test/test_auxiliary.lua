@@ -200,6 +200,18 @@ function Test_auxiliary.Test_io_read_lines()
     lu.assertEquals(textLines, io.read_lines("./test/temp/textlines"))
 end
 
+function Test_auxiliary.Test_io_lines()
+    io.write_lines("./test/temp/textlines", textLines)
+    local actual = {}
+    for line in io.lines("./test/temp/textlines") do
+        actual[#actual + 1] = line
+    end
+    lu.assertEquals(textLines, actual)
+
+    local ok = pcall(io.lines, "./test/temp/missing-lines-file")
+    lu.assertFalse(ok)
+end
+
 function Test_auxiliary.Test_io_append_file()
     io.write_file("./test/temp/textfile", textFileContents)
     local additional = "five\n"

@@ -225,6 +225,68 @@ function Test_cli.Test_local_module_wins_over_payload()
     lu.assertStrContains(stdout, "shadow=local")
 end
 
+function Test_cli.Test_io_reads_files_from_payload()
+    local dir = support.temp_dir("cli_payload_io")
+    local data = support.temp_file("cli_payload_io_data", "payload-data\n")
+    local lines = support.temp_file("cli_payload_io_lines", "one\ntwo\n")
+    local main = support.temp_file("cli_payload_io_main", [[
+        local opened = assert(io.open("./data.txt", "rb"))
+        print("open=" .. opened:read("a"))
+        opened:close()
+
+        print("read_file=" .. io.read_file("data.txt"))
+        print("lines=" .. table.concat(io.read_lines("lines.txt"), "|"))
+
+        local iterated = {}
+        for line in io.lines("lines.txt") do
+            iterated[#iterated + 1] = line
+        end
+        print("io_lines=" .. table.concat(iterated, "|"))
+
+        local chunks = {}
+        for chunk in io.lines("data.txt", 4) do
+            chunks[#chunks + 1] = chunk
+        end
+        print("io_lines_chunks=" .. table.concat(chunks, "|"))
+
+        local missing, err = io.open("zli-payload-missing.txt")
+        print("missing=" .. tostring(missing == nil and err ~= nil))
+    ]])
+    local output = build(dir .. "/payload-io", {
+        { file = main, name = "main.lua" },
+        { file = data, name = "data.txt" },
+        { file = lines, name = "lines.txt" },
+    })
+
+    local stdout, status = support.run({}, { exe = output, home = new_home() })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "open=payload-data")
+    lu.assertStrContains(stdout, "read_file=payload-data")
+    lu.assertStrContains(stdout, "lines=one|two")
+    lu.assertStrContains(stdout, "io_lines=one|two")
+    lu.assertStrContains(stdout, "io_lines_chunks=payl|oad-|data|")
+    lu.assertStrContains(stdout, "missing=true")
+end
+
+function Test_cli.Test_local_files_shadow_payload_files()
+    local dir = support.temp_dir("cli_payload_shadow")
+    local payload_data = support.temp_file("cli_payload_shadow_data", "from-payload\n")
+    local name = support.temp_path("cli_payload_shadow_target")
+    local main = support.temp_file("cli_payload_shadow_main", [[
+        print("content=" .. io.read_file(arg[2]))
+    ]])
+    io.write_file(name, "from-local\n")
+
+    local output = build(dir .. "/payload-shadow", {
+        { file = main, name = "main.lua" },
+        { file = payload_data, name = name },
+    })
+
+    local stdout, status = support.run({ "read", name }, { exe = output, home = new_home() })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "content=from-local")
+end
+
 function Test_cli.Test_help_without_docs_reports_clear_error()
     local dir = support.temp_dir("cli_help_no_docs")
     local output = build(dir .. "/help-only", {

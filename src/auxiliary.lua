@@ -173,11 +173,183 @@ L = lambda
 
 --[[ io ]]
 
+local raw_io_open = io.open
+local raw_io_lines = io.lines
+local payload_unavailable = false
+
+local function payload_candidates(filename)
+    local candidates = { filename }
+
+    local normalized = filename:gsub("\\", "/")
+    if normalized ~= filename then
+        candidates[#candidates + 1] = normalized
+    end
+
+    local relative = normalized:gsub("^%./+", "")
+    if relative ~= normalized then
+        candidates[#candidates + 1] = relative
+    end
+
+    return candidates
+end
+
+local function local_file_exists(filename)
+    local fs = require "filesystem"
+    return fs.exists(filename)
+end
+
+local function open_payload_file(filename)
+    if payload_unavailable then
+        return nil
+    end
+
+    local exe_path = ZLI and ZLI.exe_path
+    if not exe_path or exe_path == "" then
+        return nil
+    end
+
+    local unzip = require "unzip"
+    local archive = unzip.open(exe_path)
+    if not archive then
+        payload_unavailable = true
+        return nil
+    end
+
+    local entries = archive:dir()
+    local entry
+    for _, candidate in ipairs(payload_candidates(filename)) do
+        if entries[candidate] and entries[candidate].is_file then
+            entry = entries[candidate]
+            break
+        end
+    end
+
+    if entry == nil then
+        archive:close()
+        return nil
+    end
+
+    local file = entry:open()
+    if file == nil then
+        archive:close()
+        return nil
+    end
+
+    -- The unzip file handle does not own its archive. Keep the archive alive
+    -- and close it together with the file.
+    local closed = false
+    local raw_close = file.close
+    file.close = function(self)
+        if closed then
+            return
+        end
+        closed = true
+        raw_close(self)
+        archive:close()
+    end
+    file._archive = archive
+
+    local metatable = getmetatable(file)
+    if metatable == nil then
+        metatable = {}
+        setmetatable(file, metatable)
+    end
+    metatable.__close = function(self)
+        self:close()
+    end
+
+    return file
+end
+
+local function open_payload_lines(filename, ...)
+    local file = open_payload_file(filename)
+    if file == nil then
+        return nil
+    end
+
+    local formats = table.pack(...)
+    local function read_next()
+        if formats.n == 0 then
+            local line = file:read()
+            if line == nil then
+                file:close()
+            end
+            return line
+        end
+
+        local values = table.pack()
+        for index = 1, formats.n do
+            local value = file:read(formats[index])
+            values[index] = value
+            if value == nil then
+                file:close()
+                return table.unpack(values, 1, index)
+            end
+        end
+        return table.unpack(values, 1, formats.n)
+    end
+
+    -- The fourth result is the to-be-closed value used by the generic for.
+    return read_next, nil, nil, file
+end
+
+local function is_read_mode(mode)
+    mode = mode or "r"
+    if type(mode) ~= "string" or mode:find("[wa+]") then
+        return false
+    end
+    return true
+end
+
+function io.open(filename, mode, ...)
+    local file, err = raw_io_open(filename, mode, ...)
+    if file ~= nil then
+        return file, err
+    end
+
+    if type(filename) ~= "string" or not is_read_mode(mode) then
+        return file, err
+    end
+
+    -- A local path that exists but could not be opened must not be shadowed
+    -- by the payload: local files always have priority.
+    if local_file_exists(filename) then
+        return file, err
+    end
+
+    local payload_file = open_payload_file(filename)
+    if payload_file ~= nil then
+        return payload_file
+    end
+
+    return file, err
+end
+
+function io.lines(filename, ...)
+    -- Use the native iterator whenever possible so local files keep their
+    -- exact standard-library behavior and automatic closing.
+    local results = table.pack(pcall(raw_io_lines, filename, ...))
+    if results[1] then
+        return table.unpack(results, 2, results.n)
+    end
+
+    if type(filename) == "string" and not local_file_exists(filename) then
+        local iterator, state, init, close = open_payload_lines(filename, ...)
+        if iterator ~= nil then
+            return iterator, state, init, close
+        end
+    end
+
+    error(results[2], 0)
+end
+
 function io.read_lines(filename)
     local ret = {}
-    for line in io.lines(filename) do
+    local file = assert(io.open(filename, "rb"))
+    for line in file:lines() do
         table.insert(ret, line)
     end
+    file:close()
     return ret
 end
 
