@@ -60,7 +60,86 @@ The `auxiliary` module is loaded automatically.  It extends the standard
                         "Returns an iterator like `pairs`, sorted by key.  An optional comparator is passed to `table.sort`."),
                     entry("lambda", "lambda(source) / L(source)", "function",
                         "Create a Lua function from a short expression.",
-                        "The global helper `lambda` and its aliases `L` and `string.L` compile a short lambda expression.  See the `string` helpers below."),
+                        [==[
+Compile `source` into a callable Lua function.  The global helpers `lambda` and
+`L`, and the string method `string.L`, are equivalent.  The source may read
+local variables and upvalues visible where the lambda is created, even after
+the creating scope has returned.
+
+The first characters of `source` select one of these styles:
+
+| Source style                            | Example                | Equivalent Lua function                |
+| --------------------------------------- | ---------------------- | -------------------------------------- |
+| Method call                             | `L(":hello")`          | `function(it) return it:hello() end`   |
+| Method call with arguments (arrow form) | `L("-> it:add(2, 3)")` | `function(it) return it:add(2, 3) end` |
+| Field access                            | `L(".name")`           | `function(it) return it.name end`      |
+| Field call                              | `L(".hello()")`        | `function(it) return it.hello() end`   |
+| Arrow expression                        | `L("-> it * 2")`       | `function(it) return it * 2 end`       |
+| Bare expression                         | `L("it * 2")`          | `function(it) return it * 2 end`       |
+| Parameter list                          | `L("(a, b) -> a + b")` | `function(a, b) return a + b end`      |
+| No parameters                           | `L("() -> 42")`        | `function() return 42 end`             |
+
+The method shorthand appends `()` to the rest of the source: `":hello"` becomes
+`it:hello()`.  Use it for zero-argument methods, and do not include the
+parentheses in the source.  Pass arguments with the arrow form, for example
+`L("-> it:add(2, 3)")`.
+
+The field shorthand appends the rest of the source to `it` without adding
+parentheses: `".name"` becomes `it.name`, and `".hello()"` becomes
+`it.hello()` (a plain function call, not a method call).  The arrow and bare
+forms provide exactly one parameter named `it`.  The parenthesised form is the
+only style that chooses its own parameter list.
+
+A source beginning with `(` is always parsed as a parameter list and must
+contain `->`.  To use an expression that starts with a parenthesis, use the
+arrow form: `L("-> (it + 1) * 2")`.
+
+For example, `L("(a, b) -> a + b")` loads a chunk equivalent to this one (with
+the captured scope as its environment) and calls it to produce the lambda:
+
+```lua
+return function(a, b) return a + b end
+```
+
+The aliases can be written in several ways:
+
+```lua
+local double = L("it * 2")        -- global L
+local triple = lambda("it * 3")   -- global lambda
+local upper = (":upper"):L()      -- string method
+local negate = L "-> -it"         -- function call sugar
+```
+
+Typical uses:
+
+```lua
+local double = L("it * 2")
+print(double(21)) --> 42
+
+local add = L("(a, b) -> a + b")
+print(add(20, 22)) --> 42
+
+local user = {
+    name = "Ada",
+    hello = function(self) return "Hello " .. self.name end,
+}
+print(L(":hello")(user)) --> Hello Ada
+print(L(".name")(user))  --> Ada
+```
+
+Lambdas are also accepted as strings by helpers such as `stream:map`:
+
+```lua
+local stream = require "stream"
+local multiplier = 3
+local result = stream({ 1, 2, 3 }):map("it * multiplier"):toarray()
+print(table.concat(result, ",")) --> 3,6,9
+```
+
+Because the source is compiled when the lambda is created, a lambda created in
+a tail-call position cannot see locals from the discarded caller frame.  This
+is the same limitation as the f-strings library.
+]==]),
                     entry("string.starts_with", "string.starts_with(value, prefix)", "method",
                         "Return true when a string starts with `prefix`.",
                         [[

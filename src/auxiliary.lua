@@ -44,8 +44,96 @@ function sorted_pairs(tbl, func)
     end
 end
 
+local function scan_using(scanner, arg, searched)
+    local i = 1
+    repeat
+        local name, value = scanner(arg, i)
+        if name == searched then
+            return true, value
+        end
+        i = i + 1
+    until name == nil
+    return false
+end
+
+local function snd(_, b) return b end
+
+local function is_capturable(name)
+    return name ~= nil and name ~= "" and name ~= "_ENV" and name:sub(1, 1) ~= "("
+end
+
+local function capture_scope(level, outer_env)
+    local variables = {}
+
+    local function capture(name, value, func, index)
+        if is_capturable(name) and variables[name] == nil then
+            variables[name] = { value = value, func = func, index = index }
+        end
+    end
+
+    while true do
+        local info = debug.getinfo(level, "f")
+        if info == nil then
+            break
+        end
+
+        local i = 1
+        while true do
+            local name, value = debug.getlocal(level, i)
+            if name == nil then
+                break
+            end
+            capture(name, value)
+            i = i + 1
+        end
+
+        i = 1
+        while true do
+            local name, value = debug.getupvalue(info.func, i)
+            if name == nil then
+                break
+            end
+            capture(name, value, info.func, i)
+            i = i + 1
+        end
+
+        level = level + 1
+    end
+
+    return setmetatable({}, {
+        __index = function(_, key)
+            local variable = variables[key]
+            if variable ~= nil then
+                if variable.func ~= nil then
+                    local _, value = debug.getupvalue(variable.func, variable.index)
+                    return value
+                end
+                return variable.value
+            end
+            return outer_env[key]
+        end,
+        __newindex = function(_, key, value)
+            local variable = variables[key]
+            if variable ~= nil then
+                if variable.func ~= nil then
+                    debug.setupvalue(variable.func, variable.index, value)
+                end
+                variable.value = value
+            else
+                outer_env[key] = value
+            end
+        end
+    })
+end
+
 function lambda(lambda_str)
     arg_check_type("lambda / L / string:L()", 1, lambda_str, 3, 'string')
+
+    -- Capture the locals and upvalues visible at the call site so the
+    -- compiled function still sees them after the creating scope returns.
+    local outer_env = _ENV and (snd(scan_using(debug.getlocal, 3, "_ENV")) or
+        snd(scan_using(debug.getupvalue, debug.getinfo(2, "f").func, "_ENV")) or _ENV) or getfenv(2)
+    local env = capture_scope(3, outer_env)
 
     local firstChar = lambda_str:sub(1, 1)
     local function_string
@@ -67,7 +155,7 @@ function lambda(lambda_str)
         function_string = "return function (it) return " .. lambda_str .. " end"
     end
 
-    local compiled, error_message = load(function_string, lambda_str)
+    local compiled, error_message = load(function_string, lambda_str, "t", env)
     if compiled == nil then
         error("error compiling lambda '" .. lambda_str .. "': " .. error_message)
     end

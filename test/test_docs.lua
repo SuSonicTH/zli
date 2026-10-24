@@ -148,6 +148,11 @@ function Test_docs.Test_markdown_renderer()
     local text = markdown.to_text("# Title\n\nSome `code` here.")
     lu.assertStrContains(text, "Title")
     lu.assertStrContains(text, "Some code here.")
+
+    text = markdown.to_text("| `Name` | `Value` |\n| --- | --- |\n| `a` | `longer` |")
+    lu.assertStrContains(text, "| Name | Value  |")
+    lu.assertStrContains(text, "| a    | longer |")
+    lu.assertNotStrContains(text, "`")
 end
 
 function Test_docs.Test_markdown_renders_nested_emphasis()

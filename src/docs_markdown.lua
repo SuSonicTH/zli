@@ -460,12 +460,40 @@ local function render_blocks_text(blocks, width)
             end
             out[#out + 1] = table.concat(quoted, "\n")
         elseif block.type == "table" then
-            local rows = {}
-            rows[#rows + 1] = table.concat(block.headers, " | ")
-            for _, row in ipairs(block.rows) do
-                rows[#rows + 1] = table.concat(row, " | ")
+            local widths = {}
+            local function prepare(row)
+                local cells = {}
+                for i, cell in ipairs(row) do
+                    cells[i] = render_inline_text(cell)
+                    widths[i] = math.max(widths[i] or 0, #cells[i])
+                end
+                return cells
             end
-            out[#out + 1] = table.concat(rows, "\n")
+
+            local headers = prepare(block.headers)
+            local rows = {}
+            for _, row in ipairs(block.rows) do
+                rows[#rows + 1] = prepare(row)
+            end
+
+            local function format_row(cells)
+                local out_cells = {}
+                for i = 1, #widths do
+                    out_cells[i] = string.format("%-" .. widths[i] .. "s", cells[i] or "")
+                end
+                return "| " .. table.concat(out_cells, " | ") .. " |"
+            end
+
+            local out_rows = { format_row(headers) }
+            local separator = {}
+            for i = 1, #widths do
+                separator[i] = string.rep("-", widths[i])
+            end
+            out_rows[#out_rows + 1] = "| " .. table.concat(separator, " | ") .. " |"
+            for _, row in ipairs(rows) do
+                out_rows[#out_rows + 1] = format_row(row)
+            end
+            out[#out + 1] = table.concat(out_rows, "\n")
         end
     end
     return table.concat(out, "\n\n")
