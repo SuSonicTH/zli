@@ -5,9 +5,9 @@
 -- part of the @manual page.  It is also loaded by `require "docs"`, which
 -- powers `zli @help` and the REPL's `:help` command.
 --
--- Entries use a small Markdown dialect (see src/docs_markdown.lua).  The Lua
--- standard library documentation is generated from the Lua 5.5 manual at
--- build time and lives in docs_manual.lua.
+-- Entries use GitHub-flavored Markdown (rendered by the bundled md4c binding
+-- through src/docs_markdown.lua).  The Lua standard library documentation is
+-- generated from the Lua 5.5 manual at build time and lives in docs_manual.lua.
 
 local function entry(name, signature, kind, summary, doc, aliases)
     return {

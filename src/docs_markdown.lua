@@ -1,11 +1,19 @@
--- Small Markdown renderer used by the bundled documentation.
+-- Markdown helpers used by the bundled documentation.
 --
--- The Lua manual is converted to this Markdown subset at build time, and the
--- authored library documentation in doc/libraries.lua uses the same subset.
--- Keeping the renderer small makes the generated manual, @help and the REPL
--- :help command share exactly the same content.
+-- Block parsing, HTML rendering and inline text extraction use the bundled
+-- md4c binding (`markdown`).  The Lua manual is converted to GitHub-flavored
+-- Markdown at build time, and the authored library documentation in
+-- doc/libraries.lua uses the same dialect.  Raw HTML is disabled so signatures
+-- such as `zli @compile <config>` stay literal text.
+
+local md4c = require "markdown"
 
 local markdown = {}
+
+local document_options = {
+    dialect = "github",
+    flags = { "no_html_blocks", "no_html_spans" },
+}
 
 local function escape_html(text)
     return (tostring(text):gsub("[&<>\"']", {
@@ -18,6 +26,177 @@ local function escape_html(text)
 end
 markdown.escape_html = escape_html
 
+local entity_map = {
+    amp = "&", lt = "<", gt = ">", quot = '"', apos = "'", nbsp = "\194\160",
+    mdash = "\226\128\148", ndash = "\226\128\147", hellip = "\226\128\166",
+    copy = "\194\169", reg = "\194\174", trade = "\226\132\162",
+}
+
+local function decode_entity(text)
+    local name = text:match("^&([^;]+);$")
+    if not name then return text end
+    local mapped = entity_map[name]
+    if mapped then return mapped end
+
+    local value = name:match("^#(%d+)$")
+    local base = 10
+    if not value then
+        value = name:match("^#[xX](%x+)$")
+        base = 16
+    end
+    if value then
+        local code = tonumber(value, base)
+        if code and code > 0 and code <= 0x10FFFF then
+            return utf8.char(code)
+        end
+    end
+    return text
+end
+
+-- Build a small block tree from md4c's event stream.  The text renderer only
+-- needs blocks and inline text, so spans are flattened and links keep their
+-- label.  Nesting (lists, quotes, tables) is preserved by md4c, which avoids
+-- the line-oriented subset parser this module used to carry.
+local function parse_blocks(text)
+    local root = { type = "root", blocks = {} }
+    local stack = { root }
+    local table_block = nil
+
+    local function top()
+        return stack[#stack]
+    end
+
+    local function push(node)
+        local parent = top()
+        if parent.type == "list" and node.type == "li" then
+            parent.items[#parent.items + 1] = node
+        elseif parent.type == "table_row" then
+            parent.cells[#parent.cells + 1] = node
+        elseif node.type == "table_row" then
+            local rows = parent.type == "table_head" and parent.owner.head or parent.owner.body
+            rows[#rows + 1] = node
+        elseif parent.type ~= "table_head" and parent.type ~= "table_body" then
+            parent.blocks = parent.blocks or {}
+            parent.blocks[#parent.blocks + 1] = node
+        end
+        stack[#stack + 1] = node
+        return node
+    end
+
+    local function append_text(kind, value)
+        for i = #stack, 1, -1 do
+            local node = stack[i]
+            if node.type == "code_block" then
+                node.chunks[#node.chunks + 1] = value
+                return
+            end
+            if node.inline then
+                node.inline[#node.inline + 1] = { kind = kind, text = value }
+                return
+            end
+        end
+    end
+
+    md4c.parse(text, {
+        enter_block = function(kind, detail)
+            if kind == "doc" or kind == "blank" then
+                return
+            elseif kind == "ul" or kind == "ol" then
+                push({
+                    type = "list",
+                    ordered = kind == "ol",
+                    start = (detail and detail.start) or 1,
+                    items = {},
+                })
+            elseif kind == "li" then
+                push({ type = "li", inline = {}, blocks = {} })
+            elseif kind == "p" then
+                push({ type = "paragraph", inline = {} })
+            elseif kind == "h" then
+                push({
+                    type = "heading",
+                    level = (detail and detail.level) or 1,
+                    inline = {},
+                })
+            elseif kind == "code" then
+                push({ type = "code_block", chunks = {} })
+            elseif kind == "quote" or kind == "admonition" then
+                push({ type = "quote", blocks = {} })
+            elseif kind == "hr" then
+                push({ type = "hr" })
+            elseif kind == "table" then
+                table_block = { type = "table", head = {}, body = {} }
+                push(table_block)
+            elseif kind == "thead" then
+                push({ type = "table_head", owner = table_block })
+            elseif kind == "tbody" then
+                push({ type = "table_body", owner = table_block })
+            elseif kind == "tr" then
+                push({ type = "table_row", cells = {} })
+            elseif kind == "th" or kind == "td" then
+                push({
+                    type = "table_cell",
+                    align = (detail and detail.align) or "default",
+                    inline = {},
+                })
+            elseif kind == "footnote_def_section" or kind == "footnote_def" then
+                push({ type = "container", blocks = {} })
+            else
+                push({ type = kind, blocks = {} })
+            end
+        end,
+        leave_block = function(kind)
+            if kind == "doc" or kind == "blank" then return end
+            stack[#stack] = nil
+        end,
+        enter_span = function() end,
+        leave_span = function() end,
+        text = function(kind, value)
+            if kind == "softbr" then
+                append_text("text", " ")
+            elseif kind == "br" then
+                append_text("text", "\n")
+            elseif kind == "entity" then
+                append_text("text", decode_entity(value))
+            elseif kind == "code" then
+                append_text("code", value)
+            elseif kind == "normal" or kind == "html" or kind == "latexmath" then
+                append_text("text", value)
+            end
+        end,
+    }, document_options)
+
+    local function finish(node)
+        if node.type == "code_block" then
+            node.text = table.concat(node.chunks):gsub("\n$", "")
+            node.chunks = nil
+        end
+        for _, child in ipairs(node.blocks or {}) do finish(child) end
+        for _, item in ipairs(node.items or {}) do finish(item) end
+        for _, cell in ipairs(node.cells or {}) do finish(cell) end
+        for _, row in ipairs(node.head or {}) do
+            for _, cell in ipairs(row.cells) do finish(cell) end
+        end
+        for _, row in ipairs(node.body or {}) do
+            for _, cell in ipairs(row.cells) do finish(cell) end
+        end
+    end
+    finish(root)
+    return root.blocks
+end
+markdown.parse = parse_blocks
+
+local function inline_text(nodes)
+    local out = {}
+    for _, node in ipairs(nodes or {}) do
+        out[#out + 1] = node.text
+    end
+    return table.concat(out)
+end
+
+-- Titles, summaries and signatures are single inline fragments.  md4c has no
+-- inline-only entry point, and a full parse per fragment costs more than this
+-- small formatter, so keep the inline helpers local.
 local function count_run(text, pos, char)
     local i = pos
     while i <= #text and text:sub(i, i) == char do
@@ -187,220 +366,6 @@ local function render_inline_text(text)
 end
 markdown.render_inline_text = render_inline_text
 
-local function split_cells(line)
-    local cells = {}
-    local start = 1
-    if line:sub(1, 1) == "|" then
-        start = 2
-    end
-    local pos = start
-    while pos <= #line do
-        local pipe = line:find("|", pos, true)
-        if pipe == nil then
-            local cell = line:sub(pos):gsub("%s+$", "")
-            if cell ~= "" or #cells > 0 then
-                cells[#cells + 1] = cell
-            end
-            break
-        end
-        cells[#cells + 1] = line:sub(pos, pipe - 1):gsub("^%s+", ""):gsub("%s+$", "")
-        pos = pipe + 1
-    end
-    if #cells > 0 and cells[#cells] == "" then
-        cells[#cells] = nil
-    end
-    return cells
-end
-
-local function is_table_separator(line)
-    return line:find("^%s*|?%s*:?%-%-+") ~= nil
-end
-
-local function list_item(line)
-    local indent, marker, _, text = line:match("^(%s*)([%-%*%+])(%s+)(.*)$")
-    if marker then
-        return #indent, false, text
-    end
-    indent, marker, _, text = line:match("^(%s*)(%d+[%.%)])(%s+)(.*)$")
-    if marker then
-        return #indent, true, text
-    end
-    return nil
-end
-
-local function starts_block(line)
-    if line:match("^%s*$") then return true end
-    if line:match("^%s*[`~][`~][`~]") then return true end
-    if line:match("^%s*#+%s+") then return true end
-    if line:match("^%s*%-%-%-+%s*$") then return true end
-    if line:match("^%s*>") then return true end
-    if list_item(line) then return true end
-    return false
-end
-
-local function parse_blocks(text)
-    local lines = {}
-    for line in (text .. "\n"):gmatch("(.-)\n") do
-        lines[#lines + 1] = line
-    end
-
-    local blocks = {}
-    local i = 1
-    while i <= #lines do
-        local line = lines[i]
-
-        if line:match("^%s*$") then
-            i = i + 1
-        elseif line:match("^%s*([`~]+)") and #(line:match("^%s*([`~]+)")) >= 3 then
-            local fence = line:match("^%s*([`~]+)")
-            local char = fence:sub(1, 1)
-            local info = line:match("^%s*[`~]+%s*(.-)%s*$")
-            local code = {}
-            i = i + 1
-            while i <= #lines do
-                local close = lines[i]:match("^%s*([`~]+)%s*$")
-                if close and close:sub(1, 1) == char and #close >= #fence then
-                    break
-                end
-                code[#code + 1] = lines[i]
-                i = i + 1
-            end
-            blocks[#blocks + 1] = { type = "code", text = table.concat(code, "\n"), info = info }
-            i = i + 1
-        elseif line:match("^%s*#+%s+") then
-            local hashes, title = line:match("^%s*(#+)%s+(.*)$")
-            blocks[#blocks + 1] = { type = "heading", level = #hashes, text = title }
-            i = i + 1
-        elseif line:match("^%s*%-%-%-+%s*$") then
-            blocks[#blocks + 1] = { type = "hr" }
-            i = i + 1
-        elseif line:match("^%s*>") then
-            local quote = {}
-            while i <= #lines and lines[i]:match("^%s*>") do
-                quote[#quote + 1] = lines[i]:gsub("^%s*>%s?", "")
-                i = i + 1
-            end
-            blocks[#blocks + 1] = { type = "blockquote", text = table.concat(quote, "\n") }
-        elseif list_item(line) then
-            local items = {}
-            local _, ordered = list_item(line)
-            while i <= #lines do
-                local indent, is_ordered, item_text = list_item(lines[i])
-                if not indent then break end
-                if is_ordered ~= ordered then break end
-                items[#items + 1] = { indent = indent, ordered = is_ordered, text = item_text }
-                i = i + 1
-            end
-            blocks[#blocks + 1] = { type = "list", ordered = ordered, items = items }
-        elseif line:find("|", 1, true) and i < #lines and is_table_separator(lines[i + 1]) then
-            local headers = split_cells(line)
-            local rows = {}
-            i = i + 2
-            while i <= #lines and lines[i]:find("|", 1, true) and not lines[i]:match("^%s*$") do
-                rows[#rows + 1] = split_cells(lines[i])
-                i = i + 1
-            end
-            blocks[#blocks + 1] = { type = "table", headers = headers, rows = rows }
-        else
-            local paragraph = { line }
-            i = i + 1
-            while i <= #lines and not starts_block(lines[i]) do
-                paragraph[#paragraph + 1] = lines[i]
-                i = i + 1
-            end
-            blocks[#blocks + 1] = { type = "paragraph", text = table.concat(paragraph, " ") }
-        end
-    end
-
-    return blocks
-end
-markdown.parse = parse_blocks
-
-local function render_list_html(block)
-    local out = {}
-    local stack = {}
-
-    local function close_level()
-        local top = stack[#stack]
-        out[#out + 1] = "</li></" .. top.tag .. ">"
-        stack[#stack] = nil
-    end
-
-    for _, item in ipairs(block.items) do
-        local tag = item.ordered and "ol" or "ul"
-        if #stack == 0 then
-            out[#out + 1] = "<" .. tag .. ">"
-            stack[#stack + 1] = { indent = item.indent, tag = tag }
-        elseif item.indent > stack[#stack].indent then
-            out[#out + 1] = "<" .. tag .. ">"
-            stack[#stack + 1] = { indent = item.indent, tag = tag }
-        elseif item.indent < stack[#stack].indent then
-            while #stack > 0 and item.indent < stack[#stack].indent do
-                close_level()
-            end
-            if #stack > 0 and item.indent == stack[#stack].indent then
-                out[#out + 1] = "</li>"
-            else
-                out[#out + 1] = "<" .. tag .. ">"
-                stack[#stack + 1] = { indent = item.indent, tag = tag }
-            end
-        else
-            out[#out + 1] = "</li>"
-        end
-        out[#out + 1] = "<li>" .. render_inline_html(item.text)
-    end
-
-    while #stack > 0 do
-        close_level()
-    end
-    return table.concat(out)
-end
-
-local function render_blocks_html(blocks)
-    local out = {}
-    for _, block in ipairs(blocks) do
-        if block.type == "paragraph" then
-            out[#out + 1] = "<p>" .. render_inline_html(block.text) .. "</p>"
-        elseif block.type == "heading" then
-            local tag = "h" .. math.min(block.level, 6)
-            out[#out + 1] = "<" .. tag .. ">" .. render_inline_html(block.text) .. "</" .. tag .. ">"
-        elseif block.type == "code" then
-            local class = ""
-            if block.info and block.info ~= "" then
-                class = ' class="language-' .. escape_html(block.info) .. '"'
-            end
-            out[#out + 1] = "<pre><code" .. class .. ">" .. escape_html(block.text) .. "</code></pre>"
-        elseif block.type == "list" then
-            out[#out + 1] = render_list_html(block)
-        elseif block.type == "hr" then
-            out[#out + 1] = "<hr>"
-        elseif block.type == "blockquote" then
-            out[#out + 1] = "<blockquote>" .. render_inline_html(block.text) .. "</blockquote>"
-        elseif block.type == "table" then
-            local rows = { "<table><thead><tr>" }
-            for _, cell in ipairs(block.headers) do
-                rows[#rows + 1] = "<th>" .. render_inline_html(cell) .. "</th>"
-            end
-            rows[#rows + 1] = "</tr></thead><tbody>"
-            for _, row in ipairs(block.rows) do
-                rows[#rows + 1] = "<tr>"
-                for _, cell in ipairs(row) do
-                    rows[#rows + 1] = "<td>" .. render_inline_html(cell) .. "</td>"
-                end
-                rows[#rows + 1] = "</tr>"
-            end
-            rows[#rows + 1] = "</tbody></table>"
-            out[#out + 1] = table.concat(rows)
-        end
-    end
-    return table.concat(out)
-end
-
-function markdown.to_html(text)
-    if text == nil or text == "" then return "" end
-    return render_blocks_html(parse_blocks(text))
-end
-
 local function wrap(text, width)
     local lines = {}
     local line = ""
@@ -418,85 +383,143 @@ local function wrap(text, width)
     return lines
 end
 
-local function render_list_text(block, width)
-    local out = {}
-    for _, item in ipairs(block.items) do
-        local marker = item.ordered and "1. " or "- "
-        local prefix = string.rep(" ", item.indent) .. marker
-        local text = render_inline_text(item.text)
-        local available = math.max(20, width - #prefix)
-        local wrapped = wrap(text, available)
-        out[#out + 1] = prefix .. (wrapped[1] or "")
-        for i = 2, #wrapped do
-            out[#out + 1] = string.rep(" ", #prefix) .. wrapped[i]
+local function pad(text, width)
+    return text .. string.rep(" ", math.max(0, width - #text))
+end
+
+local function table_lines(node)
+    local rows = {}
+    for _, row in ipairs(node.head) do rows[#rows + 1] = row end
+    for _, row in ipairs(node.body) do rows[#rows + 1] = row end
+    if #rows == 0 then return {} end
+
+    local widths = {}
+    local column_count = 0
+    for _, row in ipairs(rows) do
+        if #row.cells > column_count then column_count = #row.cells end
+        for column, cell in ipairs(row.cells) do
+            local value = inline_text(cell.inline)
+            widths[column] = math.max(widths[column] or 1, #value, 1)
         end
     end
-    return table.concat(out, "\n")
+    for column = 1, column_count do
+        widths[column] = widths[column] or 1
+    end
+
+    local out = {}
+    local function format_row(row, separator)
+        local cells = {}
+        for column = 1, column_count do
+            local cell = row.cells[column]
+            cells[column] = pad(cell and inline_text(cell.inline) or "", widths[column])
+        end
+        out[#out + 1] = "| " .. table.concat(cells, " | ") .. " |"
+        if separator then
+            local rules = {}
+            for column = 1, column_count do
+                rules[column] = string.rep("-", widths[column])
+            end
+            out[#out + 1] = "| " .. table.concat(rules, " | ") .. " |"
+        end
+    end
+
+    for index, row in ipairs(rows) do
+        format_row(row, index == #node.head)
+    end
+    return out
+end
+
+local function block_lines(block, width)
+    if block.type == "paragraph" then
+        return wrap(inline_text(block.inline), width)
+    elseif block.type == "heading" then
+        local text = inline_text(block.inline)
+        local underline = block.level == 1 and "=" or (block.level == 2 and "-" or "~")
+        return { text, string.rep(underline, #text) }
+    elseif block.type == "code_block" then
+        local lines = {}
+        for line in (block.text .. "\n"):gmatch("(.-)\n") do
+            lines[#lines + 1] = "    " .. line
+        end
+        return lines
+    elseif block.type == "hr" then
+        return { string.rep("-", math.min(width, 40)) }
+    elseif block.type == "table" then
+        return table_lines(block)
+    elseif block.type == "list" then
+        local out = {}
+        local number = block.start or 1
+        for _, item in ipairs(block.items) do
+            local marker = block.ordered and (tostring(number) .. ". ") or "- "
+            number = number + 1
+            local started = false
+            local item_width = math.max(1, width - #marker)
+
+            local function emit(lines, separator)
+                if #lines == 0 then return end
+                if started and separator then out[#out + 1] = "" end
+                for index, line in ipairs(lines) do
+                    if not started and index == 1 then
+                        out[#out + 1] = marker .. line
+                    else
+                        out[#out + 1] = string.rep(" ", #marker) .. line
+                    end
+                    started = true
+                end
+            end
+
+            if #item.inline > 0 then
+                emit(wrap(inline_text(item.inline), item_width), false)
+            end
+            for _, child in ipairs(item.blocks) do
+                emit(block_lines(child, item_width), child.type ~= "list")
+            end
+            if not started then out[#out + 1] = marker end
+        end
+        return out
+    elseif block.type == "quote" then
+        local inner = {}
+        for _, child in ipairs(block.blocks) do
+            if #inner > 0 then inner[#inner + 1] = "" end
+            for _, line in ipairs(block_lines(child, math.max(1, width - 2))) do
+                inner[#inner + 1] = line
+            end
+        end
+        local out = {}
+        for _, line in ipairs(inner) do
+            out[#out + 1] = line == "" and ">" or ("> " .. line)
+        end
+        return out
+    elseif block.type == "container" then
+        local out = {}
+        for _, child in ipairs(block.blocks or {}) do
+            if #out > 0 then out[#out + 1] = "" end
+            for _, line in ipairs(block_lines(child, width)) do
+                out[#out + 1] = line
+            end
+        end
+        return out
+    end
+    return {}
 end
 
 local function render_blocks_text(blocks, width)
     local out = {}
     for _, block in ipairs(blocks) do
-        if block.type == "paragraph" then
-            out[#out + 1] = table.concat(wrap(render_inline_text(block.text), width), "\n")
-        elseif block.type == "heading" then
-            local text = render_inline_text(block.text)
-            local underline = block.level == 1 and "=" or (block.level == 2 and "-" or "~")
-            out[#out + 1] = text .. "\n" .. string.rep(underline, #text)
-        elseif block.type == "code" then
-            local code = {}
-            for line in (block.text .. "\n"):gmatch("(.-)\n") do
-                code[#code + 1] = "    " .. line
+        local lines = block_lines(block, width)
+        if #lines > 0 then
+            if #out > 0 then out[#out + 1] = "" end
+            for _, line in ipairs(lines) do
+                out[#out + 1] = line
             end
-            out[#out + 1] = table.concat(code, "\n")
-        elseif block.type == "list" then
-            out[#out + 1] = render_list_text(block, width)
-        elseif block.type == "hr" then
-            out[#out + 1] = string.rep("-", math.min(width, 40))
-        elseif block.type == "blockquote" then
-            local quoted = {}
-            for line in (render_inline_text(block.text) .. "\n"):gmatch("(.-)\n") do
-                quoted[#quoted + 1] = "> " .. line
-            end
-            out[#out + 1] = table.concat(quoted, "\n")
-        elseif block.type == "table" then
-            local widths = {}
-            local function prepare(row)
-                local cells = {}
-                for i, cell in ipairs(row) do
-                    cells[i] = render_inline_text(cell)
-                    widths[i] = math.max(widths[i] or 0, #cells[i], 1)
-                end
-                return cells
-            end
-
-            local headers = prepare(block.headers)
-            local rows = {}
-            for _, row in ipairs(block.rows) do
-                rows[#rows + 1] = prepare(row)
-            end
-
-            local function format_row(cells)
-                local out_cells = {}
-                for i = 1, #widths do
-                    out_cells[i] = string.format("%-" .. widths[i] .. "s", cells[i] or "")
-                end
-                return "| " .. table.concat(out_cells, " | ") .. " |"
-            end
-
-            local out_rows = { format_row(headers) }
-            local separator = {}
-            for i = 1, #widths do
-                separator[i] = string.rep("-", widths[i])
-            end
-            out_rows[#out_rows + 1] = "| " .. table.concat(separator, " | ") .. " |"
-            for _, row in ipairs(rows) do
-                out_rows[#out_rows + 1] = format_row(row)
-            end
-            out[#out + 1] = table.concat(out_rows, "\n")
         end
     end
-    return table.concat(out, "\n\n")
+    return table.concat(out, "\n")
+end
+
+function markdown.to_html(text)
+    if text == nil or text == "" then return "" end
+    return md4c.html(text, document_options)
 end
 
 function markdown.to_text(text, width)

@@ -144,6 +144,11 @@ function Test_docs.Test_markdown_renderer()
     html = markdown.to_html("```lua\nlocal x = 1 < 2\n```")
     lu.assertStrContains(html, "local x = 1 &lt; 2")
 
+    -- Documentation signatures contain angle brackets that must stay text.
+    html = markdown.to_html("zli @compile <config>")
+    lu.assertStrContains(html, "&lt;config&gt;")
+    lu.assertNotStrContains(html, "<config>")
+
     local text = markdown.to_text("# Title\n\nSome `code` here.")
     lu.assertStrContains(text, "Title")
     lu.assertStrContains(text, "Some code here.")
@@ -158,9 +163,29 @@ function Test_docs.Test_markdown_renderer()
     lu.assertStrContains(text, "|   | x |")
 end
 
+function Test_docs.Test_markdown_text_handles_list_continuations_and_wide_tables()
+    -- Continuation lines belong to the list item, not a separate paragraph.
+    local text = markdown.to_text("- first\n  continued\n- second", 80)
+    lu.assertStrContains(text, "- first continued")
+    lu.assertNotStrContains(text, "\n\ncontinued")
+
+    -- Cell widths above Lua's string.format limit used to raise an error.
+    local long = string.rep("long description ", 20)
+    text = markdown.to_text("| Name | Description |\n| --- | --- |\n| x | " .. long .. " |", 80)
+    lu.assertStrContains(text, "long description")
+end
+
+function Test_docs.Test_help_renders_wide_dialect_table()
+    local output, status = run({ "@help", "markdown.dialects" })
+    lu.assertEquals(0, status, output)
+    lu.assertStrContains(output, "commonmark")
+    lu.assertStrContains(output, "GitHub-style dialect")
+end
+
 function Test_docs.Test_markdown_renders_nested_emphasis()
     local html = markdown.to_html("***x***")
-    lu.assertStrContains(html, "<strong><em>x</em></strong>")
+    lu.assertStrContains(html, "<strong>x</strong>")
+    lu.assertStrContains(html, "<em>")
 
     lu.assertEquals("x", markdown.render_inline_text("***x***"))
     lu.assertEquals("x", markdown.render_inline_text("**x**"))

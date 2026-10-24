@@ -2,8 +2,8 @@
 --
 -- The Lua manual part is generated at build time (docs_manual.lua); the
 -- bundled library part is authored in doc/libraries.lua and shipped as
--- docs_libraries.lua.  Both use the Markdown subset implemented by
--- docs_markdown.lua.
+-- docs_libraries.lua.  Both use GitHub-flavored Markdown rendered through the
+-- bundled md4c binding by docs_markdown.lua.
 
 -- Documentation is shipped as separate payload entries.  A custom or reduced
 -- payload may omit one of them; report that as a documentation problem rather

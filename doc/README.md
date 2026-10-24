@@ -120,7 +120,8 @@ zli @help --markdown --output doc/libraries.md
 Inside the REPL, `:help` shows the index, `:help <name>` looks up an entry and
 `:help --search <term>` searches.  Scripts can use `require "docs"`; it exposes
 `docs.find(name)`, `docs.search(query, options)`, `docs.render_markdown(text)`
-and `docs.render_text(text)`.
+and `docs.render_text(text)`.  Authored documentation uses GitHub-flavored
+Markdown and is rendered by the bundled `markdown` (md4c) library.
 
 `doc/libraries.lua` is the source of truth for bundled-library documentation.
 `doc/libraries.md` is generated from it and is checked by the test suite for
