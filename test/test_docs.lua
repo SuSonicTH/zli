@@ -487,6 +487,63 @@ function Test_docs.Test_lua_source_label_uses_manual_version()
     lu.assertStrContains(text, "source: Lua " .. major_minor .. " manual")
 end
 
+-- Modules whose authored entries have completed the documentation depth pass.
+-- Add the remaining modules here as milestones 2 and 3 are finished.
+local completed_doc_modules = {
+    auxiliary = true,
+    collection = true,
+    ["collection.list"] = true,
+    ["collection.map"] = true,
+    ["collection.set"] = true,
+    filesystem = true,
+    grid = true,
+    stream = true,
+    timer = true,
+    uuid = true,
+    xlsxmlwriter = true,
+    luaunit = true,
+    serpent = true,
+    csv = true,
+    luastrip = true,
+    sqlite3 = true,
+}
+
+function Test_docs.Test_authored_entries_have_full_descriptions()
+    local problems = {}
+    local function report(message)
+        problems[#problems + 1] = message
+    end
+
+    for _, group in ipairs(docs.groups) do
+        for _, module in ipairs(group.modules or {}) do
+            if completed_doc_modules[module.name] then
+                if (module.markdown or ""):match("^%s*$") then
+                    report(module.name .. ": missing module description")
+                end
+                for _, entry in ipairs(module.entries or {}) do
+                    local text = entry.markdown or ""
+                    local body = text:match("^%s*(.-)%s*$") or ""
+                    local thin = (entry.kind == "function" or entry.kind == "method")
+                        and #body < 80
+
+                    if body == ""
+                        or body == (entry.summary or "")
+                        or body:find("TODO", 1, true)
+                        or body:find("TBD", 1, true)
+                        or body:find("FIXME", 1, true)
+                        or body:find("???", 1, true)
+                        or thin
+                    then
+                        report(module.name .. ": " .. entry.name)
+                    end
+                end
+            end
+        end
+    end
+
+    lu.assertEquals(0, #problems, table.concat(problems, "\n"))
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
