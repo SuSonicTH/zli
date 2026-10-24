@@ -5,6 +5,7 @@ const libraries = @import("libraries.zig");
 const Utf8Output = @import("Utf8Output.zig");
 const luax = @import("luax.zig");
 const zip_reader = @import("zip_reader.zig");
+const file_reader = @import("file_reader.zig");
 
 const Lua = zlua.Lua;
 
@@ -45,6 +46,7 @@ pub fn main(init: std.process.Init) !void {
     _ = lua.gcSetGenerational(0, 0);
     _ = libraries.openlibs(init.io, lua);
     try create_payload_searcher(lua, init.io);
+    file_reader.setContext(init.io, if (payload) |*archive| archive else null);
     defer if (payload) |*archive| archive.deinit();
     createZliTable(lua);
 

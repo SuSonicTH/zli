@@ -465,7 +465,7 @@ local function render_blocks_text(blocks, width)
                 local cells = {}
                 for i, cell in ipairs(row) do
                     cells[i] = render_inline_text(cell)
-                    widths[i] = math.max(widths[i] or 0, #cells[i])
+                    widths[i] = math.max(widths[i] or 0, #cells[i], 1)
                 end
                 return cells
             end

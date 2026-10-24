@@ -6095,6 +6095,182 @@ print(value.name)
 ```
 ]]),
                 }, { upstream = "https://github.com/pkulchenko/serpent", license = "MIT" }),
+
+                module("markdown", "markdown (md4c)", "Markdown parsing and HTML rendering based on md4c.", [==[
+`require "markdown"` exposes md4c directly.  The module has two parts: an
+event-based parser and the md4c-html renderer.
+
+The parser accepts either a table of callbacks or a single function.  A table
+may contain `enter_block`, `leave_block`, `enter_span`, `leave_span`, `text`
+and `debug_log`; missing entries are ignored.  A single function receives the
+callback name as its first argument.
+
+```lua
+local markdown = require "markdown"
+
+local events = {}
+markdown.parse("# Title\n\nHello **world**.", function(name, kind, detail)
+    events[#events + 1] = name .. ":" .. tostring(kind)
+end)
+
+print(markdown.html("# Title")) --> <h1>Title</h1>
+```
+
+The parser and renderer accept an options table.  `dialect` is `"commonmark"`
+(the default) or `"github"`.  `flags` adds parser extensions and
+`renderer_flags` controls md4c-html.  Both flag fields accept either a number
+or an array of names from the matching constants table.
+
+The `*_file` functions read the path from the local filesystem first and fall
+back to the executable payload when the local file does not exist.
+]==], {
+                    entry("markdown.parse", "markdown.parse(text, callbacks [, options])", "function",
+                        "Parse Markdown text through md4c callbacks.",
+                        [[
+Parse `text` and invoke Lua callbacks for each md4c block, span and text
+event.  `callbacks` is either a table of named functions or one function used
+for every event.  The table keys and single-function names are `enter_block`,
+`leave_block`, `enter_span`, `leave_span`, `text` and `debug_log`.
+
+Block and span callbacks receive `(kind, detail)`, text callbacks receive
+`(kind, text)`, and debug callbacks receive `(message)`.  Detail is a table for
+events that carry metadata, such as heading levels, table alignment and link
+URLs, and `nil` otherwise.  With a single callback, the callback name is added
+as the first argument: `(name, kind, detail)` or `(name, kind, text)`.
+
+Returning `false` from any callback stops parsing and makes `parse` return
+`false`.  Errors raised inside a callback propagate unchanged.  On success the
+function returns `true`.
+
+```lua
+local markdown = require "markdown"
+markdown.parse("## Hi", {
+    enter_block = function(kind, detail)
+        if kind == "h" then print(detail.level) end
+    end,
+    text = function(kind, text) print(kind, text) end,
+})
+```
+]]),
+                    entry("markdown.parse_file", "markdown.parse_file(path, callbacks [, options])", "function",
+                        "Parse a Markdown file, falling back to the payload.",
+                        [[
+Read `path` and parse it with the same callbacks and options as
+`markdown.parse`.  Local files are read first.  If the local path does not
+exist, the executable payload is searched, which makes bundled documentation
+and scripts parseable from a standalone ZLI executable.
+
+A path object from the `filesystem` module is also accepted.  File errors
+return `nil, message`.  Callback aborts and callback errors behave exactly as in
+`markdown.parse`.
+
+```lua
+local markdown = require "markdown"
+local ok = markdown.parse_file("main.lua", { text = function(_, text) end })
+assert(ok)
+```
+]]),
+                    entry("markdown.html", "markdown.html(text [, options]) / markdown.html(text, output [, options])", "function",
+                        "Render Markdown as HTML.",
+                        [[
+Render `text` with md4c-html.  Without an output callback the function
+returns the complete HTML string.  With an output function as the second
+argument it calls `output(chunk)` for successive pieces of HTML and returns
+`true` on success.  Chunk boundaries are arbitrary; concatenate all chunks to
+obtain the document.
+
+An output callback may return `false` to stop collecting output; later chunks
+are discarded and the function returns `false`.  Errors raised by the callback
+propagate unchanged.  The generated HTML contains the body contents only and
+does not include an HTML document wrapper.
+
+```lua
+local markdown = require "markdown"
+print(markdown.html("**bold**"))
+
+local chunks = {}
+markdown.html("# Title", function(chunk) chunks[#chunks + 1] = chunk end)
+```
+]]),
+                    entry("markdown.html_file", "markdown.html_file(path [, options]) / markdown.html_file(path, output [, options])", "function",
+                        "Render a Markdown file as HTML.",
+                        [[
+Read `path` through the common local-first/payload-fallback file reader and
+render it with md4c-html.  Without an output callback it returns the complete
+HTML string.  With an output callback it streams chunks to Lua and returns
+`true` on success.
+
+The second argument is treated as an options table unless it is a function, so
+`markdown.html_file(path, { dialect = "github" })` selects GitHub extensions.
+File and rendering failures return `nil, message`.
+
+```lua
+local markdown = require "markdown"
+local html = markdown.html_file("README.md", { dialect = "github" })
+print(#html)
+```
+]]),
+                    entry("markdown.dialects", "markdown.dialects", "table",
+                        "Named md4c dialects.",
+                        [[
+Named values for the `dialect` option.  A dialect is a predefined set of
+parser flags and may be combined with additional entries from
+`markdown.flags`.
+
+| Dialect | Description |
+| --- | --- |
+| `commonmark` | CommonMark mode with no extensions enabled. |
+| `github` | GitHub-style dialect: permissive URL, e-mail and WWW autolinks, tables, strikethrough, task lists, admonitions and footnotes. |
+]]),
+                    entry("markdown.flags", "markdown.flags", "table",
+                        "Named md4c parser flags.",
+                        [[
+Named values for the `flags` option.  The option accepts either an integer
+bitmask or an array whose entries are names from this table or integer flags.
+
+| Flag | Description |
+| --- | --- |
+| `collapse_whitespace` | Collapse non-trivial whitespace in normal text into a single space. |
+| `permissive_atx_headers` | Accept ATX headings without a space after the `#` characters. |
+| `permissive_url_autolinks` | Recognize URLs as autolinks without angle brackets. |
+| `permissive_email_autolinks` | Recognize e-mail addresses as autolinks without angle brackets or a `mailto:` prefix. |
+| `no_indented_code_blocks` | Disable indented code blocks; only fenced code blocks are recognized. |
+| `no_html_blocks` | Disable raw HTML blocks. |
+| `no_html_spans` | Disable raw inline HTML spans. |
+| `tables` | Enable the tables extension. |
+| `strikethrough` | Enable `~~strikethrough~~` spans. |
+| `permissive_www_autolinks` | Recognize `www.` links as autolinks even without a scheme prefix. |
+| `tasklists` | Enable task-list items such as `- [x] done`. |
+| `task_lists` | Alias for `tasklists`. |
+| `latex_math_spans` | Enable inline `$...$` and display `$$...$$` LaTeX math spans. |
+| `wikilinks` | Enable wiki-link spans. |
+| `wiki_links` | Alias for `wikilinks`. |
+| `underline` | Enable underline spans and disable `_` as emphasis. |
+| `hard_soft_breaks` | Treat every soft line break as a hard break. |
+| `spoilers` | Enable spoiler spans written with double vertical bars. |
+| `superscripts` | Enable `^superscript^` spans. |
+| `subscripts` | Enable `~subscript~` spans. |
+| `admonitions` | Enable admonition blocks such as notes, tips and warnings. |
+| `footnotes` | Enable `[^label]` footnote references and definitions. |
+| `highlight` | Enable `==highlight==` spans. |
+| `preserve_blank_lines` | Report runs of blank lines as `blank` block events. |
+| `insert` | Enable insertion spans. |
+]]),
+                    entry("markdown.html_flags", "markdown.html_flags", "table",
+                        "Named md4c-html renderer flags.",
+                        [[
+Named values for the `renderer_flags` option.  The option accepts either an
+integer bitmask or an array whose entries are names from this table or integer
+flags.
+
+| Flag | Description |
+| --- | --- |
+| `debug` | Write md4c debug output to standard error. |
+| `verbatim_entities` | Keep HTML entities verbatim instead of resolving them. |
+| `skip_utf8_bom` | Skip a UTF-8 byte-order mark at the start of the input. |
+| `xhtml` | Generate XHTML-style self-closing tags such as `<br />`. |
+]]),
+                }, { upstream = "https://github.com/mity/md4c", license = "MIT" }),
             },
         },
 

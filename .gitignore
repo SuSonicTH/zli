@@ -1,6 +1,7 @@
 .vscode/
 .idea/
 .zig-cache/
+.agents/
 zig-out/
 zig-pkg/
 zig/

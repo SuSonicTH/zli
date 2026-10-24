@@ -152,6 +152,10 @@ function Test_docs.Test_markdown_renderer()
     lu.assertStrContains(text, "| Name | Value  |")
     lu.assertStrContains(text, "| a    | longer |")
     lu.assertNotStrContains(text, "`")
+
+    text = markdown.to_text("| A | B |\n| --- | --- |\n| | x |")
+    lu.assertStrContains(text, "| A | B |")
+    lu.assertStrContains(text, "|   | x |")
 end
 
 function Test_docs.Test_markdown_renders_nested_emphasis()
@@ -560,6 +564,7 @@ local completed_doc_modules = {
     xlsxmlwriter = true,
     luaunit = true,
     serpent = true,
+    markdown = true,
     csv = true,
     luastrip = true,
     sqlite3 = true,

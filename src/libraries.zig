@@ -12,6 +12,7 @@ const luastrip = @import("luastrip.zig");
 const uuid = @import("uuid.zig");
 const tar = @import("tar.zig");
 const gzip = @import("gzip.zig");
+const markdown = @import("markdown.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
@@ -79,6 +80,10 @@ const preload: []const zlua.FnReg = &.{
     .{
         .name = "gzip",
         .func = zlua.wrap(gzip.register),
+    },
+    .{
+        .name = "markdown",
+        .func = zlua.wrap(markdown.register),
     },
 };
 

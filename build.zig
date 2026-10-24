@@ -151,20 +151,28 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     //translate the C headers used by the Zig sources
     const crossline_dep = b.dependency("crossline", .{});
     const translate_c = b.addTranslateC(.{
-        .root_source_file = b.path("src/c.h"),
+        .root_source_file = crossline_dep.path("crossline.h"),
         .target = target,
         .optimize = optimize,
     });
-    translate_c.addIncludePath(b.path("src/"));
     translate_c.addIncludePath(crossline_dep.path(""));
     exe.root_module.addImport("c", translate_c.createModule());
+
+    const md4c_dep = b.dependency("md4c", .{});
+    const translate_md4c = b.addTranslateC(.{
+        .root_source_file = md4c_dep.path("src/md4c-html.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    translate_md4c.addIncludePath(md4c_dep.path("src"));
+    exe.root_module.addImport("md4c_c", translate_md4c.createModule());
 
     //libraries
     exe.root_module.linkLibrary(lsqlite3(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(lpeg(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(luaCJson(b, target, optimize, luaPath));
+    exe.root_module.linkLibrary(md4c(b, target, optimize));
     exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
-    exe.root_module.linkLibrary(timer(b, target, optimize));
 
     return exe;
 }
@@ -399,6 +407,27 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
     return lib;
 }
 
+fn md4c(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+    const lib = b.addLibrary(.{
+        .name = "md4c",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
+        .linkage = .static,
+    });
+    const dependency = b.dependency("md4c", .{});
+    const source_dir = dependency.path("src");
+    lib.root_module.addIncludePath(source_dir);
+    lib.root_module.addCSourceFiles(.{ .root = source_dir, .files = &[_][]const u8{
+        "md4c.c",
+        "md4c-html.c",
+        "entity.c",
+    }, .flags = flags_c99 });
+    lib.root_module.link_libc = true;
+    return lib;
+}
+
 fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
         .name = "lua_cjson",
@@ -434,21 +463,6 @@ fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.buil
     lib.root_module.addIncludePath(dependency.path(""));
     exe.root_module.addIncludePath(dependency.path(""));
     lib.root_module.addCSourceFile(.{ .file = dependency.path("crossline.c"), .flags = flags_c99 });
-    lib.root_module.link_libc = true;
-    return lib;
-}
-
-fn timer(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = "timer",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .static,
-    });
-    lib.root_module.addIncludePath(b.path("src/"));
-    lib.root_module.addCSourceFile(.{ .file = b.path("src/timer.c"), .flags = flags_c99 });
     lib.root_module.link_libc = true;
     return lib;
 }

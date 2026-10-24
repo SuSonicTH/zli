@@ -7,8 +7,6 @@ const luaerror = @import("luaerror.zig");
 
 const builtin = @import("builtin");
 
-const c = @import("c");
-
 const string_functions = [_]zlua.FnReg{
     .{ .name = "split", .func = zlua.wrap(split) },
     .{ .name = "to_table", .func = zlua.wrap(to_table) },
@@ -62,8 +60,35 @@ fn os_get_name(lua: *Lua) i32 {
 }
 
 fn nanotime(lua: *Lua) i32 {
-    lua.pushNumber(c.nanotime());
+    lua.pushNumber(monotonicSeconds());
     return 1;
+}
+
+fn monotonicSeconds() f64 {
+    return switch (builtin.os.tag) {
+        .windows => windowsMonotonicSeconds(),
+        else => posixMonotonicSeconds(),
+    };
+}
+
+fn posixMonotonicSeconds() f64 {
+    var ts: std.posix.timespec = undefined;
+    if (std.posix.errno(std.posix.system.clock_gettime(.MONOTONIC, &ts)) != .SUCCESS) {
+        return 0;
+    }
+    return @as(f64, @floatFromInt(ts.sec)) + @as(f64, @floatFromInt(ts.nsec)) / std.time.ns_per_s;
+}
+
+fn windowsMonotonicSeconds() f64 {
+    const windows = std.os.windows;
+
+    var frequency: windows.LARGE_INTEGER = undefined;
+    var counter: windows.LARGE_INTEGER = undefined;
+    if (!windows.ntdll.RtlQueryPerformanceFrequency(&frequency).toBool()) return 0;
+    if (!windows.ntdll.RtlQueryPerformanceCounter(&counter).toBool()) return 0;
+    if (frequency == 0) return 0;
+
+    return @as(f64, @floatFromInt(counter)) / @as(f64, @floatFromInt(frequency));
 }
 
 fn split(lua: *Lua) i32 {

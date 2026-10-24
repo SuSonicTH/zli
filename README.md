@@ -40,6 +40,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | library     | link                                  | licence | description                                           |
 | ----------- | ------------------------------------- | ------- | ----------------------------------------------------- |
 | Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Small, self-contained readline/libedit replacement    |
+| markdown    | https://github.com/mity/md4c          | MIT     | Markdown parser and HTML renderer based on md4c       |
 
 ### ZLI libraries
 
