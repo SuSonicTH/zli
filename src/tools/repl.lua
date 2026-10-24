@@ -34,7 +34,7 @@ fs = require "filesystem"
 sqlite3 = require "sqlite3"
 stream = require "stream"
 zip = require "zip"
-zlib = require "zlib"
+gzip = require "gzip"
 cl = require "crossline"
 collection = require "collection"
 

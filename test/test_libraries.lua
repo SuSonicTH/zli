@@ -3,7 +3,6 @@ lu.ORDER_ACTUAL_EXPECTED = false
 
 local sqlite3 = require "sqlite3"
 local lpeg = require "lpeg"
-local zlib = require "zlib"
 local re = require "re"
 local csv = require "csv"
 local json = require "cjson"
@@ -11,13 +10,6 @@ local argparse = require "argparse"
 local F = require("F")
 
 Test_libraries = {}
-
-function Test_libraries:Test_zlib()
-    local test_string = "abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv"
-    local deflated = zlib.deflate()(test_string, "finish")
-    local inflated = zlib.inflate()(deflated, "finish")
-    lu.assertEquals(test_string, inflated)
-end
 
 function Test_libraries:Test_lpeg()
     local number = lpeg.R "09" ^ 1 / tonumber

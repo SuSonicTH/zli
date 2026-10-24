@@ -11,10 +11,10 @@ const httpserver = @import("httpserver.zig");
 const luastrip = @import("luastrip.zig");
 const uuid = @import("uuid.zig");
 const tar = @import("tar.zig");
+const gzip = @import("gzip.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
-pub extern fn luaopen_zlib(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.c) c_int;
 
 const std = @import("std");
@@ -27,10 +27,6 @@ const preload: []const zlua.FnReg = &.{
     .{
         .name = "lpeg",
         .func = &luaopen_lpeg,
-    },
-    .{
-        .name = "zlib",
-        .func = &luaopen_zlib,
     },
     .{
         .name = "cjson",
@@ -80,6 +76,10 @@ const preload: []const zlua.FnReg = &.{
         .name = "tar",
         .func = zlua.wrap(tar.register),
     },
+    .{
+        .name = "gzip",
+        .func = zlua.wrap(gzip.register),
+    },
 };
 
 const luascript = struct {
@@ -117,6 +117,7 @@ pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     luastrip.setIo(io);
     uuid.setIo(io);
     tar.setIo(io);
+    gzip.setIo(io);
 
     lua.openLibs();
     _ = lua.getSubtable(zlua.registry_index, "_PRELOAD");

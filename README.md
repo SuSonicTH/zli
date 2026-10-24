@@ -31,7 +31,6 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | ftcsv      | https://github.com/FourierTransformer/ftcsv | MIT     | Fast CSV library written in pure Lua                                   |
 | LPeg       | https://www.inf.puc-rio.br/~roberto/lpeg/   | MIT     | Pattern-matching library for Lua based on Parsing Expression Grammars  |
 | lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                             |
-| lua-zlib   | https://github.com/brimworks/lua-zlib       | MIT     | Lua binding to zlib                                                    |
 | LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | Thin wrapper around the SQLite3 database engine                        |
 | luaunit    | https://github.com/bluebird75/luaunit       | BSD     | Unit-testing framework for Lua                                         |
 | Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer                                      |
@@ -41,7 +40,6 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | library     | link                                  | licence | description                                           |
 | ----------- | ------------------------------------- | ------- | ----------------------------------------------------- |
 | Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Small, self-contained readline/libedit replacement    |
-| unzip / zip | https://zlib.net/                     | MIT     | Bindings to the minizip library for zip file handling |
 
 ### ZLI libraries
 
@@ -52,6 +50,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | collection   | Collection library similar to Java collections: (Hash)Set, (Hash)Map and (Array)List                        |
 | filesystem   | Filesystem functions: listing/creating/changing directories, deleting/renaming/moving files and directories |
 | grid         | Line-drawing text grids (tables) with per-column alignment, padding and min/max width                       |
+| gzip         | Read and write gzip-compressed files                                                                       |
 | httpclient   | Convenient HTTP client based on Zig's HTTP client (GET, HEAD, POST, PUT, PATCH, DELETE)                     |
 | httpserver   | Convenient HTTP server based on Zig's HTTP server, with optional file caching and static file serving       |
 | logger       | Very simple logging library                                                                                 |
@@ -60,6 +59,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | stream       | Stream library inspired by Java streams for functional-style Lua                                            |
 | tar          | Read/write tar files (optional gzip compression) and read `.xz`/`.zstd` compressed tar files                |
 | timer        | Nanosecond timer, also available as `os.nanotime`                                                           |
+| unzip / zip  | Create, read, extract and append zip archives                                                              |
 | uuid         | V4 and V7 UUID generation                                                                                   |
 | xlsxmlwriter | Simple Excel XML writer                                                                                     |
 

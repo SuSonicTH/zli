@@ -4,14 +4,13 @@ const zlua = @import("zlua");
 const libraries = @import("libraries.zig");
 const Utf8Output = @import("Utf8Output.zig");
 const luax = @import("luax.zig");
-
-const c = @import("c");
+const zip_reader = @import("zip_reader.zig");
 
 const Lua = zlua.Lua;
 
 const init_lua: [:0]const u8 = @embedFile("init.lua");
 var prog_name: [:0]const u8 = undefined;
-var uzfh: c.unzFile = null;
+var payload: ?zip_reader.Archive = null;
 
 const allocator = std.heap.c_allocator;
 
@@ -45,7 +44,8 @@ pub fn main(init: std.process.Init) !void {
 
     _ = lua.gcSetGenerational(0, 0);
     _ = libraries.openlibs(init.io, lua);
-    try create_payload_searcher(lua);
+    try create_payload_searcher(lua, init.io);
+    defer if (payload) |*archive| archive.deinit();
     createZliTable(lua);
 
     const selection = selectScript(arena.allocator(), args, init.io) catch |err| {
@@ -105,9 +105,9 @@ fn findPayloadEntry(a: std.mem.Allocator, name: []const u8) !?[:0]u8 {
     return null;
 }
 
-fn payloadHasName(name: [:0]const u8) bool {
-    if (uzfh == null) return false;
-    return c.unzLocateFile(uzfh, name.ptr, 0) == c.UNZ_OK;
+fn payloadHasName(name: []const u8) bool {
+    if (payload == null) return false;
+    return payload.?.find(name) != null;
 }
 
 fn isExistingFile(io: std.Io, path: []const u8) bool {
@@ -134,24 +134,25 @@ fn runInit(lua: *Lua) void {
 }
 
 fn runPayload(lua: *Lua, name: [:0]const u8) void {
-    if (uzfh == null) {
+    if (payload == null) {
         std.debug.print("Error: no payload attached to '{s}'\n", .{prog_name});
         std.process.exit(1);
     }
-    if (c.unzLocateFile(uzfh, name.ptr, 0) != c.UNZ_OK) {
+
+    const data = payload.?.readAll(name, allocator) catch |err| {
+        std.debug.print("Error: could not read script '{s}' from payload: {s}\n", .{ name, @errorName(err) });
+        std.process.exit(1);
+    } orelse {
         std.debug.print("Error: script '{s}' not found in payload\n", .{name});
         std.process.exit(1);
-    }
-    if (c.unzOpenCurrentFile(uzfh) != c.UNZ_OK) {
-        std.debug.print("Error: could not open script '{s}' in payload\n", .{name});
-        std.process.exit(1);
-    }
-    lua.load(payload_reder, undefined, name, .binary_text) catch {
-        _ = c.unzCloseCurrentFile(uzfh);
+    };
+
+    lua.loadBuffer(data, name, .binary_text) catch {
+        allocator.free(data);
         reportLuaError(lua);
         std.process.exit(1);
     };
-    _ = c.unzCloseCurrentFile(uzfh);
+    allocator.free(data);
     callChunk(lua);
 }
 
@@ -234,7 +235,7 @@ fn createZliTable(lua: *Lua) void {
 
 fn zli_dofile(lua: *Lua) i32 {
     const name = lua.checkString(1);
-    if (uzfh == null) {
+    if (payload == null) {
         return lua.raiseErrorStr("no payload attached", .{});
     }
 
@@ -242,19 +243,23 @@ fn zli_dofile(lua: *Lua) i32 {
     if (entry == null) {
         return lua.raiseErrorStr("script '%s' not found in payload", .{name.ptr});
     }
-    defer allocator.free(entry.?);
 
-    if (c.unzLocateFile(uzfh, entry.?.ptr, 0) != c.UNZ_OK) {
+    const data = payload.?.readAll(entry.?, allocator) catch {
+        allocator.free(entry.?);
+        return lua.raiseErrorStr("could not read script '%s' from payload", .{name.ptr});
+    };
+    if (data == null) {
+        allocator.free(entry.?);
         return lua.raiseErrorStr("script '%s' not found in payload", .{name.ptr});
     }
-    if (c.unzOpenCurrentFile(uzfh) != c.UNZ_OK) {
-        return lua.raiseErrorStr("could not open script '%s' in payload", .{name.ptr});
-    }
-    lua.load(payload_reder, undefined, entry.?, .binary_text) catch {
-        _ = c.unzCloseCurrentFile(uzfh);
+
+    lua.loadBuffer(data.?, entry.?, .binary_text) catch {
+        allocator.free(data.?);
+        allocator.free(entry.?);
         lua.raiseError();
     };
-    _ = c.unzCloseCurrentFile(uzfh);
+    allocator.free(data.?);
+    allocator.free(entry.?);
     lua.call(.{ .args = 0, .results = 0 });
     return 0;
 }
@@ -292,9 +297,9 @@ fn messageHandler(lua: *Lua) i32 {
     return 1;
 }
 
-fn create_payload_searcher(lua: *Lua) !void {
-    uzfh = c.unzOpen(prog_name);
-    if (uzfh == null) {
+fn create_payload_searcher(lua: *Lua, io: std.Io) !void {
+    payload = zip_reader.Archive.init(allocator, io, prog_name) catch null;
+    if (payload == null) {
         return;
     }
     const top = lua.getTop();
@@ -318,44 +323,39 @@ fn payload_searcher(lua: *Lua) i32 {
     const filename = std.fmt.allocPrintSentinel(allocator, "{s}{s}", .{ arg, extension_lua }, 0) catch unreachable;
     defer allocator.free(filename);
 
-    if (c.unzLocateFile(uzfh, filename, 0) != c.UNZ_OK) {
+    var found_name: []const u8 = filename;
+    if (payload == null or payload.?.find(filename) == null) {
         const initName = std.fmt.allocPrintSentinel(allocator, "{s}{s}", .{ arg, extension_init }, 0) catch unreachable;
         defer allocator.free(initName);
 
-        if (c.unzLocateFile(uzfh, initName, 0) != c.UNZ_OK) {
+        if (payload == null or payload.?.find(initName) == null) {
             _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ &arg, &arg, prog_name.ptr });
             return 1;
         }
-    }
-
-    if (c.unzOpenCurrentFile(uzfh) != c.UNZ_OK) {
-        lua.pushNil();
-        return 1;
+        found_name = initName;
     }
 
     lua.pushFunction(zlua.wrap(payload_loader));
-    _ = lua.pushString(std.mem.sliceTo(arg, 0));
+    _ = lua.pushString(found_name);
     return 2;
 }
 
-const BUFFER_SIZE: usize = 4096;
-var buffer: [BUFFER_SIZE]u8 = undefined;
-
-fn payload_reder(state: ?*zlua.LuaState, data: ?*anyopaque, size: [*c]usize) callconv(.c) [*c]const u8 {
-    _ = data;
-    _ = state;
-    const read = c.unzReadCurrentFile(uzfh, &buffer, BUFFER_SIZE);
-    size.* = if (read > 0) @intCast(read) else 0;
-    return &buffer;
-}
-
 fn payload_loader(lua: *Lua) i32 {
-    const name: [*:0]const u8 = lua.toString(2) catch unreachable;
-    lua.load(payload_reder, undefined, name[0..std.mem.len(name) :0], .binary_text) catch {
-        _ = c.unzCloseCurrentFile(uzfh);
+    const name = lua.checkString(2);
+    if (payload == null) {
+        return lua.raiseErrorStr("no payload attached", .{});
+    }
+
+    const maybe_data = payload.?.readAll(name, allocator) catch
+        return lua.raiseErrorStr("could not read module '%s' from payload", .{name.ptr});
+    const data = maybe_data orelse
+        return lua.raiseErrorStr("module '%s' not found in payload", .{name.ptr});
+
+    lua.loadBuffer(data, name, .binary_text) catch {
+        allocator.free(data);
         lua.raiseError();
     };
-    _ = c.unzCloseCurrentFile(uzfh);
+    allocator.free(data);
     lua.call(.{ .args = 0, .results = -1 });
     return 1;
 }

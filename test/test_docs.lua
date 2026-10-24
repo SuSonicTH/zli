@@ -29,7 +29,6 @@ local readme_require_names = {
     ["f-string"] = { "F" },
     ["ftcsv"] = { "csv" },
     ["lua-cjson"] = { "cjson" },
-    ["lua-zlib"] = { "zlib" },
     ["luasqlite3"] = { "sqlite3" },
     ["logger"] = { "log" },
     ["unzip / zip"] = { "unzip", "zip" },
@@ -267,8 +266,6 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
         { "lpeg", "https://www.inf.puc-rio.br/~roberto/lpeg/" },
         { "sqlite3", "http://lua.sqlite.org/" },
         { "crossline", "https://github.com/jcwangxp/Crossline" },
-        { "zip", "https://zlib.net/" },
-        { "unzip", "https://zlib.net/" },
     }
     for _, item in ipairs(expected) do
         local entry = docs.find(item[1])
@@ -284,6 +281,16 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
     lu.assertStrContains(html, "Licenses and attribution")
     lu.assertStrContains(html, "href=\"#licenses\"")
     lu.assertStrContains(html, "Lua license")
+end
+
+function Test_docs.Test_documentation_does_not_reference_removed_compression_libraries()
+    local markdown = docs.render_libraries_markdown():lower()
+    lu.assertNotStrContains(markdown, "zlib")
+    lu.assertNotStrContains(markdown, "minizip")
+
+    local readme = fs.read_all("README.md"):lower()
+    lu.assertNotStrContains(readme, "zlib")
+    lu.assertNotStrContains(readme, "minizip")
 end
 
 function Test_docs.Test_libraries_markdown_does_not_repeat_upstream()
@@ -560,7 +567,7 @@ local completed_doc_modules = {
     lpeg = true,
     re = true,
     cjson = true,
-    zlib = true,
+    gzip = true,
     tar = true,
     log = true,
     crossline = true,

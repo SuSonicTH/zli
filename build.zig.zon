@@ -41,10 +41,6 @@
             .url = "https://github.com/openresty/lua-cjson/archive/5f53e878d0441e1555f53060178c61d161079e06.tar.gz",
             .hash = "N-V-__8AAJuSBQADQ7hPyVAbRiFH6JCktHkrRLvUxHv7rq-I",
         },
-        .lua_zlib = .{
-            .url = "https://github.com/brimworks/lua-zlib/archive/82132912c82337abcafaab2b586090d7783713e3.tar.gz",
-            .hash = "N-V-__8AAAogAQDQ2fp49AfevXq3vVC669j54L1OsNDkbK22",
-        },
         .lpeg = .{
             .url = "https://github.com/roberto-ieru/LPeg/archive/089112f883540c4434e9e8e96de50a75f2b15f7e.tar.gz",
             .hash = "N-V-__8AACfxAwCvtHcpvfm07uO8haEdr4NR81k5xib8pjbB",
@@ -52,10 +48,6 @@
         .lsqlite3 = .{
             .url = "https://github.com/SuSonicTH/lsqlite3/archive/c19ef2d599a7b349adb8361b7fea3228e0891e4a.tar.gz",
             .hash = "N-V-__8AANVMfgBrHNqt5laBYX0z9m8cuBrGearI-i6qDej-",
-        },
-        .zlib = .{
-            .url = "https://zlib.net/zlib-1.3.2.tar.gz",
-            .hash = "N-V-__8AAJ2cNgAgfBtAw33Bxfu1IWISDeKKSr3DAqoAysIJ",
         },
         .zupx = .{
             .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.2.0.tar.gz",

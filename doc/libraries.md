@@ -3921,13 +3921,9 @@ After this call the workbook should not be used further. Returns the workbook ob
 
 Create zip archives.
 
-Upstream: https://zlib.net/
-
-License: MIT
-
 `zip.create(filename)` creates a zip archive.  The writer supports files,
 in-memory data, directories and nested archives.  `zip.add_directory` adds a
-filesystem directory tree.
+filesystem directory tree.  Timestamps are stored in UTC.
 
 #### `zip.create(filename)`
 
@@ -4104,10 +4100,6 @@ z:close_zip("built by ZLI")
 ### unzip
 
 Read and extract zip archives.
-
-Upstream: https://zlib.net/
-
-License: MIT
 
 `unzip.open(filename)` returns an archive object.  Archives expose entries as
 tables with `name`, `path`, `full_path`, `is_file`, `is_directory`, sizes,
@@ -4310,6 +4302,152 @@ local archive = assert(unzip.open("bundle.zip"))
 local entry = archive:dir()["src/main.lua"]
 entry:extract("main.lua")
 ```
+
+### gzip
+
+Read and write gzip-compressed files.
+
+`gzip.open(filename [, mode [, level]])` opens a gzip-compressed file.  The
+default mode is `"r"`; pass `"w"` to create or truncate the file.  Reading and
+writing handles expose the methods documented below.  `gzip.compress` and
+`gzip.decompress` are one-shot helpers.  `gzip.open` readers and both helpers
+consume a single gzip member; concatenated members and trailing bytes are not
+followed.
+
+#### `gzip.open(filename [, mode [, level]])`
+
+Open a gzip-compressed file.
+
+Open a gzip file for reading or writing.
+
+`mode` is `"r"` (the default) or `"w"`. `level` selects compression when writing and accepts `"store"`, `"fastest"`, `"fast"`, `"normal"`, `"default"`, `"high"`, `"max"`, `"best"` or a number from `0` to `9`. The default is `6`. Level `0` stores data without compression.
+
+Returns a reader or writer object. On failure it returns `nil, message`.
+
+```lua
+local gzip = require "gzip"
+local file = assert(gzip.open("data.txt.gz", "w", 9))
+file:write("hello\n")
+file:close()
+```
+
+#### `gzip.compress(data [, level])`
+
+Compress a string into gzip data.
+
+Compress a complete string and return the gzip stream.
+
+`level` has the same meaning and default as for `gzip.open`. The result can be written to a `.gz` file or passed to `gzip.decompress`.
+
+```lua
+local gzip = require "gzip"
+local packed = gzip.compress("hello world", "best")
+```
+
+#### `gzip.decompress(data)`
+
+Decompress a complete gzip stream.
+
+Decompress a complete gzip stream and return the original string.
+
+Invalid, truncated or checksum-failing input returns `nil, message`; it does not return partial output. Only the first gzip member is consumed.
+
+```lua
+local gzip = require "gzip"
+local text = gzip.decompress(gzip.compress("hello world"))
+print(text) --> hello world
+```
+
+#### `reader:read([count | format])`
+
+Read decompressed bytes.
+
+Read data from the gzip stream.
+
+With a number, read at most that many bytes. With `"a"` read the rest of the stream. `"l"` and `"L"` read one line without or with the line ending. The default is `"l"`. Returns `nil` at end of stream.
+
+```lua
+local gzip = require "gzip"
+local reader = assert(gzip.open("data.txt.gz"))
+local first = reader:read("l")
+local rest = reader:read("a")
+reader:close()
+```
+
+#### `reader:read_all()`
+
+Read the whole stream.
+
+Read the remainder of the gzip stream into a string. Equivalent to `reader:read("a")`.
+
+```lua
+local gzip = require "gzip"
+local reader = assert(gzip.open("data.txt.gz"))
+local text = reader:read_all()
+reader:close()
+```
+
+#### `reader:lines()`
+
+Iterate over decompressed lines.
+
+Return an iterator that yields each line without its line-ending characters.
+
+```lua
+local gzip = require "gzip"
+local reader = assert(gzip.open("data.txt.gz"))
+for line in reader:lines() do
+    print(line)
+end
+reader:close()
+```
+
+#### `reader:seek([whence [, offset]])`
+
+Move to another uncompressed position.
+
+Move the read position in the uncompressed stream.
+
+`whence` is `"set"`, `"cur"` or `"end"` and defaults to `"cur"`; `offset` defaults to `0`. Seeking restarts decompression from the beginning and discards bytes as needed, so it is not a constant-time operation. Returns the new absolute position.
+
+```lua
+local gzip = require "gzip"
+local reader = assert(gzip.open("data.txt.gz"))
+reader:seek("set", 0)
+```
+
+#### `reader:close()`
+
+Close a gzip reader.
+
+Close the underlying file and release decompression state. Calling `close` more than once is safe.
+
+#### `writer:write(...)`
+
+Write data to a gzip file.
+
+Write one or more strings to the gzip stream. Numbers are accepted and converted to strings. Returns the writer for chaining.
+
+```lua
+local gzip = require "gzip"
+local writer = assert(gzip.open("out.gz", "w"))
+writer:write("first line\n", "second line\n")
+writer:close()
+```
+
+#### `writer:flush()`
+
+Flush compressed data.
+
+Flush buffered compressed data to the file without ending the gzip stream. Returns the writer for chaining.
+
+#### `writer:close()`
+
+Finish and close a gzip file.
+
+Finish the deflate stream, write the gzip trailer, flush the file and close it.
+
+The writer must not be used after `close`. A writer that is garbage-collected without an explicit `close` attempts to finish as well, but explicit closing reports failures at a predictable point. Calling `close` more than once is safe.
 
 ## Third-party libraries
 
@@ -5495,124 +5633,6 @@ print(cjson.encode({ a = 1 }))
 --> }
 ```
 
-### zlib
-
-Lua binding to zlib.
-
-Upstream: https://github.com/brimworks/lua-zlib
-
-License: MIT
-
-`zlib.deflate()` and `zlib.inflate()` return streaming compressor/decompressor
-functions.  `zlib.compress` and `zlib.decompress` are one-shot helpers.  Checksum
-helpers `adler32` and `crc32` are also available.
-
-#### `zlib.deflate([level [, window_bits]])`
-
-Create a streaming deflate function.
-
-Create a streaming deflate function.
-
-`level` defaults to zlib's default compression level (`-1`), and `window_bits` defaults to 15. A negative window size requests raw deflate output without the zlib wrapper. The returned closure accepts a string chunk and an optional flush mode (`"none"`, `"sync"`, `"full"` or `"finish"`), and returns the compressed chunk, an end-of-stream flag, and total input/output byte counts.
-
-Passing `nil` or no input finishes the stream. After `"finish"` the closure must not be called with more data.
-
-```lua
-local zlib = require "zlib"
-local deflate = zlib.deflate()
-local compressed = deflate("hello world", "finish")
-print(#compressed > 0) --> true
-```
-
-#### `zlib.inflate([window_bits])`
-
-Create a streaming inflate function.
-
-Create a streaming inflate function.
-
-`window_bits` defaults to 15 plus automatic gzip/zlib header detection. The returned closure accepts compressed input and returns the decompressed chunk, an end-of-stream flag, and total input/output byte counts. It accepts input split at arbitrary byte boundaries.
-
-After the stream reports end-of-input, further calls with data raise an error.
-
-```lua
-local zlib = require "zlib"
-local deflate = zlib.deflate()
-local inflate = zlib.inflate()
-local packed = deflate("hello", "finish")
-print(inflate(packed)) --> hello
-```
-
-#### `zlib.compress(data [, level])`
-
-Compress a string in one call.
-
-Compress a complete string in one call.
-
-`level` defaults to the zlib default and may be `zlib.BEST_SPEED` through `zlib.BEST_COMPRESSION`. The result is a zlib-wrapped compressed string. On success a second return value carries the zlib status code; initialisation failure returns `nil, code`.
-
-```lua
-local zlib = require "zlib"
-local packed, status = zlib.compress("hello world", zlib.BEST_SPEED)
-print(type(packed), type(status)) --> string number
-```
-
-#### `zlib.decompress(data [, window_bits])`
-
-Decompress a string in one call.
-
-Decompress a complete zlib stream in one call.
-
-`window_bits` defaults to 15 and must match the stream format. Invalid or truncated input raises an error rather than returning a partial string.
-
-```lua
-local zlib = require "zlib"
-local packed = zlib.compress("hello")
-print(zlib.decompress(packed)) --> hello
-```
-
-#### `zlib.adler32([previous, data])`
-
-Compute an Adler-32 checksum.
-
-Create or update an Adler-32 checksum.
-
-Called with no arguments it returns a checksum function; each call of that function accepts a string and returns the running checksum. In compatibility mode you may instead call `zlib.adler32(previous, data)` with a numeric starting checksum and a string, which returns the updated number directly.
-
-```lua
-local zlib = require "zlib"
-local checksum = zlib.adler32()
-checksum("one")
-print(type(checksum(" two"))) --> number
-```
-
-#### `zlib.crc32([previous, data])`
-
-Compute a CRC-32 checksum.
-
-Create or update a CRC-32 checksum.
-
-Called with no arguments it returns a stateful checksum function that accepts strings and returns the running CRC. Compatibility mode also accepts `zlib.crc32(previous, data)` and returns the updated number immediately.
-
-```lua
-local zlib = require "zlib"
-local checksum = zlib.crc32()
-print(type(checksum("hello"))) --> number
-```
-
-#### `zlib.version()`
-
-Return the zlib version.
-
-Return the linked zlib version as a numeric tuple.
-
-The results are the major, minor and optional patch components, for example `1, 3, 1`. The patch value is `nil` when the version string omits it. This differs from some other zlib bindings that return a version string.
-
-```lua
-local zlib = require "zlib"
-local major, minor, patch = zlib.version()
-print(major, minor, patch)
-```
-
 ### sqlite3
 
 LuaSQLite3 binding.
@@ -6685,7 +6705,7 @@ Start the interactive Read-Eval-Print Loop.
 The REPL runs `~/.config/zli/init.lua`, then `~/.config/zli/repl_init.lua`,
 before showing the prompt. The generated `repl_init.lua` preloads common modules
 such as `csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`, `filesystem`,
-`sqlite3`, `stream`, `zip`, `zlib`, `crossline` and `collection`; edit that file
+`sqlite3`, `stream`, `zip`, `gzip`, `crossline` and `collection`; edit that file
 to change the defaults. History is kept in `~/.config/zli/repl_history`.
 
 Enter `quit` or `exit`, or press Ctrl-D, to leave. `?expression` pretty-prints
@@ -6924,7 +6944,7 @@ REPL-only init script.
 The file lives at `~/.config/zli/repl_init.lua` and is executed by `@repl`
 after the global `init.lua`. If missing, the REPL creates it with assignments
 for commonly used modules (`csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`,
-`filesystem`, `sqlite3`, `stream`, `zip`, `zlib`, `crossline`, `collection`).
+`filesystem`, `sqlite3`, `stream`, `zip`, `gzip`, `crossline`, `collection`).
 Use it for prompt helpers and other state that should exist only in interactive
 sessions; errors abort the REPL.
 

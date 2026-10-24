@@ -148,14 +148,6 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     //add lualibs (strip for non debug)
     luaLibs(b, optimize, exe.root_module);
 
-    //zlib and zip libraries
-    const zlib_dep = b.dependency("zlib", .{});
-    exe.root_module.addIncludePath(zlib_dep.path(""));
-    exe.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
-    exe.root_module.linkLibrary(zlib(b, target, optimize, zlib_dep));
-    exe.root_module.linkLibrary(luaZlib(b, target, optimize, zlib_dep, luaPath));
-    exe.root_module.linkLibrary(miniZip(b, target, optimize, zlib_dep));
-
     //translate the C headers used by the Zig sources
     const crossline_dep = b.dependency("crossline", .{});
     const translate_c = b.addTranslateC(.{
@@ -164,8 +156,6 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
         .optimize = optimize,
     });
     translate_c.addIncludePath(b.path("src/"));
-    translate_c.addIncludePath(zlib_dep.path(""));
-    translate_c.addIncludePath(zlib_dep.path("contrib/minizip/"));
     translate_c.addIncludePath(crossline_dep.path(""));
     exe.root_module.addImport("c", translate_c.createModule());
 
@@ -263,7 +253,6 @@ fn payloadFile(
 }
 
 fn payloadTool(b: *std.Build) *std.Build.Step.Compile {
-    const zlib_dep = b.dependency("zlib", .{});
     const host = b.graph.host;
 
     const tool = b.addExecutable(.{
@@ -275,22 +264,7 @@ fn payloadTool(b: *std.Build) *std.Build.Step.Compile {
             .strip = true,
         }),
     });
-    tool.root_module.addIncludePath(b.path("src/"));
-    tool.root_module.addIncludePath(zlib_dep.path(""));
-    tool.root_module.addIncludePath(zlib_dep.path("contrib/minizip/"));
     tool.root_module.link_libc = true;
-    tool.root_module.linkLibrary(zlib(b, host, .fast, zlib_dep));
-    tool.root_module.linkLibrary(miniZip(b, host, .fast, zlib_dep));
-
-    const translate_c = b.addTranslateC(.{
-        .root_source_file = b.path("src/c_zip.h"),
-        .target = host,
-        .optimize = .fast,
-    });
-    translate_c.addIncludePath(b.path("src/"));
-    translate_c.addIncludePath(zlib_dep.path(""));
-    translate_c.addIncludePath(zlib_dep.path("contrib/minizip/"));
-    tool.root_module.addImport("c_zip", translate_c.createModule());
 
     return tool;
 }
@@ -421,83 +395,6 @@ fn lpeg(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.O
         "lptree.c",
         "lpvm.c",
     }, .flags = flags_c99 });
-    lib.root_module.link_libc = true;
-    return lib;
-}
-
-fn zlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = "zlib",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .static,
-    });
-    lib.root_module.addIncludePath(zlib_deb.path(""));
-    lib.root_module.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
-        "adler32.c",
-        "crc32.c",
-        "gzclose.c",
-        "gzread.c",
-        "infback.c",
-        "inflate.c",
-        "trees.c",
-        "zutil.c",
-        "compress.c",
-        "deflate.c",
-        "gzlib.c",
-        "gzwrite.c",
-        "inffast.c",
-        "inftrees.c",
-        "uncompr.c",
-    }, .flags = &.{"-std=gnu89"} });
-    lib.root_module.link_libc = true;
-    return lib;
-}
-
-fn luaZlib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = "lua_zlib",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .static,
-    });
-    lib.root_module.addIncludePath(luaPath);
-    lib.root_module.addIncludePath(zlib_deb.path(""));
-    const dependency = b.dependency("lua_zlib", .{});
-    lib.root_module.addCSourceFile(.{ .file = dependency.path("lua_zlib.c"), .flags = &[_][]const u8{ "-std=c99", "-DLZLIB_COMPAT" } });
-    lib.root_module.link_libc = true;
-    return lib;
-}
-
-fn miniZip(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, zlib_deb: *std.Build.Dependency) *std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = "miniZip",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .static,
-    });
-    lib.root_module.addIncludePath(b.path("src/"));
-    lib.root_module.addIncludePath(zlib_deb.path(""));
-    lib.root_module.addIncludePath(zlib_deb.path("contrib/minizip/"));
-    lib.root_module.addCSourceFiles(.{ .root = zlib_deb.path(""), .files = &[_][]const u8{
-        "contrib/minizip/zip.c",
-        "contrib/minizip/unzip.c",
-        "contrib/minizip/ioapi.c",
-    }, .flags = flags_c99 });
-    lib.root_module.addCSourceFile(.{ .file = b.path("src/zip_util.c"), .flags = flags_c99 });
-
-    switch (target.result.os.tag) {
-        .windows => {
-            lib.root_module.addCSourceFile(.{ .file = zlib_deb.path("contrib/minizip/iowin32.c"), .flags = flags_c99 });
-        },
-        else => {},
-    }
     lib.root_module.link_libc = true;
     return lib;
 }
