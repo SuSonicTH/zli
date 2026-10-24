@@ -56,9 +56,20 @@ const UnzipUdata = struct {
     const file_functions = [_]zlua.FnReg{
         .{ .name = "read_all", .func = zlua.wrap(read_all) },
         .{ .name = "open", .func = zlua.wrap(UnzipFile.open) },
-        .{ .name = "lines", .func = zlua.wrap(lines) },
+        .{ .name = "lines", .func = zlua.wrap(fileLines) },
         .{ .name = "extract", .func = zlua.wrap(extract) },
     };
+
+    // Entry objects open their payload first, then expose UnzipFile's
+    // iterator rather than the archive-level helper of the same name.
+    fn fileLines(lua: *Lua) i32 {
+        const opened = UnzipFile.open(lua);
+        if (opened != 1 or lua.typeOf(-1) != .table) {
+            return opened;
+        }
+        lua.replace(1);
+        return UnzipFile.lines(lua);
+    }
 
     fn register(lua: *Lua) void {
         if (lua.getMetatableRegistry(name) == .nil) {

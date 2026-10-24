@@ -51,6 +51,12 @@ function Test_zip.Test_create_list_and_read()
     lu.assertEquals(2, fh:seek("set", 2))
     lu.assertEquals(io.read_file("src/version"):sub(3), fh:read("a"))
     fh:close()
+
+    local entry_lines = {}
+    for line in by_name["version.txt"]:lines() do
+        entry_lines[#entry_lines + 1] = line
+    end
+    lu.assertEquals({ io.read_file("src/version") }, entry_lines)
     lu.assertTrue(by_name["version.txt"].is_file)
     lu.assertFalse(by_name["version.txt"].is_directory)
 
@@ -60,6 +66,27 @@ function Test_zip.Test_create_list_and_read()
     u:extract("version.txt", "./test/temp/extracted2.txt")
     lu.assertEquals(io.read_file("src/version"), io.read_file("./test/temp/extracted2.txt"))
 
+    u:close()
+end
+
+function Test_zip.Test_open_existing_archive_for_append()
+    local appended = "./test/temp/test_append.zip"
+    remove(appended)
+
+    local z = zip.create(appended)
+    z:add_file("src/version", "version.txt")
+    z:close_zip()
+
+    z = zip.open(appended)
+    z:add_file("src/version", "version-copy.txt")
+    z:close_zip()
+
+    local u = unzip.open(appended)
+    local files = u:list()
+    lu.assertEquals(2, #files)
+    lu.assertEquals(
+        io.read_file("src/version"),
+        u:read_all("version-copy.txt"))
     u:close()
 end
 

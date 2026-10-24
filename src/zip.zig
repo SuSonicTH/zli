@@ -16,7 +16,7 @@ const filesystem = @import("filesystem.zig");
 
 const zip = [_]zlua.FnReg{
     .{ .name = "create", .func = luaerror.wrap(ZipUdata.create) },
-    .{ .name = "open", .func = luaerror.wrap(ZipUdata.open) },
+    .{ .name = "open", .func = luaerror.wrap(ZipUdata.open_zip) },
     .{ .name = "create_after", .func = luaerror.wrap(ZipUdata.create_after) },
 };
 
