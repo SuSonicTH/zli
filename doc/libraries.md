@@ -1305,85 +1305,274 @@ License: MIT
 the low-level screen and cursor helpers plus history and paging functions used by
 the REPL.
 
-#### `crossline.readline(prompt)`
+#### `crossline.readline([prompt [, initial]])`
 
 Read a line with editing and history.
 
-#### `crossline.set_prompt_color(color)`
+Read one line from the terminal with editing and history.
+
+`prompt` defaults to `"> "`. `initial` pre-fills the edit buffer and may be modified interactively; it is limited to 4095 bytes. History navigation, incremental search and completion keys are handled by the editor.
+
+Returns the entered line as a string, or `nil` when standard input reaches end-of-file. The returned line does not include the newline.
+
+```lua
+local cl = require "crossline"
+local line = cl.readline("name> ")
+if line then print("hello " .. line) end
+```
+
+#### `crossline.set_prompt_color(fg [, bg])`
 
 Set the prompt colour.
 
-#### `crossline.set_color(color)`
+Set the foreground and background colours used for the readline prompt.
+
+`fg` and `bg` are numeric colour values, normally selected from `crossline.color.fg` and `crossline.color.bg`; the two values are combined into one terminal colour code. Omitting either value disables that component. The setting affects subsequently printed prompts and returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.set_prompt_color(cl.color.fg.green, cl.color.bg.default)
+local line = cl.readline("> ")
+```
+
+#### `crossline.set_color(fg [, bg])`
 
 Set the current output colour.
 
-Use values from `crossline.color.fg` and `crossline.color.bg`.
+Set the foreground and background colours used for subsequent terminal output.
+
+`fg` and `bg` are numeric values from `crossline.color.fg` and `crossline.color.bg`; omitting a component leaves it at the default colour. The call returns nothing and does not change the prompt colour.
+
+```lua
+local cl = require "crossline"
+cl.set_color(cl.color.fg.yellow)
+print("warning")
+cl.set_color(cl.color.fg.default)
+```
 
 #### `crossline.print_paged(text)`
 
 Print long text through the pager.
 
+Print a string or an array of lines through the pager.
+
+Paging is temporarily enabled for the duration of the call. A string is split on newline characters; a table is printed one element per line. When the terminal reaches the bottom, the user may continue with Space or Enter or abort with another key.
+
+Returns `true` when all output was printed and `false` when the user stopped early. Paging is disabled again before returning.
+
+```lua
+local cl = require "crossline"
+cl.print_paged({ "line one", "line two", "line three" })
+```
+
 #### `crossline.screen.dimensions()`
 
 Return the terminal width and height.
 
-Returns a table with `x` and `y` fields.
+Return the current terminal size as a table.
+
+The `x` field is the number of columns and `y` is the number of rows. The result is a fresh table and may change when the terminal is resized.
+
+```lua
+local cl = require "crossline"
+local size = cl.screen.dimensions()
+print(size.x, size.y)
+```
 
 #### `crossline.screen.clear()`
 
 Clear the terminal screen.
 
+Clear the terminal screen and leave the cursor at the home position.
+
+The function emits the terminal control sequence directly and works on ANSI-compatible terminals. It returns nothing and does not alter history or paging state.
+
+```lua
+local cl = require "crossline"
+cl.screen.clear()
+```
+
 #### `crossline.cursor.get()`
 
 Return the current cursor position (`x`, `y`).
+
+Return the current cursor position as a table.
+
+The result has numeric `x` (column) and `y` (row) fields using the terminal's coordinate system. The call does not move the cursor or change terminal state.
+
+```lua
+local cl = require "crossline"
+local pos = cl.cursor.get()
+print(pos.x, pos.y)
+```
 
 #### `crossline.cursor.set(x, y)`
 
 Move the cursor to a position.
 
+Move the cursor to an absolute position.
+
+Coordinates may be passed as two numbers (`x`, `y`) or as a table with `x` and `y` fields. The position uses the same coordinate system as `cursor.get`. The function returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.cursor.set(1, 1)
+cl.cursor.set({ x = 10, y = 5 })
+```
+
 #### `crossline.cursor.move(x, y)`
 
 Move the cursor relative to its current position.
+
+Move the cursor relative to its current position.
+
+Positive `x` moves right, positive `y` moves down; negative values move left and up. As with `cursor.set`, the arguments may be two numbers or a table with `x` and `y` fields. No value is returned.
+
+```lua
+local cl = require "crossline"
+cl.cursor.move(2, 0)
+cl.cursor.move({ x = -1, y = 1 })
+```
 
 #### `crossline.cursor.hide()`
 
 Hide the cursor.
 
+Hide the terminal cursor.
+
+This is useful while redrawing a prompt or progress display. It returns nothing; call `cursor.show()` to restore the cursor. Showing an already hidden cursor is harmless.
+
+```lua
+local cl = require "crossline"
+cl.cursor.hide()
+-- draw something
+cl.cursor.show()
+```
+
 #### `crossline.cursor.show()`
 
 Show the cursor.
+
+Show the terminal cursor after it was hidden.
+
+The call emits the terminal control sequence and returns nothing. It does not move the cursor or restore a previous position.
+
+```lua
+local cl = require "crossline"
+cl.cursor.hide()
+cl.cursor.show()
+```
 
 #### `crossline.history.save(filename)`
 
 Save the command history.
 
+Write the in-memory command history to a file.
+
+The file is opened for writing and overwritten; each history entry is written on its own line without numeric prefixes. If the file cannot be opened the failure is silently ignored. The function returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.history.save(os.home .. "/.config/zli/repl_history")
+```
+
 #### `crossline.history.load(filename)`
 
 Load the command history.
+
+Load command history from a file.
+
+Non-empty lines are appended to the in-memory history with trailing CR/LF removed. A missing or unreadable file is silently ignored, making this safe to call during startup. The function returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.history.load(os.home .. "/.config/zli/repl_history")
+```
 
 #### `crossline.history.show()`
 
 Print the command history.
 
+Print the current history with sequence numbers.
+
+Output goes to standard output and may be paged when standard input and output are terminals. The history itself is not modified. The function returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.history.show()
+```
+
 #### `crossline.history.clear()`
 
 Clear the command history.
+
+Erase all in-memory history entries.
+
+The history file on disk is not touched; use `history.save` afterwards if the cleared state should persist. The function returns nothing.
+
+```lua
+local cl = require "crossline"
+cl.history.clear()
+```
 
 #### `crossline.paging.start()`
 
 Start paging output.
 
+Enable paging for subsequent output.
+
+While paging is active, `paging.print` and `paging.check` count printed lines and prompt the user when the screen is full. The function returns nothing. Calling it when paging is already active just resets the line counter.
+
+```lua
+local cl = require "crossline"
+cl.paging.start()
+cl.paging.print("first line")
+cl.paging.stop()
+```
+
 #### `crossline.paging.stop()`
 
 Stop paging output.
+
+Disable paging.
+
+Subsequent `paging.print` calls still print their text but do not pause for the user. The function returns nothing and is safe to call when paging is already off.
+
+```lua
+local cl = require "crossline"
+cl.paging.stop()
+```
 
 #### `crossline.paging.check()`
 
 Check whether paging is active.
 
+Advance the pager by a line length and report whether output may continue.
+
+`line_len` is the number of characters about to be displayed and is required. When paging is disabled, or input/output is not a terminal, the function immediately returns `true`. On a full screen it waits for Space or Enter and returns `true` to continue, or `false` when the user pressed another key to stop.
+
+```lua
+local cl = require "crossline"
+cl.paging.start()
+local keep_going = cl.paging.check(#"some output")
+cl.paging.stop()
+```
+
 #### `crossline.paging.print(text)`
 
 Print text through the pager.
+
+Print text through the pager.
+
+The argument may be a string, which is split on newlines, or an array of strings. Each line is written to standard output and checked against the terminal height. The function returns `true` when every line was printed, or `false` when the user stopped paging early.
+
+```lua
+local cl = require "crossline"
+cl.paging.start()
+local complete = cl.paging.print({ "row 1", "row 2", "row 3" })
+cl.paging.stop()
+print(complete)
+```
 
 ### filesystem
 
@@ -2242,33 +2431,127 @@ Options include `header`, `query`, `parseJson`, `basicAuth`, `save` and
 
 Perform a GET request.
 
+Perform an HTTP GET request.
+
+Returns `response, body` on success. `response` contains fields such as `status`, `status_name`, `reason`, `success`, `version`, `content_type`, `content_length`, `location` and `content_disposition` when present. GET requests cannot send a body; passing one raises an argument error.
+
+Options include `header`, `query`, `parseJson`, `basicAuth`, `save` and `raiseError`. A table in `options.query` is URL-encoded and appended to the URL.
+
+```lua
+local http = require "httpclient"
+local response, body = http.get("https://example.com", {
+    query = { page = 2 },
+})
+print(response.status, #body)
+```
+
 #### `httpclient.head(url [, options [, body]])`
 
 Perform a HEAD request.
+
+Perform an HTTP HEAD request.
+
+Returns the response metadata and an empty body. HEAD, like GET, cannot send a body. On a transport failure the function returns `nil, message` unless `options.raiseError` is true, in which case it raises.
+
+```lua
+local http = require "httpclient"
+local response = http.head("https://example.com")
+print(response.status, response.content_length)
+```
 
 #### `httpclient.post(url [, options [, body]])`
 
 Perform a POST request.
 
+Perform an HTTP POST request.
+
+The optional body may be a string or a table. A table is encoded with cjson and the request gains `content_type: application/json` unless the caller already supplied one. Returns `response, body`.
+
+The usual options apply, including headers, query parameters, JSON response parsing, authentication, saving the response and raising on transport errors.
+
+```lua
+local http = require "httpclient"
+local response, body = http.post("https://example.com/api", nil, {
+    name = "zli",
+})
+print(response.status)
+```
+
 #### `httpclient.put(url [, options [, body]])`
 
 Perform a PUT request.
+
+Perform an HTTP PUT request.
+
+The body rules are the same as for `post`: strings are sent as-is and tables are JSON-encoded with an automatic content type. Returns `response, body`, or `nil, message` on transport failure unless `raiseError` is set.
+
+```lua
+local http = require "httpclient"
+local response, body = http.put("https://example.com/item/1", nil, "new value")
+print(response.success)
+```
 
 #### `httpclient.patch(url [, options [, body]])`
 
 Perform a PATCH request.
 
+Perform an HTTP PATCH request.
+
+Accepts an optional string or table body, just like `post` and `put`. The response body is returned as the second result and may be decoded with `options.parseJson`.
+
+```lua
+local http = require "httpclient"
+local response, body = http.patch("https://example.com/item/1", nil, { done = true })
+print(response.status, type(body))
+```
+
 #### `httpclient.delete(url [, options [, body]])`
 
 Perform a DELETE request.
+
+Perform an HTTP DELETE request.
+
+DELETE cannot send a body; supplying one raises an argument error. It returns `response, body` and supports the same options as the other convenience methods, including JSON parsing and response saving.
+
+```lua
+local http = require "httpclient"
+local response, body = http.delete("https://example.com/item/1")
+print(response.success)
+```
 
 #### `httpclient.call(method, url [, options [, body]])`
 
 Perform a request with an explicit method.
 
+Perform a request with an explicit HTTP method.
+
+`method` is an upper-case method name such as `"GET"`, `"POST"`, `"PATCH"` or `"OPTIONS"`. `options` must be a table; the low-level call understands `header` and `privileged_headers` but not the Lua-level conveniences such as `query`, `basicAuth`, `parseJson`, `save` or `raiseError`. For POST, PUT and PATCH, `body` must already be a string.
+
+Returns `response, body` on success. Failures follow the module `error_handling` setting: `nil, message` by default, or a raised error when configured to raise.
+
+```lua
+local http = require "httpclient"
+local response, body = http.call("GET", "https://example.com", {
+    header = { ["user-agent"] = "zli" },
+})
+print(response.status)
+```
+
 #### `httpclient:config(options)`
 
 Configure a loaded httpclient module.
+
+Configure the loaded httpclient module.
+
+The supported option is `error_handling`, set to `"return"` or `"raise"`. It affects the low-level `call` function; the convenience request functions already honour `options.raiseError`.
+
+Use colon syntax so the module table is passed first, then the options table. The module table is returned.
+
+```lua
+local http = require "httpclient"
+http:config({ error_handling = "raise" })
+assert(http.error_handling == "raise")
+```
 
 ### httpserver
 
@@ -2345,45 +2628,147 @@ child:warn("from a named logger")
 
 Log a fatal message.
 
+Log a fatal-level message.
+
+The message is emitted when both this logger's level and the root logger's level are at least `FATAL`. It is passed to every appender attached to this logger and, for named child loggers, also to the root appenders. The function returns nothing.
+
+```lua
+local log = require "log"
+log:fatal("unrecoverable configuration error")
+```
+
 #### `log:error(message)`
 
 Log an error message.
+
+Log an error-level message.
+
+Errors are emitted when the effective level allows `ERROR` or anything more verbose. The message is written by all applicable appenders with a timestamp and level tag. The function returns nothing.
+
+```lua
+local log = require "log"
+log:error("request failed")
+```
 
 #### `log:warn(message)`
 
 Log a warning.
 
+Log a warning.
+
+The record is emitted when the logger and root thresholds both allow `WARN`. Appender failures propagate normally; no status value is returned.
+
+```lua
+local log = require "log"
+log:warn("using the fallback configuration")
+```
+
 #### `log:info(message)`
 
 Log an informational message.
+
+Log an informational message.
+
+This is the default threshold for both root and child loggers, so `info` records are visible until a stricter level is set. The message may be a string or any value accepted by the appender's `write` call; convert structured values to text first.
+
+```lua
+local log = require "log"
+log:info("service started")
+```
 
 #### `log:debug(message)`
 
 Log a debug message.
 
+Log a debug-level message.
+
+Debug records are hidden at the default `INFO` level and appear after lowering the relevant logger threshold. No value is returned.
+
+```lua
+local log = require "log"
+log:setLevel(log.level.DEBUG)
+log:debug("cache hit")
+```
+
 #### `log:trace(message)`
 
 Log a trace message.
+
+Log a trace-level message.
+
+Trace is the most verbose level. It is emitted only when both the logger and the root logger are configured for `TRACE`. The call returns nothing.
+
+```lua
+local log = require "log"
+log:setLevel(log.level.TRACE)
+log:trace("entering parser")
+```
 
 #### `log:setLevel(level)`
 
 Set the logger level.
 
+Set the threshold for this logger.
+
+`level` should be one of the numeric values in `log.level` (`OFF` through `TRACE`). Records below the threshold are suppressed. A child logger is also capped by the root logger's threshold, so lowering only the child is not enough when the root is stricter.
+
+Returns nothing.
+
+```lua
+local log = require "log"
+local child = log["worker"]
+child:setLevel(log.level.DEBUG)
+```
+
 #### `log:setAppender(appender)`
 
 Replace the logger appender.
+
+Replace all appenders attached to this logger with one appender.
+
+An appender is any table with an `append(logger, level, message)` method. The built-in constructors are in `log.appender`. Root appenders are still used for child loggers after their own appenders run.
+
+Returns nothing.
+
+```lua
+local log = require "log"
+log:setAppender(log.appender.file("/tmp/app.log"))
+```
 
 #### `log:addAppender(appender)`
 
 Add an appender.
 
+Add an appender without removing the existing ones.
+
+Appenders run in insertion order. Child loggers call their own appenders first and then the root logger's appenders, so the same record can be written to several destinations.
+
+Returns nothing.
+
+```lua
+local log = require "log"
+log:addAppender(log.appender.file("/tmp/audit.log", "w"))
+```
+
 #### `log.level`
 
 Logger level constants.
 
+The table of numeric logger levels.
+
+Both upper-case and lower-case keys are present: `OFF`, `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` and the same names in lower case. Numeric values increase with verbosity, and thresholds are compared with `>=`, so a larger level enables more messages.
+
+This field is a table; treat it as read-only.
+
 #### `log.appender`
 
 Built-in appenders: `stdout`, `file`, `none`.
+
+The built-in appender constructors and the no-op appender.
+
+`log.appender.stdout` is a function returning an appender for standard output. `log.appender.file(filename [, mode])` opens a file and returns an appender, raising an error if the file cannot be opened; `mode` defaults to `"a"`. `log.appender.none` is a ready-made appender that discards messages.
+
+This field is a table of functions and one appender object.
 
 ### luastrip
 
@@ -2792,89 +3177,282 @@ files when the corresponding support is available.
 
 Open a tar archive for reading.
 
-Returns an iterator function.  Iterate with `for entry in tar.open(path) do ... end`.
+Open a tar archive and return an iterator over its entries.
 
-#### `tar.create(filename)`
+The file may be plain tar or compressed with gzip, xz or zstd; the compression is detected from the stream. Each iteration returns an entry table with the fields and methods documented below, and returns `nil` after the last entry. Opening or reading failures follow the module error policy.
+
+```lua
+local tar = require "tar"
+for entry in tar.open("backup.tar.gz") do
+    print(entry.type, entry.name, entry.size_hr)
+end
+```
+
+#### `tar.create(filename [, level])`
 
 Create a tar archive for writing.
+
+Create a tar archive and return a writer object.
+
+The output is uncompressed unless the filename ends in `.gz` or `.tgz`, in which case gzip compression is used. `level` selects gzip compression and accepts `"default"`, `"fastest"`, `"best"` or a digit string from `"1"` to `"9"`; it is ignored for uncompressed archives.
+
+On failure the module error policy applies: with the default `"return"` policy the result is `nil, message`; with `"raise"` an error is raised.
+
+```lua
+local tar = require "tar"
+local writer = tar.create("backup.tar.gz", "best")
+writer:add_file_bytes("hello.txt", "hello")
+writer:close()
+```
 
 #### `tar.extract(filename, destination)`
 
 Extract an entire archive into a directory.
 
-The archive may be plain tar or compressed with gzip, xz or zstd.
+Extract an archive's files and directories into an existing destination directory.
+
+The archive may be plain tar or compressed with gzip, xz or zstd; compression is detected automatically. The destination must already exist. On success the function returns `true`; failures follow the module error policy and return `nil, message` by default. Support for special entry kinds such as symbolic links depends on the platform.
+
+```lua
+local tar = require "tar"
+local ok, err = tar.extract("backup.tar.gz", "restore")
+assert(ok, err)
+```
 
 #### `tar:config(options)`
 
 Configure a loaded tar module.
 
+Configure the loaded tar module.
+
+The only supported option is `error_handling`, whose value is `"return"` or `"raise"`. It controls whether failures in module and writer operations return `nil, message` or raise a Lua error. The option may be passed directly or through the module table when using colon syntax.
+
+The module table is returned and the option is stored back into it.
+
+```lua
+local tar = require "tar"
+tar:config({ error_handling = "raise" })
+assert(tar.error_handling == "raise")
+```
+
 #### `writer:setRoot(root)`
 
 Set the root directory written into the archive.
+
+Set the path prefix stripped from archive member names.
+
+When a path passed to `add_dir` or `add_file` starts with this prefix, the prefix is removed before the entry is written. This lets an absolute workspace path produce clean relative names inside the archive. Backslashes are normalised to `/`.
+
+Returns the writer for chaining.
+
+```lua
+local tar = require "tar"
+local w = tar.create("out.tar")
+w:setRoot("/tmp/project")
+w:add_dir("/tmp/project/src")
+w:close()
+```
 
 #### `writer:add_dir(path)`
 
 Add a directory entry.
 
-#### `writer:add_file(path [, archive_path])`
+Write a directory entry to the archive.
+
+The path is converted to an archive name with forward slashes and with the root prefix from `setRoot` removed. This function adds only the directory entry itself; it does not recurse into the directory.
+
+Returns the writer so calls can be chained.
+
+```lua
+local tar = require "tar"
+tar.create("dirs.tar"):add_dir("docs"):add_dir("docs/api"):close()
+```
+
+#### `writer:add_file(path, archive_path)`
 
 Add a file.
+
+Add a file from disk to the archive.
+
+`path` is the existing filesystem path. `archive_path` is the name stored in the tar, with backslashes normalised and the configured root prefix removed. Both arguments are required. The file is streamed, so large inputs do not need to fit in memory.
+
+Returns the writer for chaining. I/O failures follow the module error policy.
+
+```lua
+local tar = require "tar"
+tar.create("src.tar")
+    :add_file("src/main.lua", "main.lua")
+    :close()
+```
 
 #### `writer:add_file_bytes(path, data)`
 
 Add a file from memory.
 
+Add an in-memory string as a regular file.
+
+`path` is the member name inside the archive and `data` is its complete contents. No filesystem access occurs. Returns the writer for chaining.
+
+```lua
+local tar = require "tar"
+tar.create("config.tar")
+    :add_file_bytes("config/app.ini", "debug = true\n")
+    :close()
+```
+
 #### `writer:add_link(path, target)`
 
 Add a symbolic link.
+
+Write a symbolic-link entry.
+
+`path` is the link's name inside the archive and `target` is the link target stored in the entry. The target does not need to exist on disk. Returns the writer for chaining.
+
+```lua
+local tar = require "tar"
+tar.create("links.tar")
+    :add_link("latest", "releases/v1")
+    :close()
+```
 
 #### `writer:close()`
 
 Finish and close the archive.
 
+Finish the archive and close the output file.
+
+For gzip archives this writes the compression trailer before closing. The writer must not be used after this call; the returned value is empty. A writer that is garbage-collected without `close` also attempts to flush, but calling `close` explicitly reports failures at a predictable point.
+
+```lua
+local tar = require "tar"
+local w = tar.create("one.tar")
+w:add_file_bytes("a.txt", "a")
+w:close()
+```
+
 #### `entry.name`
 
 The path stored in the archive.
+
+The member path stored in the archive, as a string.
+
+Directory entries may or may not end with `/`, depending on how the archive was created. Use `is_directory` rather than inspecting the name when classifying an entry.
+
+This field is read-only.
 
 #### `entry.type`
 
 The tar entry type (`file`, `directory`, `sym_link`, ...).
 
+The tar entry kind as a string.
+
+Common values are `"file"`, `"directory"` and `"sym_link"`; other tar kinds are reported by their standard names. Prefer the boolean helpers `is_file`, `is_directory` and `is_link` when only those three categories matter.
+
+This field is read-only.
+
 #### `entry.size`
 
 Uncompressed size in bytes.
+
+The uncompressed size of the current entry in bytes.
+
+Directories usually report zero. For a regular file this is the exact number of bytes that `bytes` or `extract` will read.
+
+This field is read-only.
 
 #### `entry.size_hr`
 
 Human-readable size.
 
+The entry size formatted for humans, for example `"1.5 KB"`.
+
+The value is produced by the filesystem module's human-readable size helper and is intended for display only. Use `size` for arithmetic.
+
+This field is read-only.
+
 #### `entry.link_name`
 
 Symbolic-link target.
+
+The target of a symbolic-link entry.
+
+For entries that are not links this is the empty string. The target is exactly the text stored in the archive and is not resolved.
+
+This field is read-only.
 
 #### `entry.mode_flags`
 
 POSIX mode string.
 
+The POSIX permission bits rendered as a ten-character string.
+
+The first character describes the entry kind (`-`, `d`, `l`, and so on), followed by the owner, group and other `rwx` triples, for example `"-rw-r--r--"`. Unknown mode bits produce `?` for the kind.
+
+This field is read-only.
+
 #### `entry.is_file`
 
 True for a regular file.
+
+True when the current entry is a regular file.
+
+Only regular-file entries support `bytes()` and `extract()`. The field is a boolean snapshot of the entry that was just yielded.
+
+This field is read-only.
 
 #### `entry.is_directory`
 
 True for a directory.
 
+True when the current entry is a directory.
+
+Directory entries normally carry no payload, although `extract` on the whole archive creates the corresponding directory. This is a boolean snapshot.
+
+This field is read-only.
+
 #### `entry.is_link`
 
 True for a symbolic link.
+
+True when the current entry is a symbolic link.
+
+The target text is available in `link_name`. This is a boolean snapshot and does not check whether the target exists.
+
+This field is read-only.
 
 #### `entry:bytes()`
 
 Read the current regular file into a string.
 
+Read the current regular-file entry into a string.
+
+The function streams the remaining payload of the entry and returns it. It may only be called for a file entry created by `tar.open`; calling it for a directory or link fails according to the module error policy.
+
+```lua
+local tar = require "tar"
+for entry in tar.open("src.tar") do
+    if entry.is_file then
+        print(entry.name, #entry:bytes())
+    end
+end
+```
+
 #### `entry:extract(destination)`
 
 Extract the current regular file.
+
+Extract the current regular-file entry to a filesystem path.
+
+`destination` is the full output path. Parent directories are not created automatically, so they must already exist. The entry payload is streamed to the new file and the function returns nothing on success. Non-file entries fail according to the module error policy.
+
+```lua
+local tar = require "tar"
+for entry in tar.open("src.tar") do
+    if entry.name == "main.lua" then
+        entry:extract("main.lua")
+    end
+end
+```
 
 ### timer
 
@@ -3106,45 +3684,173 @@ filesystem directory tree.
 
 Create a zip archive for writing.
 
+Create a new zip archive for writing.
+
+The file is truncated if it already exists. The returned writer supports `add_file`, `create_directory`, streaming `open`/`write`/`close`, and `close_zip`. On failure the module returns `nil, message`; configure `error_handling` to raise instead.
+
+```lua
+local zip = require "zip"
+local z = zip.create("bundle.zip")
+z:add_file("README.md", "README.md")
+z:close_zip()
+```
+
 #### `zip.open(filename)`
 
 Open an existing zip archive for appending.
+
+Open an existing zip archive so entries can be appended.
+
+The archive must already exist and contain a valid central directory. New entries are added after the existing ones; existing entries are not rewritten. Returns a writer or `nil, message`.
+
+```lua
+local zip = require "zip"
+local z = zip.open("bundle.zip")
+z:add_file("src/version", "version.txt")
+z:close_zip()
+```
 
 #### `zip.create_after(filename)`
 
 Create a zip archive after existing file data.
 
+Create a zip archive after existing non-zip file data.
+
+This is used to append a zip payload to an executable or another container: the current file contents are preserved and the new zip starts at the end. The path must already exist. Returns a writer or `nil, message`.
+
+```lua
+local zip = require "zip"
+local z = zip.create_after("app.bin")
+z:add_file("config.lua", "config.lua")
+z:close_zip()
+```
+
 #### `zip.add_directory(writer, path [, include_top [, level]])`
 
 Add a directory tree to an archive.
+
+Recursively add a filesystem directory tree to an archive.
+
+Files are added with paths relative to `path`. When `include_top` is true the top directory name is included in the archive paths; otherwise its contents are placed at the archive root. Empty directories are written explicitly. `level` defaults to `zip.level.default`.
+
+Returns the number of entries added. Files inside non-empty directories count individually; the parent directory itself is implied by the file paths.
+
+```lua
+local zip = require "zip"
+local z = zip.create("src.zip")
+local count = zip.add_directory(z, "src", true)
+z:close_zip()
+print(count > 0) --> true
+```
 
 #### `zip.level`
 
 Compression level constants.
 
-#### `writer:add_file(path [, archive_path [, level]])`
+A table of named compression levels.
+
+The fields are `store` (0), `fastest` (1), `fast` (3), `normal` (5), `default` (6), `high` (7) and `max` (9). Any integer from 0 to 9 is also accepted by the writer. Higher values produce smaller archives at the cost of CPU time.
+
+This field is a table; treat it as read-only.
+
+#### `writer:add_file(path, archive_path [, level [, comment]])`
 
 Add a file.
+
+Add a file from disk to the archive.
+
+`path` is the source file. `archive_path` is required and becomes the member name. `level` defaults to 6 and must be between 0 and 9; `comment` optionally sets the per-entry comment. The file is streamed into the archive.
+
+Returns `true` on success. On failure the call returns `nil, message` or raises according to the configured error policy.
+
+```lua
+local zip = require "zip"
+local z = zip.create("out.zip")
+z:add_file("src/version", "version.txt", zip.level.max, "version file")
+z:close_zip()
+```
 
 #### `writer:create_directory(path)`
 
 Add a directory entry.
 
-#### `writer:open(path)`
+Add an explicit directory entry to the archive.
+
+A trailing `/` is added when missing. Empty directories need this call because adding files does not create standalone directory records. The function returns nothing.
+
+```lua
+local zip = require "zip"
+local z = zip.create("dirs.zip")
+z:create_directory("empty")
+z:close_zip()
+```
+
+#### `writer:open(path [, level [, comment]])`
 
 Open an entry for streaming writes.
+
+Start a new archive entry for streaming writes.
+
+`path` is the member name. `level` defaults to 6 and `comment` optionally sets the entry comment. Any entry already being written is closed first. After opening, use `write` one or more times and then `close` or `close_zip`.
+
+Returns the writer for chaining.
+
+```lua
+local zip = require "zip"
+local z = zip.create("stream.zip")
+z:open("notes.txt"):write("first line\n"):write("second line\n"):close()
+z:close_zip()
+```
 
 #### `writer:write(data)`
 
 Write data to the current entry.
 
+Write one or more strings to the currently open entry.
+
+All arguments from the first onward are converted to strings and appended to the entry. Numbers are accepted. The call does not close the entry; use `close` when finished.
+
+Returns the writer for chaining. Writing without an open entry, or after the archive is closed, follows the configured error policy.
+
+```lua
+local zip = require "zip"
+local z = zip.create("numbers.zip")
+z:open("values.txt"):write("one ", "two ", 3):close()
+z:close_zip()
+```
+
 #### `writer:close()`
 
 Close the current entry.
 
+Close the entry currently being written.
+
+The archive remains open so another entry can be opened or added. Closing when no entry is active is harmless. Returns the writer for chaining, or `nil, message` when the archive is already closed.
+
+```lua
+local zip = require "zip"
+local z = zip.create("out.zip")
+z:open("a.txt"):write("a"):close()
+z:add_file("src/version", "version.txt")
+z:close_zip()
+```
+
 #### `writer:close_zip()`
 
 Finish and close the archive.
+
+Finish the archive and close the underlying zip file.
+
+Any open entry is closed first. An optional `comment` string is stored as the archive comment in the central directory. After this call the writer must not be used again; entries added later are not guaranteed to be written.
+
+Returns nothing. The writer is also finalized during garbage collection, but explicit closing surfaces errors.
+
+```lua
+local zip = require "zip"
+local z = zip.create("final.zip")
+z:add_file("README.md", "README.md")
+z:close_zip("built by ZLI")
+```
 
 ### unzip
 
@@ -3162,53 +3868,199 @@ timestamps and `extract`.
 
 Open a zip archive.
 
-#### `unzip.extract(archive, destination)`
+Open a zip archive for reading.
+
+Returns an archive object with `list`, `dir`, `info`, `read_all`, `lines`, `extract`, `payload_start` and `close` methods. On failure it returns `nil, message`; the message includes the path that could not be opened.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+print(#archive:list())
+archive:close()
+```
+
+#### `unzip.extract(filename, destination)`
 
 Extract an archive to a directory.
+
+Extract every entry of an archive into a directory.
+
+`filename` is the archive path and `destination` is the output directory. Missing directories are created, and directory entries are recreated. Returns `true` when the archive was opened and processed, or `nil, message` when it could not be opened.
+
+```lua
+local unzip = require "unzip"
+local ok, err = unzip.extract("bundle.zip", "out")
+assert(ok, err)
+```
 
 #### `archive:list()`
 
 Return entries as an array.
 
+Return an array of entry tables.
+
+The order is the order stored in the archive's central directory. An empty archive returns an empty table. Each entry carries name, path, size, CRC, timestamp and extraction helpers; see the entry methods below. A closed archive or invalid central directory follows the module error policy.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+for _, entry in ipairs(archive:list()) do
+    print(entry.full_path, entry.uncompressed_size)
+end
+```
+
 #### `archive:dir()`
 
 Return entries keyed by path.
+
+Return entry tables keyed by their full archive path.
+
+This is convenient when looking up a known member without scanning the array from `list`. Directory keys end with `/`. An empty archive returns an empty table.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local entry = archive:dir()["src/main.lua"]
+print(entry and entry.is_file)
+```
 
 #### `archive:info()`
 
 Return archive information.
 
-#### `archive:extract(destination)`
+Return archive-level information.
 
-Extract the archive.
+The result contains `entries`, the number of members, and `comment`, the archive comment (an empty string when absent). Corrupt metadata raises an internal error; a closed archive returns `nil, message`.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local info = archive:info()
+print(info.entries, info.comment)
+```
+
+#### `archive:extract(name [, destination])`
+
+Extract one archive member.
+
+Extract one member of the archive.
+
+`name` is the member's full path in the archive. `destination` is optional and defaults to the same path, relative to the current directory. Parent directories are not created. Returns `true` on success, or `nil, message` when the member cannot be found or opened.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+archive:extract("src/main.lua", "main.lua")
+archive:close()
+```
 
 #### `archive:read_all(name)`
 
 Read an entry as a string.
 
+Read a named member into a string.
+
+Returns the complete uncompressed contents. A missing member, a closed archive, or an unreadable stream produces `nil, message` under the default error policy.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local text = archive:read_all("README.md")
+print(#text)
+```
+
 #### `archive:lines(name)`
 
 Iterate the lines of an entry.
+
+Iterate over the lines of a named member.
+
+Returns an iterator suitable for a `for` loop. Lines are returned without their line-ending characters, matching `io.lines`. Missing members and closed archives follow the module error policy.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+for line in archive:lines("README.md") do
+    print(line)
+end
+```
 
 #### `archive:payload_start()`
 
 Return the offset of an appended zip payload.
 
+Return the byte offset where an appended zip payload starts.
+
+The value is the offset of the first local file header in the underlying file, so it points at the beginning of the zip data rather than at the first compressed byte. It is used by the compiler to replace an existing payload. An empty archive returns `nil`.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("app.bin"))
+local offset = archive:payload_start()
+print(offset)
+archive:close()
+```
+
 #### `archive:close()`
 
 Close the archive.
+
+Close the archive and release its file handle.
+
+Calling `close` more than once is safe. The method returns nothing. After closing, other archive methods report that the archive is closed.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+archive:close()
+```
 
 #### `entry:read_all()`
 
 Read the entry as a string.
 
+Read this entry's complete contents into a string.
+
+The entry must be a regular file. A directory entry or a closed archive follows the module error policy. The archive remains open for further reads.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local entry = archive:dir()["README.md"]
+print(entry:read_all())
+```
+
 #### `entry:lines()`
 
 Iterate the entry's lines.
 
-#### `entry:extract(destination)`
+Iterate over this entry's lines.
+
+Returns an iterator that yields each line without its newline characters. This is equivalent to reading through `entry:open()` and calling `read("l")` repeatedly, but simpler for scripts.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local entry = archive:dir()["README.md"]
+for line in entry:lines() do
+    print(line)
+end
+```
+
+#### `entry:extract([destination])`
 
 Extract the entry.
+
+Extract this entry to a file.
+
+`destination` is optional; when omitted the entry's stored `full_path` is used relative to the current directory. Parent directories are not created automatically. Returns `true` on success, or `nil, message` if the file or directory cannot be written.
+
+```lua
+local unzip = require "unzip"
+local archive = assert(unzip.open("bundle.zip"))
+local entry = archive:dir()["src/main.lua"]
+entry:extract("main.lua")
+```
 
 ## Third-party libraries
 
@@ -3234,105 +4086,429 @@ local args = parser:parse()
 
 Add a positional argument.
 
+Add a positional argument and return its `Argument` object so settings can be chained.
+
+`name` is used both as the help label and as the default result key. `description` appears in the generated help. A string `default` is used when the argument is absent and is shown in the help text.
+
+Positional arguments are consumed in declaration order. A missing required value makes parsing fail through the parser's error handler.
+
+```lua
+local parser = require("argparse")("copy", "copy a file")
+parser:argument("source", "file to read")
+parser:argument("destination", "file to write"):default("out.txt")
+local args = parser:parse({ "in.txt" })
+print(args.source, args.destination) --> in.txt out.txt
+```
+
 #### `parser:option(name [, description [, default]])`
 
 Add an option.
+
+Add a named option and return its `Option` object.
+
+`name` is a whitespace-separated list of aliases, for example `"-o --output"`. The default result key comes from the long alias when one exists, otherwise from the short alias; hyphens become underscores. `description` is shown in help and a string `default` is reported there as well.
+
+An option that takes a value consumes the next command-line word. Options may be written as `--name=value` or as bundled short flags. Missing or unknown options cause the parser to report an error.
+
+```lua
+local parser = require("argparse")("example")
+parser:option("-o --output", "output file", "a.out")
+local args = parser:parse({ "--output=result.txt" })
+print(args.output) --> result.txt
+```
 
 #### `parser:flag(name [, description])`
 
 Add a boolean flag.
 
+Add a boolean option that consumes no value.
+
+This is shorthand for `parser:option(name, description):args(0)`. When the flag appears more than once the normal option overwrite rules apply. If the flag is absent its result is `nil`, not `false`.
+
+```lua
+local parser = require("argparse")("example")
+parser:flag("-v --verbose", "show details")
+local args = parser:parse({ "-v" })
+print(args.verbose) --> true
+```
+
 #### `parser:command(name [, description])`
 
 Add a subcommand.
+
+Add a subcommand and return its parser object.
+
+The returned command is a full parser: it can have its own arguments, options and nested commands. When the command name is seen, the result field named after the command (or its `target`) is set to `true`, and parsing continues with the command's parser.
+
+By default a parser with commands requires one to be present. Use `:require_command(false)` on the parent when the command is optional.
+
+```lua
+local parser = require("argparse")("tool")
+local build = parser:command("build", "build the project")
+build:flag("--release", "optimised build")
+local args = parser:parse({ "build", "--release" })
+print(args.build, args.release) --> true true
+```
 
 #### `parser:mutex(...)`
 
 Create a mutually exclusive group.
 
+Create a mutually exclusive group from options and positional arguments.
+
+Pass already-created `Option` or `Argument` objects. During parsing at most one element from the group may be used; using two reports an error. The group also affects the generated usage line. Returns the parser so calls can be chained.
+
+```lua
+local parser = require("argparse")("tool")
+local quiet = parser:flag("-q --quiet")
+local loud = parser:flag("-l --loud")
+parser:mutex(quiet, loud)
+```
+
 #### `parser:group(name, ...)`
 
 Create an argument group.
+
+Create a named help group.
+
+The first argument is the heading shown in `get_help()`. The remaining arguments are existing options, positional arguments or commands. Grouping only changes help layout; parsing behavior is unchanged.
+
+Passing anything other than those element types raises an assertion error. Returns the parser for chaining.
+
+```lua
+local parser = require("argparse")("tool")
+local input = parser:argument("input")
+local verbose = parser:flag("-v --verbose")
+parser:group("Input", input)
+parser:group("Output", verbose)
+```
 
 #### `parser:parse([args])`
 
 Parse command-line arguments.
 
+Parse command-line arguments and return a table of results.
+
+`args` defaults to the global `arg` table. The result contains one field per argument or option plus `true` for each command seen. Defaults and custom actions are applied before the table is returned.
+
+Parse errors are not exceptions: `parse` prints the usage and an error message to stderr and exits with status 1. Use `pparse` when the caller must handle errors.
+
+```lua
+local parser = require("argparse")("echo")
+parser:argument("text")
+local args = parser:parse({ "hello" })
+print(args.text) --> hello
+```
+
 #### `parser:pparse([args])`
 
 Parse arguments, returning an error message instead of raising.
+
+Parse arguments without terminating the process on a parse error.
+
+Returns `true, result` on success, or `false, message` when the command line is invalid. The error message is the same text that `parse` would print; no usage block is written to stderr.
+
+Errors raised by user callbacks and other non-parser failures are re-raised rather than converted into a `false` result.
+
+```lua
+local parser = require("argparse")("tool")
+parser:argument("count"):convert(tonumber)
+local ok, result = parser:pparse({ "many" })
+print(ok, result:match("malformed") ~= nil) --> false true
+```
 
 #### `parser:get_usage()`
 
 Return the generated usage string.
 
+Return the generated one-line (or wrapped) usage string.
+
+The text starts with `Usage:` and lists options, positional arguments, mutex groups and commands in a stable order. A custom string assigned through the parser's `usage` property is returned unchanged.
+
+The result is a string and has no side effects; it is also included at the top of `get_help()`.
+
+```lua
+local parser = require("argparse")("tool")
+parser:add_help(false)
+parser:argument("file")
+print(parser:get_usage()) --> Usage: tool <file>
+```
+
 #### `parser:get_help()`
 
 Return the generated help text.
+
+Return the complete generated help text as a string.
+
+The text contains the usage line, the parser description, grouped arguments, options and commands, and the optional epilog. Hidden elements are omitted. Line wrapping follows the configured help margins and maximum width.
+
+The function does not print or exit. Printing the result is the caller's responsibility.
+
+```lua
+local parser = require("argparse")("tool", "does useful work")
+parser:flag("-v --verbose", "show details")
+print(parser:get_help())
+```
 
 #### `parser:add_help_command([value])`
 
 Add a help command.
 
+Add a `help` subcommand to the parser.
+
+The command prints help for the parser when invoked without an argument, or for a named command when given one, then exits with status 0. An unknown command name is reported as an error.
+
+Pass a string or table to customise the command through the usual command properties. Returns the parser.
+
+```lua
+local parser = require("argparse")("tool")
+parser:add_help_command()
+parser:command("build")
+-- running "tool help build" prints the build command's help
+```
+
 #### `parser:add_complete([value])`
 
 Add shell completion support.
+
+Add a `--completion <shell>` option that emits a completion script.
+
+Accepted shells are `bash`, `zsh` and `fish`. The generated script is written to stdout and the process exits with status 0, so the option must be handled before other work.
+
+Pass a string or table to customise the option object. Returns the parser.
+
+```lua
+local parser = require("argparse")("tool")
+parser:add_complete()
+-- "tool --completion bash" prints a bash completion script
+```
 
 #### `parser:get_bash_complete()`
 
 Generate a bash completion script.
 
+Return a bash completion script for this parser as a string.
+
+The script completes option names and, for parsers with commands, command names and their options. The parser name must be shell-safe: characters outside letters, digits, `_`, `-`, `+` and `.` make the internal safety assertion fail.
+
+This function is normally called indirectly by `add_complete`; it neither prints nor exits.
+
+```lua
+local parser = require("argparse")("mytool")
+parser:flag("--verbose")
+local script = parser:get_bash_complete()
+assert(script:match("complete"))
+```
+
 #### `parser:get_zsh_complete()`
 
 Generate a zsh completion script.
+
+Return a zsh completion script for this parser.
+
+The result starts with a `#compdef` line followed by the completion function and any per-command helpers. As with the bash generator, the parser name and option aliases must be shell-safe.
+
+Calling the function has no output or exit side effects.
+
+```lua
+local parser = require("argparse")("mytool")
+parser:option("--output")
+local script = parser:get_zsh_complete()
+assert(script:match("#compdef mytool"))
+```
 
 #### `parser:get_fish_complete()`
 
 Generate a fish completion script.
 
+Return a fish completion script for this parser.
+
+The script defines command-detection helpers plus completions for options, arguments and subcommands. Shell-unsafe names trigger the same assertion as the other completion generators.
+
+The returned string is not printed automatically.
+
+```lua
+local parser = require("argparse")("mytool")
+parser:flag("--verbose")
+local script = parser:get_fish_complete()
+assert(script:match("complete"))
+```
+
 #### `parser:error(message [, ...])`
 
 Raise a parser error.
+
+Report a parser error and terminate the program.
+
+The current usage string is written to stderr, followed by a blank line and `Error: ` plus the formatted message. `...` are passed to `string.format`. The function then calls `os.exit(1)`, so it never returns.
+
+Use `pparse` or a custom action if the caller needs to recover from invalid input.
+
+```lua
+local parser = require("argparse")("tool")
+parser:error("invalid value '%s'", "x")
+-- prints usage and "Error: invalid value 'x'", then exits 1
+```
 
 #### `argument:args(...)`
 
 Set or get the argument's target names.
 
+Set how many values one occurrence of an element consumes.
+
+The argument may be a number, a table boundary string such as `"2"`, `"2-4"`, `"2+"`, `"*"`, `"+"` or `"?"`, or another supported range form. It updates both the minimum and maximum value counts and returns the element.
+
+For options, the value is the number of words after the option. For positional arguments it controls how many command-line words the argument collects.
+
+```lua
+local parser = require("argparse")("tool")
+local point = parser:argument("coords"):args(2)
+local args = parser:parse({ "10", "20" })
+print(args.coords[1], args.coords[2]) --> 10 20
+```
+
 #### `argument:count(count)`
 
 Set how many values the argument consumes.
+
+Set how many times an option may occur on the command line.
+
+The value uses the same boundary syntax as `args`: a number, `"n-m"`, `"n+"`, `"*"`, `"+"` or `"?"`. A minimum greater than zero makes the option required; a maximum limits repetition. Returns the element.
+
+This setting is primarily useful on options. Combine it with `:args` when each occurrence also takes several values.
+
+```lua
+local parser = require("argparse")("tool")
+local include = parser:option("-I --include"):count("*")
+local args = parser:parse({ "-I", "one", "-I", "two" })
+print(#args.include) --> 2
+```
 
 #### `argument:default(value)`
 
 Set the default value.
 
+Set the value used when the element is not supplied.
+
+A string default is stored as the displayed default and is inserted when the argument or option is unused. A non-string default (number, table, boolean, or `nil`) is used as the initial result value and is not shown in help.
+
+For options, defaults participate in usage rendering and in `show_default`. Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:option("--retries", "attempts", "3"):convert(tonumber)
+local args = parser:parse({})
+print(args.retries) --> 3
+```
+
 #### `argument:target(name)`
 
 Set the result field name.
+
+Choose the result-table field written by this element.
+
+By default a positional argument uses its name and an option derives a name from its aliases, replacing `-` with `_`. Setting a target overrides that choice and is useful when several elements share a name or when the Lua identifier would be inconvenient.
+
+Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:flag("--dry-run"):target("dry_run")
+local args = parser:parse({ "--dry-run" })
+print(args.dry_run) --> true
+```
 
 #### `argument:convert(func)`
 
 Set a value conversion function.
 
+Set a conversion applied to each raw command-line value.
+
+`func` may be a function, a table whose numeric index selects a converter for the corresponding value position, or a lookup table. A function receives the raw string and returns the converted value; returning `nil, message` reports a parse error. Choices are checked before conversion.
+
+Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:argument("count"):convert(tonumber)
+local args = parser:parse({ "42" })
+print(math.type(args.count)) --> integer
+```
+
 #### `argument:choices(...)`
 
 Restrict values to a set of choices.
+
+Restrict accepted values to a fixed set.
+
+Pass an array of strings. A value outside the set causes a parse error that lists the allowed choices; the choices also replace the usual placeholder in usage and help. Conversion runs after the choice check.
+
+Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:argument("mode"):choices({ "fast", "safe" })
+local ok = parser:pparse({ "slow" })
+print(ok) --> false
+```
 
 #### `argument:argname(name)`
 
 Set the display name in help output.
 
+Set the placeholder used for this element in usage and help output.
+
+The value may be a string or an array of strings, one per consumed value. It does not change parsing or the result key. Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:add_help(false)
+parser:argument("file"):argname("PATH")
+print(parser:get_usage()) --> Usage: tool PATH
+```
+
 #### `argument:show_default(boolean)`
 
 Control whether the default is shown in help.
+
+Control whether a string default is displayed in help output.
+
+`boolean` defaults to `true`. When enabled and a string default is set, help appends `(default: value)` to the description. Non-string defaults are initial values and are never shown. Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:option("--level", "log level", "info"):show_default(false)
+assert(not parser:get_help():find("default: info", 1, true))
+```
 
 #### `argument:hidden(boolean)`
 
 Hide the argument from help output.
 
+Hide this element from usage and help output.
+
+The element is still parsed and still produces a result; only its documentation is suppressed. This is useful for compatibility options and internal switches. Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+parser:flag("--internal"):hidden(true)
+assert(not parser:get_help():find("--internal", 1, true))
+```
+
 #### `argument:overwrite(boolean)`
 
 Control overwriting of repeated results.
+
+Control what happens when an option is repeated more often than allowed.
+
+With `true` (the default for options), later occurrences overwrite earlier results according to the action: `store` keeps the last value, `append` drops the oldest element, and `count` keeps its current count. With `false`, exceeding the maximum count raises a parse error. Returns the element.
+
+```lua
+local parser = require("argparse")("tool")
+local tag = parser:option("--tag"):overwrite(false)
+local ok = parser:pparse({ "--tag", "a", "--tag", "b" })
+print(ok) --> false
+```
 
 ### F
 
@@ -3428,85 +4604,307 @@ constructors and capture helpers.
 
 Match a pattern against a string.
 
+Match a pattern against a subject string.
+
+Matching is anchored at `init`: the pattern must match a prefix of the subject starting there, not an arbitrary substring. `init` defaults to 1 and may be negative to count from the end.
+
+On success the function returns the position just after the match, or all captured values when the pattern captures anything. On failure it returns `nil`. This is the function form of the `:match` pattern method.
+
+```lua
+local lpeg = require "lpeg"
+print(lpeg.match(lpeg.P("abc"), "abcdef")) --> 4
+print(lpeg.match(lpeg.C(lpeg.R("09")^1), "123x")) --> 123
+```
+
 #### `lpeg.P(value)`
 
 Create a literal pattern or convert a value.
+
+Convert a Lua value into an LPeg pattern.
+
+Strings become literal matches, non-negative numbers match exactly that many characters, negative numbers succeed only when fewer than that many characters remain, and booleans always succeed or fail. A table is treated as a grammar, while a function becomes a match-time capture on the empty string. Existing patterns are returned unchanged.
+
+```lua
+local lpeg = require "lpeg"
+print(lpeg.P("abc"):match("abcdef")) --> 4
+print(lpeg.P(2):match("xy")) --> 3
+print(lpeg.P(-1):match("")) --> 1
+```
 
 #### `lpeg.R(...)`
 
 Create a pattern matching ranges of characters.
 
+Create a pattern matching one character from one or more inclusive ranges.
+
+Each argument is a two-character string such as `"09"` or `"az"`. The resulting pattern matches a single character whose code lies in any range. With no arguments it always fails. The `utfR` constructor handles Unicode code points.
+
+```lua
+local lpeg = require "lpeg"
+local hex = lpeg.R("09", "af", "AF")^1
+print(hex:match("BEEF")) --> 5
+```
+
 #### `lpeg.S(set)`
 
 Create a pattern matching any character in a set.
+
+Create a pattern matching any single character in a set.
+
+The argument is the complete set as a string, so `S("+-*/")` accepts one arithmetic operator. An empty set always fails. For a one-character string, `S(c)` is equivalent to `P(c)`.
+
+```lua
+local lpeg = require "lpeg"
+local op = lpeg.S("+-*/")
+print(op:match("+")) --> 2
+print(op:match("x")) --> nil
+```
 
 #### `lpeg.V(name)`
 
 Reference a grammar rule.
 
+Create a non-terminal reference for use inside a grammar.
+
+The argument is the rule name or numeric index in the enclosing grammar table. References are resolved when that table is converted to a pattern with `lpeg.P`, which allows recursive grammars. A `V` reference used outside a grammar is an error.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.P{ "(" * lpeg.V(1)^0 * ")" }
+print(p:match("(())")) --> 5
+```
+
 #### `lpeg.B(pattern)`
 
 Match a pattern behind the current position.
+
+Create a behind predicate that checks text before the current position.
+
+The pattern matches only when `pattern` matches immediately before the current position, and it never consumes input. The referenced pattern must have a fixed length and must not contain captures.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.B("ab") * lpeg.P("cd")
+print(p:match("abcd", 3)) --> 5
+```
 
 #### `lpeg.C(pattern)`
 
 Capture the matched substring.
 
+Create a simple capture around a pattern.
+
+The capture value is the substring matched by `pattern`. If the inner pattern also captures values, those values follow the substring in the result. A failing pattern produces no capture.
+
+```lua
+local lpeg = require "lpeg"
+local word = lpeg.C(lpeg.R("az")^1)
+print(word:match("hello")) --> hello
+```
+
 #### `lpeg.Cc(...)`
 
 Produce constant captures.
+
+Create a constant capture that produces the given values.
+
+The pattern matches the empty string and returns every argument unchanged. Constants are useful for tagging grammar results or providing fixed fields in table captures.
+
+```lua
+local lpeg = require "lpeg"
+local tag = lpeg.Cc("number") * lpeg.C(lpeg.R("09")^1)
+local kind, value = tag:match("42")
+print(kind, value) --> number 42
+```
 
 #### `lpeg.Cmt(pattern, function)`
 
 Match-time capture.
 
+Create a match-time capture.
+
+`function` is called immediately as `function(subject, position, ...captures)`. Returning a number moves the match position to that number; returning `true` succeeds without consuming input; returning `false`, `nil` or nothing fails the match. Any additional return values become capture values.
+
+Unlike ordinary captures, the function runs while matching and may depend on the subject.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Cmt(lpeg.P(1)^0, function(s, i)
+    return i > #s, #s
+end)
+print(p:match("abc")) --> 3
+```
+
 #### `lpeg.Cb(name)`
 
 Back-reference capture.
+
+Create a back-reference capture.
+
+It matches the empty string and returns the values produced by the most recent complete, outermost group capture with the given key. The key may be any non-nil Lua value. Named groups are created with `lpeg.Cg(pattern, name)`.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Cg(lpeg.Cc("tag"), "kind") * lpeg.Cb("kind")
+print(p:match("")) --> tag
+```
 
 #### `lpeg.Carg(n)`
 
 Capture an extra argument.
 
+Create an argument capture.
+
+It matches the empty string and returns the `n`-th extra argument passed to `lpeg.match` after the initial position. This lets a pattern read contextual values without globals.
+
+```lua
+local lpeg = require "lpeg"
+print(lpeg.match(lpeg.Carg(1), "", 1, "context")) --> context
+```
+
 #### `lpeg.Cp()`
 
 Capture the current position.
+
+Create a position capture.
+
+It matches the empty string and returns the current 1-based subject position as a number. Wrapping a pattern with two `Cp` captures is a convenient way to find both ends of a match.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Cp() * lpeg.P("ab") * lpeg.Cp()
+print(p:match("xab")) --> nil
+print(p:match("abx")) --> 1 3
+```
 
 #### `lpeg.Cs(pattern)`
 
 Substitution capture.
 
+Create a substitution capture.
+
+The result is the substring matched by `pattern`, with the text of every inner capture replaced by that capture's value. Inner values must therefore be strings. Non-captured text is copied unchanged.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Cs((lpeg.R("az")^1 / string.upper) * lpeg.P(1)^0)
+print(p:match("hello world")) --> HELLO world
+```
+
 #### `lpeg.Ct(pattern)`
 
 Table capture.
+
+Create a table capture.
+
+Anonymous capture values are stored in successive integer keys, while named groups created with `lpeg.Cg` are stored under their names. The single result is the new table. Captures that produce no value are omitted.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Ct(lpeg.C(lpeg.R("az")^1) * lpeg.P("=") * lpeg.C(lpeg.R("09")^1))
+local t = p:match("age=42")
+print(t[1], t[2]) --> age 42
+```
 
 #### `lpeg.Cf(pattern, function)`
 
 Fold capture.
 
+Create a fold capture.
+
+`function` receives the accumulated value followed by the values captured by `pattern`, and its first return value replaces the accumulator. This construction is deprecated in LPeg 1.1 in favour of the `%` accumulator capture, but remains available.
+
+```lua
+local lpeg = require "lpeg"
+local number = lpeg.R("09")^1 / tonumber
+local add = function(a, b) return a + b end
+local sum = lpeg.Cf(number * ("," * number)^0, add)
+print(sum:match("10,30,43")) --> 83
+```
+
 #### `lpeg.Cg(pattern [, name])`
 
 Group capture.
+
+Group the captures produced by a pattern into one capture.
+
+Without a name the values are joined into a single capture. With a name the group is also stored under that key by an enclosing `lpeg.Ct`, and can be retrieved later with `lpeg.Cb`. A named group usually produces no value by itself.
+
+```lua
+local lpeg = require "lpeg"
+local p = lpeg.Ct(lpeg.Cg(lpeg.C(lpeg.R("az")^1), "name"))
+local t = p:match("lua")
+print(t.name) --> lua
+```
 
 #### `lpeg.type(value)`
 
 Return the LPeg type of a value.
 
-#### `lpeg.version()`
+Return the LPeg type name for a value.
 
-Return the LPeg version.
+Patterns return the string `"pattern"`. Every other Lua value returns `nil`. This is useful for APIs that accept either a pattern or a value that can be converted with `lpeg.P`.
+
+```lua
+local lpeg = require "lpeg"
+print(lpeg.type(lpeg.P("x"))) --> pattern
+print(lpeg.type("x")) --> nil
+```
+
+#### `lpeg.version`
+
+The running LPeg version string.
+
+The running LPeg version as a string such as `"LPeg 1.1.0"`.
+
+This field is a string, not a callable function. Read it directly when reporting diagnostics or checking for features.
+
+```lua
+local lpeg = require "lpeg"
+print(lpeg.version) --> LPeg 1.1.0
+```
 
 #### `lpeg.setmaxstack(size)`
 
 Set the maximum backtracking stack size.
 
+Set the maximum size of LPeg's backtracking stack.
+
+The default limit is 400 entries. Deeply recursive grammars or heavily backtracking patterns may need a larger value; well-written patterns usually do not. The function returns nothing.
+
+```lua
+local lpeg = require "lpeg"
+lpeg.setmaxstack(1000)
+```
+
 #### `lpeg.locale([table])`
 
 Create locale-aware patterns.
 
+Create a table of locale-aware character-class patterns.
+
+The fields are `alnum`, `alpha`, `cntrl`, `digit`, `graph`, `lower`, `print`, `punct`, `space`, `upper` and `xdigit`, each matching one character in that class. When a table is supplied, the fields are added to it and the same table is returned; calling `lpeg.locale(lpeg)` therefore adds `lpeg.alpha`, `lpeg.digit` and the others directly to the module.
+
+```lua
+local lpeg = require "lpeg"
+lpeg.locale(lpeg)
+local word = lpeg.alpha^1
+print(word:match("hello")) --> 6
+```
+
 #### `lpeg.utfR(...)`
 
 Create UTF-8 aware range patterns.
+
+Create a pattern matching one UTF-8 encoded code point in a range.
+
+`cp1` and `cp2` are numeric code points with inclusive bounds. The pattern validates the UTF-8 byte sequence as well as the code-point range. The Unicode maximum is 0x10FFFF; surrogate code points are allowed by the range check.
+
+```lua
+local lpeg = require "lpeg"
+local ascii_printable = lpeg.utfR(0x20, 0x7E)^1
+print(ascii_printable:match("hello")) --> 6
+```
 
 ### re
 
@@ -3523,21 +4921,70 @@ matched, searched, substituted and used in grammars.
 
 Match a pattern against a string.
 
+Match a regular-expression pattern against a subject.
+
+The pattern may be a string or an already compiled LPeg pattern. `init` optionally selects the starting position. The result is the sequence of captures produced by the pattern; if the pattern captures nothing, it is the position after the match. A failed match returns `nil`.
+
+```lua
+local re = require "re"
+print(re.match("the number 423 is odd", "({%a+} / .)*"))
+--> the number is odd
+```
+
 #### `re.find(subject, pattern [, init])`
 
 Find the first match.
 
-#### `re.gmatch(subject, pattern)`
+Search for the first occurrence of a pattern in a subject.
 
-Iterate matches.
+Returns the 1-based index where the match starts and the index where it ends, inclusive. Both values are `nil` when no match exists. The optional `init` gives a starting position, with negative values counted from the end.
+
+```lua
+local re = require "re"
+local first, last = re.find("the number 423 is odd", "[0-9]+")
+print(first, last) --> 12 14
+```
+
+#### `re.updatelocale()`
+
+Refresh the locale-dependent character classes.
+
+Re-read the current C locale and update the predefined character classes used by `%a`, `%c`, `%d`, `%g`, `%l`, `%p`, `%s`, `%u`, `%w` and `%x` (and their uppercase complements).
+
+Call this after changing the process locale. The function returns nothing and does not affect already compiled patterns.
+
+```lua
+local re = require "re"
+re.updatelocale()
+```
 
 #### `re.gsub(subject, pattern, replacement)`
 
 Replace matches.
 
-#### `re.compile(pattern [, definition])`
+Replace every occurrence of a pattern in a subject.
+
+`replacement` follows LPeg capture rules, so it may be a string with `%1`-style references, a function, a table, or a number selecting a capture. The whole subject is returned with all matches replaced.
+
+```lua
+local re = require "re"
+print(re.gsub("hello World", "[aeiou]", "."))
+--> h.ll. W.rld
+```
+
+#### `re.compile(pattern [, defs])`
 
 Compile a pattern.
+
+Compile a regular-expression string into an LPeg pattern.
+
+The optional `defs` table supplies Lua values for named definitions used by the expression. If the argument is already an LPeg pattern it is returned unchanged. Invalid syntax raises an error containing `incorrect pattern`.
+
+```lua
+local re = require "re"
+local number = re.compile("%d+")
+print(number:match("123")) --> 4
+```
 
 ### cjson
 
@@ -3555,65 +5002,249 @@ numbers, sparse arrays, maximum depth and indentation.
 
 Encode a Lua value as JSON.
 
+Serialise a Lua value as a JSON string.
+
+Booleans, numbers, strings, `nil` and tables are supported. Tables with only consecutive positive integer keys become JSON arrays; other tables become objects with string keys. Unsupported values such as functions, threads and non-null userdata raise an error unless the skip option is enabled.
+
+Encoding is controlled by the module configuration functions, including maximum depth, number precision, sparse-array handling and invalid numbers.
+
+```lua
+local cjson = require "cjson"
+print(cjson.encode({ true, { foo = "bar" } }))
+--> [true,{"foo":"bar"}]
+```
+
 #### `cjson.decode(string)`
 
 Decode a JSON string.
+
+Deserialise a JSON string into a Lua value.
+
+Objects become tables, arrays become integer-keyed tables, and JSON `null` becomes the light userdata value `cjson.null`. Numeric object keys are converted to strings. Invalid numbers are accepted by default; see `decode_invalid_numbers`.
+
+Syntax errors raise a Lua error rather than returning `nil`.
+
+```lua
+local cjson = require "cjson"
+local value = cjson.decode('[true,{"n":1}]')
+print(value[1], value[2].n) --> true 1
+print(cjson.decode("null") == cjson.null) --> true
+```
 
 #### `cjson.new()`
 
 Create a separate cjson instance.
 
+Create an independent cjson instance.
+
+The new module has its own configuration and encoding buffer, so changing one instance does not affect another. This is useful for threads or for keeping a strict encoder separate from a permissive one.
+
+```lua
+local cjson = require "cjson"
+local pretty = cjson.new()
+pretty.encode_indent("  ")
+print(pretty.encode({ a = 1 }))
+```
+
 #### `cjson.encode_empty_table_as_object(boolean)`
 
 Control empty-table encoding.
+
+Control how empty Lua tables are encoded.
+
+With `true` (the default) an empty table becomes `{}`. With `false` it becomes `[]`. Tables carrying `cjson.empty_array_mt` or `cjson.array_mt` are always arrays. The function returns the current setting and changes it only when an argument is supplied.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_empty_table_as_object(false)
+print(cjson.encode({})) --> []
+```
 
 #### `cjson.decode_array_with_array_mt(boolean)`
 
 Control array metatables.
 
+Control whether decoded JSON arrays carry `cjson.array_mt`.
+
+The default is `false`. When enabled, arrays produced by `decode` get the array metatable, which lets a later `encode` preserve the array type even for empty arrays.
+
+The function returns the current setting and only changes it when given an argument.
+
+```lua
+local cjson = require "cjson"
+cjson.decode_array_with_array_mt(true)
+local value = cjson.decode("[]")
+print(getmetatable(value) == cjson.array_mt) --> true
+```
+
 #### `cjson.decode_allow_comment(boolean)`
 
 Allow comments while decoding.
+
+Allow `//` and `/* ... */` comments while decoding.
+
+Comments are disabled by default. When enabled they may appear wherever whitespace is allowed. Unterminated block comments still produce a decode error.
+
+Returns the current setting; the value changes only when an argument is provided.
+
+```lua
+local cjson = require "cjson"
+cjson.decode_allow_comment(true)
+print(cjson.decode('{ // note\n "a": 1 }').a) --> 1
+```
 
 #### `cjson.encode_sparse_array(convert, ratio, safe)`
 
 Configure sparse-array handling.
 
+Configure how sparse Lua arrays are encoded.
+
+`convert` controls whether an excessively sparse array becomes a JSON object instead of raising an error. `ratio` and `safe` determine the threshold: an array is excessively sparse when its maximum index exceeds both `safe` and `item_count * ratio`. Defaults are `false`, `2` and `10`.
+
+All three current settings are returned. Missing arguments leave the corresponding setting unchanged.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_sparse_array(true)
+print(cjson.encode({ [1000] = "x" }))
+--> {"1000":"x"}
+```
+
 #### `cjson.encode_max_depth(depth)`
 
 Set the maximum encode depth.
+
+Set the maximum nesting depth accepted by `encode`.
+
+The default is 1000. Exceeding the limit raises an error, preventing recursive or extremely deep tables from exhausting the stack. The value must be a positive integer.
+
+Returns the current setting; it changes only when an argument is supplied.
+
+```lua
+local cjson = require "cjson"
+local depth = cjson.encode_max_depth(50)
+print(depth) --> 50
+```
 
 #### `cjson.decode_max_depth(depth)`
 
 Set the maximum decode depth.
 
+Set the maximum nesting depth accepted by `decode`.
+
+The default is 1000. Deeper JSON arrays or objects are rejected with an error. This limits stack use on hostile input. The value must be a positive integer.
+
+Returns the current setting; it changes only when an argument is supplied.
+
+```lua
+local cjson = require "cjson"
+print(cjson.decode_max_depth(200)) --> 200
+```
+
 #### `cjson.encode_number_precision(precision)`
 
 Set number precision.
+
+Set the number of significant digits used when encoding numbers.
+
+The default is 14 and the accepted range is 1 to 16. Lower values trade accuracy for speed when serialising large amounts of numeric data. Returns the current setting.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_number_precision(6)
+print(cjson.encode({ math.pi })) --> [3.14159]
+```
 
 #### `cjson.encode_keep_buffer(boolean)`
 
 Keep the encode buffer between calls.
 
+Control whether the encoder keeps its reusable buffer between calls.
+
+Keeping the buffer (the default) avoids repeated allocations and is fastest. Disabling it frees the buffer after every `encode` call, which is useful when the buffer would otherwise retain a large peak allocation.
+
+Returns the current setting; the value changes only when an argument is provided.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_keep_buffer(false)
+local keep = cjson.encode_keep_buffer()
+print(keep) --> false
+```
+
 #### `cjson.encode_invalid_numbers(boolean)`
 
 Control encoding of NaN and infinity.
+
+Control how NaN and infinity are encoded.
+
+`false` (the default) raises an error. `true` writes the non-standard tokens `NaN` and `Infinity`. The string `"null"` writes JSON `null`, keeping the output standards-compliant. Returns the current setting in the same form.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_invalid_numbers("null")
+print(cjson.encode({ 0 / 0 })) --> [null]
+```
 
 #### `cjson.decode_invalid_numbers(boolean)`
 
 Control decoding of NaN and infinity.
 
+Control whether non-standard numeric tokens are accepted while decoding.
+
+The default is `true`, so NaN, infinity and hexadecimal numbers are decoded. Set it to `false` to reject them. The current setting is returned and changes only when an argument is supplied.
+
+```lua
+local cjson = require "cjson"
+cjson.decode_invalid_numbers(false)
+local ok = pcall(cjson.decode, "NaN")
+print(ok) --> false
+```
+
 #### `cjson.encode_escape_forward_slash(boolean)`
 
 Escape forward slashes.
+
+Control whether `/` is escaped as `\/` in encoded strings.
+
+Escaping is enabled by default in this build. Disabling it produces shorter, still valid JSON. Returns the current setting.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_escape_forward_slash(false)
+print(cjson.encode({ "a/b" })) --> ["a/b"]
+```
 
 #### `cjson.encode_skip_unsupported_value_types(boolean)`
 
 Skip unsupported values.
 
+Control what happens when encoding unsupported Lua types.
+
+The default is `false`: functions, threads and userdata raise an error. When enabled, values that cannot be represented are omitted instead of aborting the whole encode operation. Returns the current setting.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_skip_unsupported_value_types(true)
+print(cjson.encode({ 1, print, 2 })) --> [1,2]
+```
+
 #### `cjson.encode_indent(value)`
 
 Pretty-print JSON with indentation.
+
+Set the indentation used for pretty-printed JSON.
+
+Pass a string such as `"  "` or `"\t"`. The empty string disables indentation. Returns the current indent, or `""` when pretty-printing is off. Arrays and objects gain newlines and the requested indentation.
+
+```lua
+local cjson = require "cjson"
+cjson.encode_indent("  ")
+print(cjson.encode({ a = 1 }))
+--> {
+-->   "a": 1
+--> }
+```
 
 ### zlib
 
@@ -3627,33 +5258,111 @@ License: MIT
 functions.  `zlib.compress` and `zlib.decompress` are one-shot helpers.  Checksum
 helpers `adler32` and `crc32` are also available.
 
-#### `zlib.deflate([level [, window_bits [, mem_level [, strategy]]]])`
+#### `zlib.deflate([level [, window_bits]])`
 
 Create a streaming deflate function.
+
+Create a streaming deflate function.
+
+`level` defaults to zlib's default compression level (`-1`), and `window_bits` defaults to 15. A negative window size requests raw deflate output without the zlib wrapper. The returned closure accepts a string chunk and an optional flush mode (`"none"`, `"sync"`, `"full"` or `"finish"`), and returns the compressed chunk, an end-of-stream flag, and total input/output byte counts.
+
+Passing `nil` or no input finishes the stream. After `"finish"` the closure must not be called with more data.
+
+```lua
+local zlib = require "zlib"
+local deflate = zlib.deflate()
+local compressed = deflate("hello world", "finish")
+print(#compressed > 0) --> true
+```
 
 #### `zlib.inflate([window_bits])`
 
 Create a streaming inflate function.
 
+Create a streaming inflate function.
+
+`window_bits` defaults to 15 plus automatic gzip/zlib header detection. The returned closure accepts compressed input and returns the decompressed chunk, an end-of-stream flag, and total input/output byte counts. It accepts input split at arbitrary byte boundaries.
+
+After the stream reports end-of-input, further calls with data raise an error.
+
+```lua
+local zlib = require "zlib"
+local deflate = zlib.deflate()
+local inflate = zlib.inflate()
+local packed = deflate("hello", "finish")
+print(inflate(packed)) --> hello
+```
+
 #### `zlib.compress(data [, level])`
 
 Compress a string in one call.
+
+Compress a complete string in one call.
+
+`level` defaults to the zlib default and may be `zlib.BEST_SPEED` through `zlib.BEST_COMPRESSION`. The result is a zlib-wrapped compressed string. On success a second return value carries the zlib status code; initialisation failure returns `nil, code`.
+
+```lua
+local zlib = require "zlib"
+local packed, status = zlib.compress("hello world", zlib.BEST_SPEED)
+print(type(packed), type(status)) --> string number
+```
 
 #### `zlib.decompress(data [, window_bits])`
 
 Decompress a string in one call.
 
-#### `zlib.adler32(data [, previous])`
+Decompress a complete zlib stream in one call.
+
+`window_bits` defaults to 15 and must match the stream format. Invalid or truncated input raises an error rather than returning a partial string.
+
+```lua
+local zlib = require "zlib"
+local packed = zlib.compress("hello")
+print(zlib.decompress(packed)) --> hello
+```
+
+#### `zlib.adler32([previous, data])`
 
 Compute an Adler-32 checksum.
 
-#### `zlib.crc32(data [, previous])`
+Create or update an Adler-32 checksum.
+
+Called with no arguments it returns a checksum function; each call of that function accepts a string and returns the running checksum. In compatibility mode you may instead call `zlib.adler32(previous, data)` with a numeric starting checksum and a string, which returns the updated number directly.
+
+```lua
+local zlib = require "zlib"
+local checksum = zlib.adler32()
+checksum("one")
+print(type(checksum(" two"))) --> number
+```
+
+#### `zlib.crc32([previous, data])`
 
 Compute a CRC-32 checksum.
+
+Create or update a CRC-32 checksum.
+
+Called with no arguments it returns a stateful checksum function that accepts strings and returns the running CRC. Compatibility mode also accepts `zlib.crc32(previous, data)` and returns the updated number immediately.
+
+```lua
+local zlib = require "zlib"
+local checksum = zlib.crc32()
+print(type(checksum("hello"))) --> number
+```
 
 #### `zlib.version()`
 
 Return the zlib version.
+
+Return the linked zlib version as a numeric tuple.
+
+The results are the major, minor and optional patch components, for example `1, 3, 1`. The patch value is `nil` when the version string omits it. This differs from some other zlib bindings that return a version string.
+
+```lua
+local zlib = require "zlib"
+local major, minor, patch = zlib.version()
+print(major, minor, patch)
+```
 
 ### sqlite3
 

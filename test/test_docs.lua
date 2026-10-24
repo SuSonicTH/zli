@@ -506,6 +506,17 @@ local completed_doc_modules = {
     csv = true,
     luastrip = true,
     sqlite3 = true,
+    argparse = true,
+    lpeg = true,
+    re = true,
+    cjson = true,
+    zlib = true,
+    tar = true,
+    log = true,
+    crossline = true,
+    zip = true,
+    unzip = true,
+    httpclient = true,
 }
 
 function Test_docs.Test_authored_entries_have_full_descriptions()
