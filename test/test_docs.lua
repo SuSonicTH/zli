@@ -488,7 +488,7 @@ function Test_docs.Test_lua_source_label_uses_manual_version()
 end
 
 -- Modules whose authored entries have completed the documentation depth pass.
--- Add the remaining modules here as milestones 2 and 3 are finished.
+-- Keep this list in sync when a new authored module is added.
 local completed_doc_modules = {
     auxiliary = true,
     collection = true,
@@ -517,6 +517,9 @@ local completed_doc_modules = {
     zip = true,
     unzip = true,
     httpclient = true,
+    httpserver = true,
+    tools = true,
+    ZLI = true,
 }
 
 function Test_docs.Test_authored_entries_have_full_descriptions()

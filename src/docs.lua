@@ -793,7 +793,10 @@ function docs.render_libraries_markdown()
         end
     end
 
-    return table.concat(out, "\n"):gsub("\n\n\n+", "\n\n")
+    local text = table.concat(out, "\n"):gsub("\n\n\n+", "\n\n")
+    -- A multi-line final entry leaves a blank line behind.  Keep the mirror
+    -- byte-for-byte stable with exactly one terminating newline.
+    return (text:gsub("\n+$", "")) .. "\n"
 end
 
 return docs

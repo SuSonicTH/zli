@@ -2322,19 +2322,207 @@ assert(http.error_handling == "raise")
 
 A route value may be a response string or a function `(options, request)`
 returning a string, a response table, or a table that is encoded as JSON.
-Request tables contain `method`, `target`, `version`, `header`, `body` and
-other request metadata.  Responses use `{ status, body, header }`.
+Request tables contain `method`, `target`, `version`, `body` and other request
+metadata; message headers are available as named fields.  Responses use
+`{ status, body, header }`.
 ]==], {
-                    entry("httpserver.serve", "httpserver.serve(options)", "function", "Start an HTTP server."),
-                    entry("httpserver.config", "httpserver:config(options)", "method", "Configure a loaded httpserver module."),
-                    entry("httpserver.serve_file", "httpserver.serve_file(path)", "function", "Serve a file from disk."),
-                    entry("httpserver.resolve_web_path", "httpserver.resolve_web_path(root, target)", "function", "Resolve a URL path inside a web root."),
-                    entry("httpserver.content_type", "httpserver.content_type(filename)", "function", "Look up a MIME type by file extension."),
-                    entry("httpserver.cache", "httpserver.cache(func [, time])", "function", "Cache a route handler's result."),
-                    entry("httpserver.status", "httpserver.status", "field", "HTTP status code table."),
-                    entry("httpserver.cache_free_cycle", "httpserver.cache_free_cycle([seconds])", "function", "Set the cache expiry cycle."),
-                    entry("httpserver.free_cache", "httpserver.free_cache([cycle])", "function", "Free expired cache entries."),
-                    entry("httpserver.clear_cache", "httpserver.clear_cache()", "function", "Clear the content cache."),
+                    entry("httpserver.serve", "httpserver.serve(options)", "function",
+                        "Start an HTTP server.",
+                        [[
+Start the HTTP server and process requests until the process is stopped.
+
+`serve` accepts one options table and blocks while listening. The fields are:
+
+- `address` — bind address, default `"127.0.0.1"`.
+- `port` — TCP port, default `8080`.
+- `web_root` — directory used for `GET` requests that no route matched.
+- `cache_web_root` — cache lifetime for `web_root` responses, or `false` to
+  disable caching.
+- `GET`, `POST`, ... — tables mapping a request target to a route value.
+- `*` — route table used for every method without a method-specific match.
+
+A target is matched exactly or as a Lua pattern that consumes the whole target.
+A route may be a response string or a function. The function receives
+`(options, request)` and may return a string, a response table, or a data table
+that is encoded as JSON. The request table contains `method`, `target`,
+`version`, `body` and request metadata; message headers are available as named
+fields. Responses use `{ status, body, header }`; `status` defaults to `200`
+and a JSON body gets a JSON content type.
+
+The call does not return during normal operation. Invalid options raise an
+argument error, and address or bind failures are reported according to the
+module's `error_handling` setting.
+
+```lua
+local http = require "httpserver"
+http.serve {
+    address = "127.0.0.1",
+    port = 8080,
+    GET = { ["/"] = "hello" },
+    POST = { ["/echo"] = function(_, request)
+        return { status = http.status.created, body = request.body }
+    end },
+}
+```
+]]),
+                    entry("httpserver.config", "httpserver:config(options)", "method",
+                        "Configure a loaded httpserver module.",
+                        [[
+Configure the loaded module in place.
+
+The supported option is `error_handling`, set to `"return"` or `"raise"`. It
+controls failures in the native binding, such as an invalid address or a port
+that cannot be bound; argument errors still raise. The options table may be the
+first or second argument, and the module table is returned, so calls can be
+chained.
+
+```lua
+local http = require "httpserver"
+http:config { error_handling = "raise" }
+assert(http.error_handling == "raise")
+```
+]]),
+                    entry("httpserver.serve_file", "httpserver.serve_file(path)", "function",
+                        "Serve a file from disk.",
+                        [[
+Turn a file on disk into a response table.
+
+A regular file is read in binary mode and returned as
+`{ status = 200, body = ..., header = { content_type = ... } }`. If the path is
+a directory, `index.html` or `index.htm` is served when present; otherwise a
+generated HTML directory listing is returned. A missing or unreadable file
+returns `{ status = 404 }` instead of raising.
+
+```lua
+local http = require "httpserver"
+local response = http.serve_file("doc/README.md")
+assert(response.status == http.status.ok)
+assert(response.body:find("ZLI", 1, true))
+```
+]]),
+                    entry("httpserver.resolve_web_path", "httpserver.resolve_web_path(root, target)", "function",
+                        "Resolve a URL path inside a web root.",
+                        [[
+Turn a request target into a path below a web root.
+
+The root gets a trailing slash if needed. Query strings and fragments are
+removed, percent-escapes are decoded, and backslashes are treated as
+separators. `.` components are dropped and `..` removes the previous component;
+leading `..` cannot climb above the root because there is no previous component
+to remove.
+
+The function only normalizes the path. `httpserver.serve` separately checks the
+resolved file against the web root before serving it, so traversal attempts are
+rejected with `403`.
+
+```lua
+local http = require "httpserver"
+assert(http.resolve_web_path("/srv/", "/a/../a") == "/srv/a")
+assert(http.resolve_web_path("/srv/", "/%61?x=1") == "/srv/a")
+assert(http.resolve_web_path("/srv/", "/../../etc/passwd") == "/srv/etc/passwd")
+```
+]]),
+                    entry("httpserver.content_type", "httpserver.content_type(filename)", "function",
+                        "Look up a MIME type by file extension.",
+                        [[
+Return the MIME type for a file name.
+
+The extension after the last dot is lower-cased and looked up in the built-in
+MIME table. Returns `nil` when the name has no extension or the extension is
+unknown. The file does not need to exist.
+
+```lua
+local http = require "httpserver"
+assert(http.content_type("index.HTML") == "text/html")
+assert(http.content_type("archive.unknown") == nil)
+```
+]]),
+                    entry("httpserver.cache", "httpserver.cache(func [, time])", "function",
+                        "Cache a route handler's result.",
+                        [[
+Wrap a route handler so its response is reused for a while.
+
+The optional `time` is the lifetime in seconds; `nil` or `true` keeps the
+response until it is cleared or evicted by a cache sweep. A value of `0`
+refreshes on every request. Entries are keyed by `request.target`, so do not
+share one wrapper between methods whose responses differ. Expired entries are
+removed by `free_cache` and by the periodic sweep configured with
+`cache_free_cycle`.
+
+The returned function has the same `(options, request)` signature as the
+handler.
+
+```lua
+local http = require "httpserver"
+local calls = 0
+local handler = http.cache(function()
+    calls = calls + 1
+    return "value"
+end, 60)
+assert(handler({}, { target = "/a" }) == "value")
+assert(handler({}, { target = "/a" }) == "value")
+assert(calls == 1)
+```
+]]),
+                    entry("httpserver.status", "httpserver.status", "field",
+                        "HTTP status code table.",
+                        [[
+Numeric HTTP status codes indexed by lower-case names.
+
+`ok`, `created`, `not_found`, `internal_server_error` and the other standard
+codes are available. Lookup is case-insensitive through a metatable, so
+`status.NOT_FOUND` also works. Treat the table as read-only.
+
+```lua
+local http = require "httpserver"
+print(http.status.ok)        --> 200
+print(http.status.not_found) --> 404
+```
+]]),
+                    entry("httpserver.cache_free_cycle", "httpserver.cache_free_cycle([seconds])", "function",
+                        "Set the cache expiry cycle.",
+                        [[
+Set how often expired entries are swept automatically.
+
+`seconds` is the interval between sweeps performed during `httpserver.cache`
+lookups. Passing `nil` or `0` disables automatic sweeping; entries are then
+only removed by `httpserver.free_cache`. The default at startup is `300`
+seconds. Returns nothing.
+
+```lua
+local http = require "httpserver"
+http.cache_free_cycle(60)
+http.cache_free_cycle(0) -- disable automatic sweeps
+```
+]]),
+                    entry("httpserver.free_cache", "httpserver.free_cache([cycle])", "function",
+                        "Free expired cache entries.",
+                        [[
+Remove cached responses older than a number of seconds.
+
+`cycle` defaults to the value configured by `httpserver.cache_free_cycle`.
+Entries whose age is strictly greater than `cycle` are discarded; pass `-1` to
+expire everything that has a cached response. The function also resets the
+timestamp used by the automatic sweep and returns nothing.
+
+```lua
+local http = require "httpserver"
+http.free_cache(-1)
+```
+]]),
+                    entry("httpserver.clear_cache", "httpserver.clear_cache()", "function",
+                        "Clear the content cache.",
+                        [[
+Discard every cached response and reset the automatic sweep timer.
+
+Call this between tests or after changing a handler that is behind
+`httpserver.cache`. Returns nothing.
+
+```lua
+local http = require "httpserver"
+http.clear_cache()
+```
+]]),
                 }),
 
                 module("log", "log", "Simple logging library.", [==[
@@ -5808,13 +5996,156 @@ print(value.name)
 Tools are started with `zli @name`.  Compiled executables can include the same
 scripts in their payload.
 ]==], {
-                    entry("@repl", "zli @repl", "tool", "Start the interactive REPL.", "Inside the REPL, `:help` shows the documentation index and `:help <name>` looks up an entry."),
-                    entry("@sqlite", "zli @sqlite", "tool", "Start the SQLite CLI.", "The CLI starts with an in-memory database.  Commands include `open`, `close`, `file`, `mode table|csv|json|lua`, and `quit`."),
-                    entry("@compile", "zli @compile <config>", "tool", "Package Lua files into a standalone executable.", "The config is a Lua table (or a `return { ... }` statement) with `output_name` and `files`."),
-                    entry("@test", "zli @test <file>", "tool", "Run a LuaUnit test file."),
-                    entry("@manual", "zli @manual [options]", "tool", "Serve the bundled reference manual.", "Options: `--port`, `--address`, `--no-open`, `--output <file>`."),
-                    entry("@help", "zli @help [options] [query]", "tool", "Look up documentation.", "Options: `--list`, `--search`, `--markdown`, `--output`."),
-                    entry("@serve", "zli @serve [directory]", "tool", "Serve a directory over HTTP.", "Defaults to the current directory."),
+                    entry("@repl", "zli @repl", "tool",
+                        "Start the interactive REPL.",
+                        [[
+Start the interactive Read-Eval-Print Loop.
+
+The REPL runs `~/.config/zli/init.lua`, then `~/.config/zli/repl_init.lua`,
+before showing the prompt. The generated `repl_init.lua` preloads common modules
+such as `csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`, `filesystem`,
+`sqlite3`, `stream`, `zip`, `zlib`, `crossline` and `collection`; edit that file
+to change the defaults. History is kept in `~/.config/zli/repl_history`.
+
+Enter `quit` or `exit`, or press Ctrl-D, to leave. `?expression` pretty-prints
+tables and strings, `:help` shows the index, and `:help <name>` or
+`:help --search <term>` looks up documentation. Incomplete statements continue
+on the next line, and F1 shows the editing help. Running `zli` with no arguments
+also starts the REPL.
+
+```bash
+zli @repl
+```
+]]),
+                    entry("@sqlite", "zli @sqlite", "tool",
+                        "Start the SQLite CLI.",
+                        [[
+Start the interactive SQLite command line.
+
+The session begins with an in-memory database. A statement is executed when a
+line contains `;`; continuation lines use the `>>` prompt. SQL errors are
+printed and the session continues.
+
+Commands are also terminated with `;`:
+
+- `open "file.db";` closes the current database and opens a file.
+- `close;` closes the current database and starts a new in-memory one.
+- `file "script.sql";` executes statements from a file.
+- `mode;` prints the current output mode.
+- `mode table|csv|json|lua;` selects pretty table, CSV, JSON or Lua-table
+  output.
+- `quit;` or `exit;` leaves the CLI; Ctrl-D also exits.
+
+History is stored in `~/.config/zli/sqlite_history`.
+
+```bash
+zli @sqlite
+```
+]]),
+                    entry("@compile", "zli @compile <config>", "tool",
+                        "Package Lua files into a standalone executable.",
+                        [[
+Create an executable that carries the listed files in its own payload.
+
+The config is required. It may be a table constructor, for example
+`output_name = "app"` plus `files = { ... }`, or a chunk that returns such a
+table. `output_name` is required. `files` must be a non-empty list; each item is
+either a path string or a table with `file` and an optional `name`. The entry
+name defaults to the file's basename. Every source file must exist.
+
+The tool copies the running executable, removes an existing payload, appends
+the new zip payload and exits. On Windows `.exe` is added to `output_name` when
+missing; on Linux the result is made executable (`755`). Errors are printed and
+cause exit status `1`.
+
+```lua
+return {
+    output_name = "myapp",
+    files = {
+        { file = "src/main.lua", name = "main.lua" },
+        { file = "assets/data.txt" },
+    },
+}
+```
+]]),
+                    entry("@test", "zli @test <file>", "tool",
+                        "Run a LuaUnit test file.",
+                        [[
+Execute a LuaUnit suite from the command line.
+
+The file is read and executed, then LuaUnit runs every test whose name matches
+`Test`; the process exits with LuaUnit's status. Test files can define global
+tables named `Test...` or use LuaUnit directly. The normal ZLI init script runs
+first, so configuration from `~/.config/zli/init.lua` is active. A missing file
+argument prints an error and exits with status `1`.
+
+```bash
+zli @test test/test_stream.lua
+```
+]]),
+                    entry("@manual", "zli @manual [options]", "tool",
+                        "Serve the bundled reference manual.",
+                        [[
+Serve the bundled reference manual over HTTP.
+
+The manual combines the Lua language and standard-library reference with all
+authored library, tool and ZLI documentation. It listens on `127.0.0.1:8080`
+by default and opens a browser using the platform launcher unless `--no-open`
+is given. `/` (also `/index.html` and `/manual.html`) serves the manual,
+`/search...` serves search results, and `/favicon.ico` returns `204`.
+
+Options are `--port <port>`, `--address <address>`, `--no-open` and
+`--output <file>`. `--output` writes the complete HTML manual to the file and
+exits instead of starting the server. Invalid options or values print usage and
+exit with status `2`.
+
+```bash
+zli @manual --port 9000 --no-open
+zli @manual --output /tmp/manual.html
+```
+]]),
+                    entry("@help", "zli @help [options] [query]", "tool",
+                        "Look up documentation.",
+                        [[
+Look up bundled documentation from the command line.
+
+With a query, an exact entry name is shown first; otherwise a ranked result
+list is printed. `--search` forces the ranked list, `--list` prints every
+documented module and entry (including the Lua standard library), and
+`--markdown` emits the generated library reference. A query may be split across
+several arguments and is joined with spaces. With no query, a short index is
+printed.
+
+`--output <file>` writes the selected output to a file instead of stdout.
+`--search` without a query is an error (status `2`), and a query with no matches
+prints an error and exits with status `1`.
+
+```bash
+zli @help string.byte
+zli @help --search trim
+zli @help --list
+zli @help --markdown --output doc/libraries.md
+```
+]]),
+                    entry("@serve", "zli @serve [directory]", "tool",
+                        "Serve a directory over HTTP.",
+                        [[
+Start a static file server for a directory.
+
+The directory defaults to `./`. The tool listens on `127.0.0.1:8080`, prints
+the URL, tries to open a browser on Windows or Linux, and serves the tree with
+caching of static files disabled. Directories use `index.html` or `index.htm`
+when present and otherwise produce a listing. Path traversal outside the web
+root is rejected and MIME types come from the built-in `httpserver` table.
+
+Only the first argument is used; the server blocks until the process is
+stopped.
+
+```bash
+zli @serve ./public
+zli @serve
+```
+]]),
                 }),
             },
         },
@@ -5827,19 +6158,138 @@ scripts in their payload.
                 module("ZLI", "ZLI runtime", "Interpreter globals and configuration.", [==[
 The `ZLI` table is available to every script and REPL session.
 ]==], {
-                    entry("ZLI.version", "ZLI.version", "field", "The ZLI version string."),
+                    entry("ZLI.version", "ZLI.version", "field",
+                        "The ZLI version string.",
+                        [[
+Version string of the running ZLI build.
+
+The value comes from the version file embedded in the binary, for example
+`"0.1.9"`. It is a string and should be treated as read-only.
+
+```lua
+print(ZLI.version)
+```
+]]),
                     entry("ZLI.error_handling", "ZLI.error_handling", "field", "Default error style for libraries.", "Set to `\"raise\"` before `require` to make libraries raise instead of returning `nil, message`."),
-                    entry("ZLI.exe_path", "ZLI.exe_path", "field", "The real path of the running executable."),
-                    entry("ZLI.dofile", "ZLI.dofile(name)", "function", "Run a script from the payload."),
-                    entry("zli.init", "~/.config/zli/init.lua", "topic", "User init script.", "Executed before every script and REPL session."),
-                    entry("zli.repl_init", "~/.config/zli/repl_init.lua", "topic", "REPL init script.", "Executed only when the REPL starts."),
-                    entry("zli.payload", "payload", "topic", "Embedded zip payload.", "The ZLI binary carries `main.lua`, tools and documentation in an appended zip payload.  `zli @name` selects a payload script by exact name or by `name.lua`; `@dir/name` is supported.  Compiled executables replace the payload with the files listed in their config."),
+                    entry("ZLI.exe_path", "ZLI.exe_path", "field",
+                        "The real path of the running executable.",
+                        [[
+Real filesystem path of the running executable.
+
+ZLI resolves the executable path at startup instead of trusting `argv[0]`, so
+the value remains usable when the binary is found through `PATH` or invoked
+through a symlink. `@compile` uses it as the source binary to copy. The field is
+a string and is read-only.
+
+```lua
+print(ZLI.exe_path)
+```
+]]),
+                    entry("ZLI.dofile", "ZLI.dofile(name)", "function",
+                        "Run a script from the payload.",
+                        [[
+Run a Lua script stored in the attached payload.
+
+`name` is looked up as written and then with a `.lua` suffix, so both `tool` and
+`tool.lua` work; `dir/tool` is supported. The script runs with the current
+global environment and `arg` table. Errors, including a missing payload or
+missing script, are raised; the function does not return a value.
+
+This is the mechanism behind startup selection and is available to scripts that
+want to invoke another payload entry.
+
+```lua
+local ok, err = pcall(ZLI.dofile, "does-not-exist")
+print(ok, err) --> false  script 'does-not-exist' not found in payload
+```
+]]),
+                    entry("zli.init", "~/.config/zli/init.lua", "topic",
+                        "User init script.",
+                        [[
+User init script, executed before every script and REPL session.
+
+The file lives at `~/.config/zli/init.lua`. ZLI creates the configuration
+directory and a commented starter file on first use. The script runs in the
+global environment after the standard libraries and the `ZLI` table are
+available, so it can set `ZLI.error_handling`, define helper globals, or preload
+modules; anything it leaves global is visible to the selected program. An error
+in this file aborts startup.
+
+```lua
+-- ~/.config/zli/init.lua
+ZLI.error_handling = "raise"
+function greet(name)
+    return "hello " .. name
+end
+```
+]]),
+                    entry("zli.repl_init", "~/.config/zli/repl_init.lua", "topic",
+                        "REPL init script.",
+                        [[
+REPL-only init script.
+
+The file lives at `~/.config/zli/repl_init.lua` and is executed by `@repl`
+after the global `init.lua`. If missing, the REPL creates it with assignments
+for commonly used modules (`csv`, `cjson`, `log`, `lpeg`, `luaunit`, `re`,
+`filesystem`, `sqlite3`, `stream`, `zip`, `zlib`, `crossline`, `collection`).
+Use it for prompt helpers and other state that should exist only in interactive
+sessions; errors abort the REPL.
+
+```lua
+-- ~/.config/zli/repl_init.lua
+function reload(name)
+    package.loaded[name] = nil
+    return require(name)
+end
+```
+]]),
+                    entry("zli.payload", "payload", "topic",
+                        "Embedded zip payload.",
+                        [[
+The zip archive appended to the ZLI executable.
+
+The payload holds `main.lua`, the command line tools, library modules and
+documentation. `zli @name` runs `name` or `name.lua` from it, and `@dir/name`
+is supported. Lua's `require` also searches the payload for `name.lua` and
+`name/init.lua`, so bundled modules load without being extracted. The payload
+is opened through the real executable path, which keeps it available when the
+binary is reached through `PATH` or a symlink.
+
+Compiled executables created by `@compile` replace the standard payload with
+the files listed in their config. A binary without an attached payload cannot
+run `@` tools or `ZLI.dofile`.
+
+```bash
+zli @repl
+zli @help string.byte
+```
+]]),
                     entry("zli.argv0", "argv[0] and payload selection", "topic", "How the executable name selects a payload script.", [==[When no tool or script is given, ZLI selects a payload entry from the executable basename: `<exe-name>.lua` first, then `main.lua`, then `init.lua`.  On Windows, a trailing `.exe` is stripped from the basename.
 
 The basename comes from `argv[0]`, so symlinks with different names can select different payload tools from the same executable.  The payload zip itself is opened through the real executable path, so the binary also works when found through `PATH`.
 
 The Lua `arg[0]` value remains the executable name used to invoke ZLI; the selected payload script is not substituted into the argument table.  This is also true for filesystem scripts: the script path is not reflected in `arg[0]`.]==]),
-                    entry("zli.compile", "compiled executables", "topic", "Standalone executables created by `@compile`.", "A compiled executable replaces the standard payload with the files listed in its config."),
+                    entry("zli.compile", "compiled executables", "topic",
+                        "Standalone executables created by `@compile`.",
+                        [[
+Standalone executables produced by `@compile`.
+
+A compiled executable is a copy of ZLI with its standard payload replaced by
+the files in the compile config. At startup it still runs
+`~/.config/zli/init.lua`; then it selects `<executable-name>.lua`, `main.lua` or
+`init.lua` from the new payload. A specific payload entry can be started with
+`zli @name`, including `@dir/name`. On Windows the executable suffix is added
+automatically; on Linux the output is marked executable.
+
+The executable remains a full ZLI binary: standard libraries and native
+bindings are available, but the bundled documentation and tools are only
+present if their files were included in the config.
+
+```bash
+zli @compile myapp.lua
+./myapp
+```
+]]),
                 }),
             },
         },
