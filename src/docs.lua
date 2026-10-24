@@ -29,6 +29,26 @@ docs.manual_nodes = manual.nodes or {}
 docs.nodes = docs.manual_nodes
 docs.groups = authored.groups or {}
 docs.entries = {}
+
+-- The HTML manual numbers the authored chapters after the Lua manual (which
+-- keeps chapters 1-4 once the C API chapters are omitted).  These numbers are
+-- display-only: titles stay unnumbered for @help, search and the Markdown
+-- mirror.
+local authored_chapter_start = 5
+for i, group in ipairs(docs.groups) do
+    group.manual_number = authored_chapter_start + i - 1
+    for j, module in ipairs(group.modules or {}) do
+        module.manual_number = string.format("%d.%d", group.manual_number, j)
+    end
+end
+
+local function group_heading(group)
+    return tostring(group.manual_number) .. " – " .. group.title
+end
+
+local function module_heading(module)
+    return tostring(module.manual_number) .. " – " .. (module.title or module.name)
+end
 docs.by_name = {}
 docs.modules = {}
 
@@ -100,17 +120,19 @@ local function add_entry(entry, priority)
 end
 
 -- Lua standard library module names by manual section.
+-- The standard-library chapter is generated as chapter 4 because the C API
+-- chapters are omitted from the ZLI manual.
 local section_modules = {
-    ["6.2"] = "basic",
-    ["6.3"] = "coroutine",
-    ["6.4"] = "package",
-    ["6.5"] = "string",
-    ["6.6"] = "utf8",
-    ["6.7"] = "table",
-    ["6.8"] = "math",
-    ["6.9"] = "io",
-    ["6.10"] = "os",
-    ["6.11"] = "debug",
+    ["4.2"] = "basic",
+    ["4.3"] = "coroutine",
+    ["4.4"] = "package",
+    ["4.5"] = "string",
+    ["4.6"] = "utf8",
+    ["4.7"] = "table",
+    ["4.8"] = "math",
+    ["4.9"] = "io",
+    ["4.10"] = "os",
+    ["4.11"] = "debug",
 }
 
 -- Manual entries first.
@@ -231,9 +253,11 @@ for _, node in ipairs(docs.manual_nodes) do
 end
 
 for _, group in ipairs(docs.groups) do
-    toc_add("group", 1, group.title, group_anchor(group))
-    for _, module in ipairs(group.modules or {}) do
-        toc_add("module", 2, module.title or module.name, module_anchor(module))
+    toc_add("group", 1, group_heading(group), group_anchor(group))
+    if not group.flat then
+        for _, module in ipairs(group.modules or {}) do
+            toc_add("module", 2, module_heading(module), module_anchor(module))
+        end
     end
 end
 
@@ -454,7 +478,6 @@ nav.toc {
     font-size: 0.9em;
 }
 nav.toc h2 { margin: 0 0 0.5em; font-size: 1em; }
-nav.toc h3 { margin: 0.9em 0 0.25em; font-size: 0.95em; }
 nav.toc ul { list-style: none; margin: 0; padding: 0 0 0 0.7em; }
 nav.toc li { margin: 0.18em 0; }
 nav.toc li.level1 { padding-left: 0; font-weight: bold; margin-top: 0.45em; }
@@ -503,6 +526,7 @@ table { border-collapse: collapse; margin: 1em 0; }
 th, td { border: 1px solid var(--rule); padding: 0.35em 0.6em; text-align: left; vertical-align: top; }
 th { background: var(--shade); }
 .entry { margin-bottom: 0.4em; }
+.overview { margin: 0.8em 0 1.6em; }
 .source, .meta { color: #666; font-size: 0.85em; }
 .meta a { color: #666; text-decoration: underline; }
 .attribution { color: #666; font-size: 0.85em; border-top: 1px solid var(--rule); margin-top: 3em; padding-top: 1em; }
@@ -517,6 +541,21 @@ th { background: var(--shade); }
     header input[type=search] { width: 45vw; }
 }
 ]==]
+
+local overview_lua_version = major_minor(docs.meta.version)
+if overview_lua_version == "" then overview_lua_version = "5.5" end
+
+local overview_markdown = string.format([==[
+ZLI is a portable Lua %s interpreter distributed as a single statically
+linked binary.  It bundles the Lua standard libraries together with a broad
+selection of third-party libraries and ZLI's own filesystem, networking,
+collection and tooling modules, so the same executable runs on a wide range
+of systems without installed dependencies.
+
+This manual documents the Lua language, the standard library, every bundled
+library, and the command-line tools.  Use the search box above, or
+`zli @help` / `:help` in the REPL, to look up an API.
+]==], overview_lua_version)
 
 local function page(title, body)
     return table.concat({
@@ -544,19 +583,20 @@ local function toc_html()
                 markdown.render_inline_html(node.title) .. "</a></li>"
         end
     end
-    out[#out + 1] = "</ul>"
-
     for _, group in ipairs(docs.groups) do
-        out[#out + 1] = "<h3><a href=\"#" .. group_anchor(group) .. "\">" ..
-            markdown.render_inline_html(group.title) .. "</a></h3><ul class=\"manual-toc\">"
-        for _, module in ipairs(group.modules or {}) do
-            out[#out + 1] = "<li class=\"level2\"><a href=\"#" .. module_anchor(module) .. "\">" ..
-                markdown.render_inline_html(module.title or module.name) .. "</a></li>"
+        out[#out + 1] = "<li class=\"level1\"><a href=\"#" ..
+            markdown.escape_html(group_anchor(group)) .. "\">" ..
+            markdown.render_inline_html(group_heading(group)) .. "</a></li>"
+        if not group.flat then
+            for _, module in ipairs(group.modules or {}) do
+                out[#out + 1] = "<li class=\"level2\"><a href=\"#" ..
+                    markdown.escape_html(module_anchor(module)) .. "\">" ..
+                    markdown.render_inline_html(module_heading(module)) .. "</a></li>"
+            end
         end
-        out[#out + 1] = "</ul>"
     end
-    out[#out + 1] = "<h3><a href=\"#licenses\">Licenses and attribution</a></h3>"
-    out[#out + 1] = "</nav>"
+    out[#out + 1] = "<li class=\"level1\"><a href=\"#licenses\">Licenses and attribution</a></li>"
+    out[#out + 1] = "</ul></nav>"
     return table.concat(out)
 end
 
@@ -590,28 +630,41 @@ local function module_meta_html(module)
     return "<p class=\"meta\">" .. table.concat(parts, " &middot; ") .. "</p>"
 end
 
+local function render_module(group, module)
+    local out = {}
+    local anchor = module_anchor(module)
+    if group.flat then
+        -- Single-module chapters (Command line tools and ZLI) read as one
+        -- chapter: no module subheading or source banner.  The anchor stays
+        -- available for search results and deep links.
+        out[#out + 1] = "<span id=\"" .. markdown.escape_html(anchor) .. "\"></span>"
+    else
+        out[#out + 1] = "<h2 id=\"" .. markdown.escape_html(anchor) .. "\">" ..
+            markdown.render_inline_html(module_heading(module)) .. "</h2>"
+        out[#out + 1] = module_meta_html(module)
+    end
+    if module.summary and module.summary ~= "" then
+        out[#out + 1] = "<p class=\"source\">" .. markdown.render_inline_html(module.summary) .. "</p>"
+    end
+    if module.markdown and module.markdown ~= "" then
+        out[#out + 1] = markdown.to_html(module.markdown)
+    end
+    for _, entry in ipairs(module.entries or {}) do
+        out[#out + 1] = docs.render_entry(entry, "html")
+    end
+    return table.concat(out)
+end
+
 local function render_authored()
     local out = {}
     for _, group in ipairs(docs.groups) do
-        out[#out + 1] = "<h1 id=\"" .. group_anchor(group) .. "\">" ..
-            markdown.render_inline_html(group.title) .. "</h1>"
+        out[#out + 1] = "<h1 id=\"" .. markdown.escape_html(group_anchor(group)) .. "\">" ..
+            markdown.render_inline_html(group_heading(group)) .. "</h1>"
         if group.intro then
             out[#out + 1] = markdown.to_html(group.intro)
         end
         for _, module in ipairs(group.modules or {}) do
-            local anchor = module_anchor(module)
-            out[#out + 1] = "<h2 id=\"" .. anchor .. "\">" ..
-                markdown.render_inline_html(module.title or module.name) .. "</h2>"
-            out[#out + 1] = module_meta_html(module)
-            if module.summary and module.summary ~= "" then
-                out[#out + 1] = "<p class=\"source\">" .. markdown.render_inline_html(module.summary) .. "</p>"
-            end
-            if module.markdown and module.markdown ~= "" then
-                out[#out + 1] = markdown.to_html(module.markdown)
-            end
-            for _, entry in ipairs(module.entries or {}) do
-                out[#out + 1] = docs.render_entry(entry, "html")
-            end
+            out[#out + 1] = render_module(group, module)
         end
     end
     return table.concat(out)
@@ -668,6 +721,7 @@ function docs.render_manual_html()
         "<h1>ZLI Reference Manual</h1>",
         "<p class=\"source\">Lua ", markdown.escape_html(docs.meta.version or "5.5"),
         " &middot; ZLI ", markdown.escape_html((ZLI and ZLI.version) or ""), "</p>",
+        "<div class=\"overview\">", markdown.to_html(overview_markdown), "</div>",
         "<h1 id=\"lua-manual\">Lua ", markdown.escape_html(docs.meta.version or "5.5"),
         " language and standard libraries</h1>",
         render_manual_nodes(),

@@ -5,9 +5,12 @@
 //! a small Markdown dialect and emits a Lua module (`docs_manual.lua`) that is
 //! attached to the ZLI payload.
 //!
-//! The C API (chapters 4 and 5, section 6.1) is deliberately not emitted.
-//! Links to excluded sections are turned into plain text so the generated
-//! manual has no dead C API references.
+//! The C API (chapters 4 and 5, section 6.1) and the grammar-only chapter 9
+//! are deliberately not emitted.  Links to excluded sections are turned into
+//! plain text so the generated manual has no dead references.  With chapters
+//! 4 and 5 gone, the standard-library chapter (source chapter 6) is presented
+//! as chapter 4; that renumbering happens after the exclusion checks, so the
+//! source `#4`/`#5` C API links are still filtered out first.
 
 const std = @import("std");
 
@@ -146,7 +149,15 @@ pub fn generate(allocator: std.mem.Allocator, manual_html: []const u8, lua_heade
             continue;
         }
 
-        if (h.is_entry) {
+        // Present the standard-library chapter (source chapter 6) as chapter 4
+        // because the omitted C API chapters 4 and 5 would otherwise leave a
+        // visible gap.
+        const heading = if (std.mem.eql(u8, chapter, "6"))
+            try renumberChapter6(a, h)
+        else
+            h;
+
+        if (heading.is_entry) {
             entry_count += 1;
             var body = Managed(u8).init(a);
             var j = i + 1;
@@ -156,10 +167,10 @@ pub fn generate(allocator: std.mem.Allocator, manual_html: []const u8, lua_heade
                 try body.appendSlice(md);
             }
             const trimmed = std.mem.trim(u8, body.items, " \t\r\n");
-            try emitEntry(&out, a, h, trimmed);
+            try emitEntry(&out, a, heading, trimmed);
             i = j;
         } else {
-            try emitHeading(&out, a, h);
+            try emitHeading(&out, a, heading);
             i += 1;
         }
     }
@@ -176,7 +187,24 @@ pub fn generate(allocator: std.mem.Allocator, manual_html: []const u8, lua_heade
         \\
     );
 
-    return allocator.dupe(u8, out.items);
+    // Chapter 9 is not emitted, so its single cross-reference must not point
+    // at a dead anchor.  Point it at the official manual instead.
+    var generated: []const u8 = out.items;
+    const chapter9_url = try std.fmt.allocPrint(
+        a,
+        "[§9](https://www.lua.org/manual/{s}/manual.html#9)",
+        .{major_minor},
+    );
+    generated = try std.mem.replaceOwned(u8, a, generated, "[§9](#9)", chapter9_url);
+    generated = try std.mem.replaceOwned(
+        u8,
+        a,
+        generated,
+        " at the end of this manual.",
+        " of the official Lua manual.",
+    );
+
+    return allocator.dupe(u8, generated);
 }
 
 fn parseSegments(arena: std.mem.Allocator, html: []const u8) ![]Segment {
@@ -272,8 +300,34 @@ fn isKeptChapter(chapter: []const u8) bool {
     return std.mem.eql(u8, chapter, "1") or
         std.mem.eql(u8, chapter, "2") or
         std.mem.eql(u8, chapter, "3") or
-        std.mem.eql(u8, chapter, "6") or
-        std.mem.eql(u8, chapter, "9");
+        std.mem.eql(u8, chapter, "6");
+}
+
+/// Rewrite the displayed chapter/section number of a heading in the standard
+/// library chapter from 6 to 4.  Only the leading number changes, so `6.5.1`
+/// becomes `4.5.1` and entry headings (whose titles and `pdf-` anchors have no
+/// leading chapter number) are left untouched.
+fn renumberChapter6(arena: std.mem.Allocator, h: Heading) !Heading {
+    var result = h;
+    if (h.title.len > 0 and h.title[0] == '6') {
+        result.title = try std.fmt.allocPrint(arena, "4{s}", .{h.title[1..]});
+    }
+    if (h.anchor.len > 0 and h.anchor[0] == '6') {
+        result.anchor = try std.fmt.allocPrint(arena, "4{s}", .{h.anchor[1..]});
+    }
+    return result;
+}
+
+/// Links in the source manual point at chapter 6; after renumbering they must
+/// point at chapter 4.  This runs after `hrefIsExcluded`, so the source C API
+/// links (#4 and #5) have already been filtered out.
+fn renumberChapter6Href(arena: std.mem.Allocator, href: []const u8) ![]const u8 {
+    if (href.len >= 2 and href[0] == '#' and href[1] == '6' and
+        (href.len == 2 or href[2] == '.'))
+    {
+        return std.fmt.allocPrint(arena, "#4{s}", .{href[2..]});
+    }
+    return href;
 }
 
 fn appendMissing(diagnostic: *Managed(u8), seen: bool, label: []const u8) !void {
@@ -755,9 +809,10 @@ fn htmlToMarkdown(arena: std.mem.Allocator, html: []const u8) ![]const u8 {
                     if (norm.len == 0 or hrefIsExcluded(norm)) {
                         link = .{ .href = norm, .keep = false };
                     } else {
+                        const target = try renumberChapter6Href(arena, norm);
                         try flushPending(&out, &pending_space);
                         try out.append('[');
-                        link = .{ .href = norm, .keep = true, .active = true };
+                        link = .{ .href = target, .keep = true, .active = true };
                     }
                 } else {
                     link = .{ .href = "", .keep = false };
@@ -815,7 +870,10 @@ fn htmlToMarkdown(arena: std.mem.Allocator, html: []const u8) ![]const u8 {
     }
 
     if (in_pre) try out.appendSlice("\n```\n");
-    return out.items;
+
+    // Visible cross-references such as `§6.5.1` must follow the renumbered
+    // chapter as well.  Code blocks never contain a section sign.
+    return std.mem.replaceOwned(u8, arena, out.items, "§6", "§4");
 }
 
 fn appendRawText(out: *Managed(u8), text: []const u8) !void {
@@ -1015,14 +1073,16 @@ test "malformed manual diagnostics" {
     try std.testing.expect(std.mem.indexOf(u8, diagnostic, "chapter 2") == null);
 }
 
-test "filtered manual has no c api chapters" {
+test "filtered manual has no c api or syntax chapters" {
     const html =
         \\<html><body>
         \\<h1>1 &ndash; <a name="1">Introduction</a></h1><p>intro</p>
-        \\<h1>2 &ndash; <a name="2">Basic Concepts</a></h1><p>basic</p>
+        \\<h1>2 &ndash; <a name="2">Basic Concepts</a></h1>
+        \\<p>See <a href="#6.5.1">&sect;6.5.1</a>. The complete syntax of Lua can be found in <a href="#9">&sect;9</a> at the end of this manual.</p>
         \\<h1>6 &ndash; <a name="6">The Standard Libraries</a></h1><p>libs</p>
         \\<h2>6.1 &ndash; <a name="6.1">Loading the Libraries in C code</a></h2><p>c api</p>
         \\<h2>6.2 &ndash; <a name="6.2">Basic Functions</a></h2>
+        \\<h3>6.5.1 &ndash; <a name="6.5.1">Patterns</a></h3>
         \\<hr><h3><a name="pdf-assert"><code>assert (v [, message])</code></a></h3><p>checks</p>
         \\<h1>9 &ndash; <a name="9">The Complete Syntax of Lua</a></h1><p>syntax</p>
         \\</body></html>
@@ -1038,5 +1098,20 @@ test "filtered manual has no c api chapters" {
     try std.testing.expect(std.mem.indexOf(u8, generated, "Loading the Libraries in C code") == null);
     try std.testing.expect(std.mem.indexOf(u8, generated, "c api") == null);
     try std.testing.expect(std.mem.indexOf(u8, generated, "pdf-assert") != null);
-    try std.testing.expect(std.mem.indexOf(u8, generated, "The Complete Syntax of Lua") != null);
+
+    // The grammar-only chapter is gone, and its one reference goes online.
+    try std.testing.expect(std.mem.indexOf(u8, generated, "The Complete Syntax of Lua") == null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "](#9)") == null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "https://www.lua.org/manual/5.5/manual.html#9") != null);
+
+    // Chapter 6 is presented as chapter 4, including headings, anchors and links.
+    try std.testing.expect(std.mem.indexOf(u8, generated, "4 – The Standard Libraries") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "4.2 – Basic Functions") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "4.5.1 – Patterns") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "anchor = [=[4.2]=]") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "anchor = [=[4.5.1]=]") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "6 – The Standard Libraries") == null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "6.2 – Basic Functions") == null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "[§4.5.1](#4.5.1)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, generated, "§6.5.1") == null);
 }

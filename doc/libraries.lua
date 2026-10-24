@@ -5991,6 +5991,8 @@ print(value.name)
             id = "tools",
             title = "Command line tools",
             source = "zli",
+            -- Rendered as a single chapter without a module subheading.
+            flat = true,
             modules = {
                 module("tools", "tools", "Tools shipped in the ZLI payload.", [==[
 Tools are started with `zli @name`.  Compiled executables can include the same
@@ -6154,6 +6156,8 @@ zli @serve
             id = "zli_topics",
             title = "ZLI",
             source = "zli",
+            -- Rendered as a single chapter without a module subheading.
+            flat = true,
             modules = {
                 module("ZLI", "ZLI runtime", "Interpreter globals and configuration.", [==[
 The `ZLI` table is available to every script and REPL session.

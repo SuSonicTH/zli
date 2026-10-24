@@ -197,7 +197,8 @@ function Test_docs.Test_manual_html_contains_language_and_libraries()
     lu.assertStrContains(html, "ZLI Reference Manual")
     lu.assertStrContains(html, "The Language")
     lu.assertStrContains(html, "The Standard Libraries")
-    lu.assertStrContains(html, "The Complete Syntax of Lua")
+    lu.assertNotStrContains(html, "The Complete Syntax of Lua")
+    lu.assertNotStrContains(html, "id=\"9\"")
     lu.assertStrContains(html, "id=\"pdf-string.byte\"")
     lu.assertStrContains(html, "filesystem")
     lu.assertStrContains(html, "Third-party libraries")
@@ -207,6 +208,50 @@ function Test_docs.Test_manual_html_contains_language_and_libraries()
     lu.assertNotStrContains(html, "Loading the Libraries in C code")
     lu.assertNotStrContains(html, "lua_absindex")
     lu.assertNotStrContains(html, "luaL_openlibs")
+end
+
+function Test_docs.Test_manual_html_has_overview_after_header()
+    local html = docs.render_manual_html()
+    lu.assertStrContains(html, "portable Lua 5.5 interpreter")
+
+    local header = html:find("<h1>ZLI Reference Manual</h1>", 1, true)
+    local overview = html:find("portable Lua 5.5 interpreter", 1, true)
+    local lua_chapter = html:find("id=\"lua-manual\"", 1, true)
+    lu.assertNotNil(header)
+    lu.assertNotNil(overview)
+    lu.assertNotNil(lua_chapter)
+    lu.assertTrue(header < overview)
+    lu.assertTrue(overview < lua_chapter)
+end
+
+function Test_docs.Test_authored_chapters_are_numbered()
+    local html = docs.render_manual_html()
+
+    lu.assertStrContains(html, "5 – ZLI libraries")
+    lu.assertStrContains(html, "5.1 – auxiliary")
+    lu.assertStrContains(html, "5.2 – benchmark")
+    lu.assertStrContains(html, "6 – Third-party libraries")
+    lu.assertStrContains(html, "6.1 – argparse")
+    lu.assertStrContains(html, "7 – Command line tools")
+    lu.assertStrContains(html, "8 – ZLI")
+
+    lu.assertStrContains(html, "<h1 id=\"group-command-line-tools\">7 – Command line tools</h1>")
+    lu.assertStrContains(html, "<h1 id=\"group-zli\">8 – ZLI</h1>")
+
+    -- Tools and the ZLI runtime are flattened into their chapters.
+    lu.assertNotStrContains(html, "7.1 –")
+    lu.assertNotStrContains(html, "8.1 –")
+    lu.assertNotStrContains(html, "<h2 id=\"module-tools\"")
+    lu.assertNotStrContains(html, "<h2 id=\"module-zli\"")
+
+    -- Their module anchors still work for search results and deep links.
+    lu.assertStrContains(html, "<span id=\"module-tools\"></span>")
+    lu.assertStrContains(html, "<span id=\"module-zli\"></span>")
+
+    -- The left TOC uses the same level1/level2 list as the Lua chapters.
+    lu.assertStrContains(html, "<a href=\"#group-zli-libraries\">5 – ZLI libraries</a>")
+    lu.assertStrContains(html, "<a href=\"#module-auxiliary\">5.1 – auxiliary</a>")
+    lu.assertNotStrContains(html, "<h3><a href=\"#group-")
 end
 
 function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
@@ -443,10 +488,10 @@ function Test_docs.Test_entry_names_and_anchors_are_unique()
 end
 
 function Test_docs.Test_section_and_module_aliases_resolve()
-    local entry = docs.find("6.2")
+    local entry = docs.find("4.2")
     lu.assertNotNil(entry)
     lu.assertEquals("basic", entry.name)
-    lu.assertEquals("6.2", entry.anchor)
+    lu.assertEquals("4.2", entry.anchor)
 
     entry = docs.find("basic")
     lu.assertNotNil(entry)
