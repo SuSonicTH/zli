@@ -30,6 +30,15 @@ web.serve {
         GET = {
             ["/"] = "hello",
             ["/json"] = function() return { ok = true } end,
+            ["/push"] = function()
+                local web = require "webserver"
+                local count = web.broadcast("html", "pushed")
+                return {
+                    status = 200,
+                    body = tostring(count),
+                    header = { content_type = "text/plain" },
+                }
+            end,
             ["/late-asset"] = function()
                 local ok, message = web.asset_set("webui/late.txt", "late")
                 return {
@@ -194,6 +203,32 @@ function Test_webserver:Test_asset_set_cannot_change_assets_while_serving()
         lu.assertEquals(200, response.status)
         lu.assertEquals("nil:", body:sub(1, 4))
         lu.assertStrContains(body, "cannot change assets while serving")
+    end)
+end
+
+function Test_webserver:Test_sse_once_streams_one_event_and_closes()
+    with_server(function(_, request)
+        local response, body = request("GET", "/__webui/events?once=1&push=hello", nil, {
+            cookie = "webui_session=" .. TOKEN,
+        })
+        lu.assertEquals(200, response.status)
+        lu.assertEquals("text/event-stream", response.content_type)
+        lu.assertEquals("event: html\ndata: hello\n\n", body)
+    end)
+end
+
+function Test_webserver:Test_sse_requires_the_session_cookie()
+    with_server(function(_, request)
+        local response = request("GET", "/__webui/events?once=1&push=hello")
+        lu.assertEquals(403, response.status)
+    end)
+end
+
+function Test_webserver:Test_broadcast_reports_the_number_of_clients()
+    with_server(function(_, request)
+        local response, body = request("GET", "/push")
+        lu.assertEquals(200, response.status)
+        lu.assertEquals("0", body)
     end)
 end
 

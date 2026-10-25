@@ -30,6 +30,9 @@ const max_body = 1024 * 1024;
 const max_clients = 16;
 const cookie_name = "webui_session";
 const dispatch_key = "zli_webserver_dispatch";
+const sse_path = "/__webui/events";
+const sse_keepalive_ms = 20 * 1000;
+const max_sse_queue_bytes = 1024 * 1024;
 
 var io: Io = undefined;
 
@@ -48,6 +51,8 @@ const exported_functions = [_]zlua.FnReg{
     .{ .name = "asset_set", .func = luaerror.wrap(assetSet) },
     .{ .name = "asset_list", .func = luaerror.wrap(assetList) },
     .{ .name = "clients", .func = luaerror.wrap(clients) },
+    .{ .name = "sse", .func = luaerror.wrap(sse) },
+    .{ .name = "broadcast", .func = luaerror.wrap(broadcast) },
     .{ .name = "info", .func = luaerror.wrap(info) },
     .{ .name = "config", .func = luaerror.wrap(setConfig) },
 };
@@ -156,9 +161,37 @@ const Snapshot = struct {
     etag: u64,
 };
 
+const Transport = enum { http, sse };
+
 const Client = struct {
     id: u64,
     stream: std.Io.net.Stream,
+    transport: Transport = .http,
+};
+
+const SseMessage = struct {
+    event: []u8,
+    data: []u8,
+};
+
+/// One server sent events connection. The connection task owns the socket and
+/// the response body writer; everybody else only appends to `queue`.
+const SseClient = struct {
+    id: u64,
+    mutex: std.Io.Mutex = .init,
+    condition: std.Io.Condition = .init,
+    queue: std.ArrayList(SseMessage) = .empty,
+    queued_bytes: usize = 0,
+    closed: bool = false,
+
+    fn clear(self: *SseClient) void {
+        for (self.queue.items) |message| {
+            allocator.free(message.event);
+            allocator.free(message.data);
+        }
+        self.queue.clearRetainingCapacity();
+        self.queued_bytes = 0;
+    }
 };
 
 const Header = struct {
@@ -229,6 +262,9 @@ const Server = struct {
     clients: std.ArrayList(Client) = .empty,
     next_client_id: u64 = 1,
 
+    sse_mutex: std.Io.Mutex = .init,
+    sse_clients: std.ArrayList(*SseClient) = .empty,
+
     jobs_mutex: std.Io.Mutex = .init,
     jobs_condition: std.Io.Condition = .init,
     jobs_head: ?*Job = null,
@@ -249,6 +285,17 @@ const Server = struct {
         return id;
     }
 
+    fn markSse(self: *Server, handle: std.Io.net.Socket.Handle) void {
+        self.clients_mutex.lockUncancelable(io);
+        defer self.clients_mutex.unlock(io);
+        for (self.clients.items) |*client| {
+            if (client.stream.socket.handle == handle) {
+                client.transport = .sse;
+                return;
+            }
+        }
+    }
+
     fn unregisterClient(self: *Server, handle: std.Io.net.Socket.Handle) void {
         self.clients_mutex.lockUncancelable(io);
         defer self.clients_mutex.unlock(io);
@@ -257,6 +304,17 @@ const Server = struct {
                 _ = self.clients.swapRemove(index);
                 return;
             }
+        }
+    }
+
+    fn closeSseClients(self: *Server) void {
+        self.sse_mutex.lockUncancelable(io);
+        defer self.sse_mutex.unlock(io);
+        for (self.sse_clients.items) |client| {
+            client.mutex.lockUncancelable(io);
+            client.closed = true;
+            client.mutex.unlock(io);
+            client.condition.broadcast(io);
         }
     }
 
@@ -465,6 +523,7 @@ fn serve(lua: *Lua) !i32 {
         }
         server.snapshots.deinit(allocator);
         server.clients.deinit(allocator);
+        server.sse_clients.deinit(allocator);
     }
 
     if (luax.getOptionalString(lua, "assets_dir", 1)) |dir| server.assets_dir = try allocator.dupe(u8, dir);
@@ -501,6 +560,7 @@ fn serve(lua: *Lua) !i32 {
     // listener and every connection and join.
     server.stopping = true;
     waitInflight(server, 500);
+    server.closeSseClients();
     const listener_stream = std.Io.net.Stream{ .socket = server.listener.socket };
     listener_stream.shutdown(io, .both) catch {};
     server.shutdownClients();
@@ -580,6 +640,10 @@ fn connectionLoop(server: *Server, stream: std.Io.net.Stream, client_id: u64) Io
 
     while (!server.stopping) {
         var request = http_server.receiveHead() catch return;
+        if (std.mem.eql(u8, util.withoutQuery(request.head.target), sse_path)) {
+            handleSse(server, &request, stream, client_id) catch {};
+            return;
+        }
         const keep_going = handleRequest(server, &request, client_id) catch false;
         if (!keep_going) return;
     }
@@ -790,6 +854,195 @@ fn respondText(request: *std.http.Server.Request, status: std.http.Status, body:
 }
 
 // ---------------------------------------------------------------------------
+// server sent events
+// ---------------------------------------------------------------------------
+
+fn queryValue(target: []const u8, key: []const u8) ?[]const u8 {
+    const start = std.mem.indexOfScalar(u8, target, '?') orelse return null;
+    var iterator = std.mem.splitScalar(u8, target[start + 1 ..], '&');
+    while (iterator.next()) |pair| {
+        const eq = std.mem.indexOfScalar(u8, pair, '=') orelse continue;
+        if (std.mem.eql(u8, pair[0..eq], key)) return pair[eq + 1 ..];
+    }
+    return null;
+}
+
+fn writeSseEvent(body: *std.http.BodyWriter, event: []const u8, data: []const u8) !void {
+    const writer = &body.writer;
+    try writer.writeAll("event: ");
+    try writer.writeAll(event);
+    try writer.writeAll("\n");
+    var lines = std.mem.splitScalar(u8, data, '\n');
+    while (lines.next()) |line| {
+        try writer.writeAll("data: ");
+        try writer.writeAll(line);
+        try writer.writeAll("\n");
+    }
+    try writer.writeAll("\n");
+    // BodyWriter.flush only flushes the protocol output; the body buffer has to
+    // be drained first.
+    try body.writer.flush();
+    try body.flush();
+}
+
+fn enqueueSse(client: *SseClient, event: []const u8, data: []const u8) void {
+    client.mutex.lockUncancelable(io);
+    defer client.mutex.unlock(io);
+
+    if (client.closed) return;
+
+    // Only the newest tree matters: drop pending html events.
+    if (std.mem.eql(u8, event, "html")) {
+        var index: usize = 0;
+        while (index < client.queue.items.len) {
+            if (std.mem.eql(u8, client.queue.items[index].event, "html")) {
+                const removed = client.queue.orderedRemove(index);
+                client.queued_bytes -= removed.event.len + removed.data.len;
+                allocator.free(removed.event);
+                allocator.free(removed.data);
+                continue;
+            }
+            index += 1;
+        }
+    }
+
+    client.queued_bytes += event.len + data.len;
+    if (client.queued_bytes > max_sse_queue_bytes) {
+        client.closed = true;
+        client.condition.broadcast(io);
+        return;
+    }
+
+    const duplicate_event = allocator.dupe(u8, event) catch return;
+    const duplicate_data = allocator.dupe(u8, data) catch {
+        allocator.free(duplicate_event);
+        return;
+    };
+    client.queue.append(allocator, .{ .event = duplicate_event, .data = duplicate_data }) catch {
+        allocator.free(duplicate_event);
+        allocator.free(duplicate_data);
+        return;
+    };
+    client.condition.signal(io);
+}
+
+fn broadcastTo(server: *Server, client_id: ?u64, event: []const u8, data: []const u8) usize {
+    server.sse_mutex.lockUncancelable(io);
+    defer server.sse_mutex.unlock(io);
+
+    var count: usize = 0;
+    for (server.sse_clients.items) |client| {
+        if (client_id) |wanted| {
+            if (client.id != wanted) continue;
+        }
+        enqueueSse(client, event, data);
+        count += 1;
+    }
+    return count;
+}
+
+fn handleSse(server: *Server, request: *std.http.Server.Request, stream: std.Io.net.Stream, client_id: u64) !void {
+    if (!hasSessionCookie(request, server.token) or !originAllowed(server, request)) {
+        try respondText(request, .forbidden, "forbidden");
+        return;
+    }
+
+    const target = request.head.target;
+    const once = queryValue(target, "once") != null;
+    const push = queryValue(target, "push");
+
+    var headers: [3]std.http.Header = .{
+        .{ .name = "content-type", .value = "text/event-stream" },
+        .{ .name = "cache-control", .value = "no-store" },
+        .{ .name = "x-accel-buffering", .value = "no" },
+    };
+
+    var buffer: [4096]u8 = undefined;
+    var body = try request.respondStreaming(&buffer, .{ .respond_options = .{
+        .status = .ok,
+        .keep_alive = false,
+        .extra_headers = &headers,
+    } });
+    try body.flush();
+
+    if (once) {
+        if (push) |data| try writeSseEvent(&body, "html", data);
+        body.end() catch {};
+        return;
+    }
+
+    server.markSse(stream.socket.handle);
+
+    const sse_client = allocator.create(SseClient) catch return;
+    sse_client.* = .{ .id = client_id };
+    defer {
+        server.sse_mutex.lockUncancelable(io);
+        for (server.sse_clients.items, 0..) |entry, index| {
+            if (entry == sse_client) {
+                _ = server.sse_clients.swapRemove(index);
+                break;
+            }
+        }
+        server.sse_mutex.unlock(io);
+        sse_client.clear();
+        sse_client.queue.deinit(allocator);
+        allocator.destroy(sse_client);
+    }
+
+    server.sse_mutex.lockUncancelable(io);
+    server.sse_clients.append(allocator, sse_client) catch {
+        server.sse_mutex.unlock(io);
+        return;
+    };
+    server.sse_mutex.unlock(io);
+
+    while (true) {
+        var timed_out = false;
+        sse_client.mutex.lockUncancelable(io);
+        while (sse_client.queue.items.len == 0 and !sse_client.closed) {
+            sse_client.condition.waitTimeout(io, &sse_client.mutex, .{ .duration = .{
+                .raw = std.Io.Duration.fromMilliseconds(sse_keepalive_ms),
+                .clock = .awake,
+            } }) catch {
+                timed_out = true;
+                break;
+            };
+        }
+        const closed = sse_client.closed;
+        var batch = sse_client.queue;
+        sse_client.queue = .empty;
+        sse_client.queued_bytes = 0;
+        sse_client.mutex.unlock(io);
+
+        if (timed_out and batch.items.len == 0) {
+            body.writer.writeAll(":\n\n") catch return;
+            body.writer.flush() catch return;
+            body.flush() catch return;
+            continue;
+        }
+
+        var failed = false;
+        for (batch.items) |message| {
+            if (!failed) {
+                writeSseEvent(&body, message.event, message.data) catch {
+                    failed = true;
+                };
+            }
+            allocator.free(message.event);
+            allocator.free(message.data);
+        }
+        batch.deinit(allocator);
+        if (failed) return;
+
+        body.writer.flush() catch return;
+        body.flush() catch return;
+        if (closed) break;
+    }
+
+    body.end() catch {};
+}
+
+// ---------------------------------------------------------------------------
 // dispatch
 // ---------------------------------------------------------------------------
 
@@ -972,9 +1225,32 @@ fn clients(lua: *Lua) !i32 {
     for (server.clients.items, 0..) |client, index| {
         lua.newTable();
         luax.setTableInteger(lua, -1, "id", @intCast(client.id));
-        luax.setTableString(lua, -1, "transport", "http");
+        luax.setTableString(lua, -1, "transport", @tagName(client.transport));
         lua.setTable(@intCast(index + 1));
     }
+    return 1;
+}
+
+fn sse(lua: *Lua) !i32 {
+    const server = active.server orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    const client_id = luax.getArgIntegerOrError(lua, 1, "expecting a client id");
+    const event = luax.getArgStringOrError(lua, 2, "expecting an event name");
+    const data = luax.getArgStringOrError(lua, 3, "expecting event data");
+    lua.pushInteger(@intCast(broadcastTo(server, @intCast(client_id), event, data)));
+    return 1;
+}
+
+fn broadcast(lua: *Lua) !i32 {
+    const server = active.server orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    const event = luax.getArgStringOrError(lua, 1, "expecting an event name");
+    const data = luax.getArgStringOrError(lua, 2, "expecting event data");
+    lua.pushInteger(@intCast(broadcastTo(server, null, event, data)));
     return 1;
 }
 
