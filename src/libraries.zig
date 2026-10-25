@@ -8,6 +8,7 @@ const unzip = @import("unzip.zig");
 const zip = @import("zip.zig");
 const httpclient = @import("httpclient.zig");
 const httpserver = @import("httpserver.zig");
+const webserver = @import("webserver.zig");
 const luastrip = @import("luastrip.zig");
 const uuid = @import("uuid.zig");
 const tar = @import("tar.zig");
@@ -66,6 +67,10 @@ const preload: []const zlua.FnReg = &.{
         .func = zlua.wrap(httpserver.register),
     },
     .{
+        .name = "webserver",
+        .func = zlua.wrap(webserver.register),
+    },
+    .{
         .name = "luastrip",
         .func = zlua.wrap(luastrip.register),
     },
@@ -122,6 +127,7 @@ pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     crossline.setIo(io);
     httpclient.setIo(io);
     httpserver.setIo(io);
+    webserver.setIo(io);
     zip.setIo(io);
     unzip.setIo(io);
     luastrip.setIo(io);

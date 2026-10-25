@@ -79,3 +79,9 @@ fn readPayload(allocator: std.mem.Allocator, path: []const u8) !?[]u8 {
 
     return null;
 }
+
+/// Read a file directly from the payload archive, ignoring the local
+/// filesystem. Used where the payload must not be shadowed by a local file.
+pub fn readFromPayload(allocator: std.mem.Allocator, path: []const u8) !?[]u8 {
+    return readPayload(allocator, path);
+}

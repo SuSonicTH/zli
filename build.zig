@@ -53,6 +53,16 @@ pub fn build(b: *std.Build) void {
     const run_zig_tests = b.addRunArtifact(zig_tests);
     test_step.dependOn(&run_zig_tests.step);
 
+    const webserver_util_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/webserver_util.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_webserver_util_tests = b.addRunArtifact(webserver_util_tests);
+    test_step.dependOn(&run_webserver_util_tests.step);
+
     const docgen_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/docgen.zig"),
@@ -312,6 +322,7 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/grid.lua", .name = "grid.lua" },
     .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },
     .{ .input = "src/httpserver.lua", .name = "httpserver.lua" },
+    .{ .input = "src/webserver.lua", .name = "webserver.lua" },
     .{ .input = "src/init.lua", .name = "init.lua" },
     .{ .input = "src/logger.lua", .name = "logger.lua" },
     .{ .input = "src/memoize.lua", .name = "memoize.lua" },

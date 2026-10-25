@@ -33,7 +33,7 @@ pub fn getHandling(error_handling: [:0]const u8) !Handling {
         raise(error.unknownArgument, "expecting a string 'return' or 'raise' but got '{s}'", .{error_handling});
 }
 
-pub fn argError(lua: *Lua, arg: i32, comptime format: []const u8, args: anytype) noreturn {
+pub fn argError(lua: *Lua, arg: i32, comptime format: [:0]const u8, args: anytype) noreturn {
     const T = @TypeOf(args);
     const info = @typeInfo(T);
 

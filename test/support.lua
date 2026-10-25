@@ -74,4 +74,46 @@ function support.run(args, options)
     return output, code
 end
 
+
+--- Start a long lived child process and return as soon as it prints its first
+-- line. The child is expected to signal readiness by printing a line (for
+-- example the URL of a server it just started).
+--
+-- options: exe, home (see support.run)
+-- returns: handle with `line`, `pipe`; finish with support.spawn_finish
+function support.spawn(args, options)
+    options = options or {}
+    local exe = options.exe or ZLI.exe_path or arg[0]
+
+    local command = {}
+    if options.home then
+        if os.is_windows then
+            command[#command + 1] = "set \"HOME=" .. options.home .. "\" &&"
+        else
+            command[#command + 1] = "HOME=" .. support.quote(options.home)
+        end
+    end
+
+    command[#command + 1] = support.quote(exe)
+    for _, value in ipairs(args or {}) do
+        command[#command + 1] = support.quote(value)
+    end
+    command[#command + 1] = "2>&1"
+
+    local pipe = assert(io.popen(table.concat(command, " "), "r"))
+    local line = pipe:read("*l")
+    return { line = line, pipe = pipe }
+end
+
+--- Read the remaining output of a spawned process and return it with its exit
+-- status.
+function support.spawn_finish(handle)
+    local rest = handle.pipe:read("a") or ""
+    local ok, _, code = handle.pipe:close()
+    if code == nil then
+        code = ok and 0 or 1
+    end
+    return rest, code
+end
+
 return support
