@@ -8,7 +8,7 @@ if not ok then
     os.exit(1)
 end
 
-local httpserver = require "httpserver"
+local webserver = require "webserver"
 
 local function usage()
     print([[
@@ -35,12 +35,12 @@ local function write_file(path, contents)
     fh:close()
 end
 
-local function search_redirect_handler(_, header)
-    local target = header.target or ""
+local function search_redirect_handler(request)
+    local target = request.target or ""
     local query = target:match("[?&]q=([^&]*)") or ""
     query = query:gsub("[%c]", "")
     return {
-        status = httpserver.status.found,
+        status = webserver.status.found,
         header = { location = query == "" and "/" or "/?q=" .. query },
     }
 end
@@ -105,7 +105,7 @@ end
 
 local function html_response(body)
     return {
-        status = httpserver.status.ok,
+        status = webserver.status.ok,
         body = body,
         header = { content_type = "text/html; charset=utf-8" },
     }
@@ -116,7 +116,7 @@ local function index_handler()
 end
 
 local function favicon_handler()
-    return { status = httpserver.status.no_content }
+    return { status = webserver.status.no_content }
 end
 
 local url = string.format("http://%s:%d/", address, port)
@@ -126,22 +126,21 @@ if open_browser then
         os.execute("start " .. url)
     elseif os.is_linux then
         os.execute("xdg-open " .. url .. " >/dev/null 2>&1 &")
-    elseif os.is_mac then
+    elseif tostring(os.name):find("mac") then
         os.execute("open " .. url .. " >/dev/null 2>&1 &")
     end
 end
 
-httpserver.serve {
+webserver.serve {
     address = address,
     port = port,
-    GET = {
-        ["/"] = index_handler,
-        ["/%?.*"] = index_handler,
-        ["/index.html"] = index_handler,
-        ["/index%.html%?.*"] = index_handler,
-        ["/manual.html"] = index_handler,
-        ["/manual%.html%?.*"] = index_handler,
-        ["/search.*"] = search_redirect_handler,
-        ["/favicon.ico"] = favicon_handler,
+    routes = {
+        GET = {
+            ["/"] = index_handler,
+            ["/index.html"] = index_handler,
+            ["/manual.html"] = index_handler,
+            ["/search.*"] = search_redirect_handler,
+            ["/favicon.ico"] = favicon_handler,
+        },
     },
 }
