@@ -183,6 +183,24 @@ function Test_webui:Test_root_carries_route_and_revision()
     lu.assertStrContains(document, "/__webui/app.css")
 end
 
+function Test_webui:Test_hidden_renders_the_attribute_on_components_with_display_styles()
+    new_page()
+    local page = ui.page {}
+    page:add(ui.label { text = "gone", hidden = true })
+    page:add(ui.horizontalLayout { hidden = true, ui.button { text = "x" } })
+    page:add(ui.checkbox { text = "gone", hidden = true })
+
+    local body = render.render_body(page)
+    lu.assertEquals(3, select(2, body:gsub(" hidden", "")))
+
+    -- the component classes set their own display, so the stylesheet has to let
+    -- the attribute win, otherwise the prop does nothing for labels and layouts
+    local web = require "webserver"
+    local css = web.asset("webui/app.css")
+    lu.assertStrContains(css, "[hidden]")
+    lu.assertStrContains(css, "display: none !important")
+end
+
 function Test_webui:Test_ids_are_stable_across_renders()
     new_page()
     local page = ui.page {}

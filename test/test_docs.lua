@@ -13,6 +13,81 @@ local function normalized(text)
     return (text:gsub("\r\n", "\n"))
 end
 
+local function split_lines(text)
+    local lines = {}
+    for line in (text .. "\n"):gmatch("(.-)\n") do
+        lines[#lines + 1] = line
+    end
+    return lines
+end
+
+local function excerpt(text, limit)
+    text = tostring(text or "")
+    limit = limit or 160
+    if #text <= limit then
+        return text
+    end
+    return text:sub(1, limit) .. " ..."
+end
+
+--- Compare two multi-line documents without passing them to LuaUnit.
+--
+-- The mirror below is a few hundred kilobytes.  Reporting a mismatch through
+-- lu.assertEquals puts both documents into the failure message, and LuaUnit
+-- then matches `'.*:%d+: '` against that message, which is quadratic in its
+-- length: a stale mirror turns into a test that appears to hang for minutes.
+-- Compare line by line instead and keep the failure message to the first
+-- differing line.
+local function assert_same_document(expected, actual, label)
+    expected, actual = normalized(expected), normalized(actual)
+    if expected == actual then
+        return
+    end
+
+    local expected_lines = split_lines(expected)
+    local actual_lines = split_lines(actual)
+    local count = math.max(#expected_lines, #actual_lines)
+    for index = 1, count do
+        if expected_lines[index] ~= actual_lines[index] then
+            lu.fail(string.format(
+                "%s differs at line %d (%d lines expected, %d lines actual)\n"
+                    .. "  expected: %s\n  actual:   %s\n"
+                    .. "regenerate with `zig build docs` and rebuild with `zig build`",
+                label, index, #expected_lines, #actual_lines,
+                excerpt(expected_lines[index]), excerpt(actual_lines[index])))
+        end
+    end
+    lu.fail(label .. " differs in its trailing newline")
+end
+
+local MAX_FAILURE_MESSAGE = 8000
+
+--- Wrap an assertion so a failure message stays small.
+--
+-- LuaUnit classifies a failure by matching `'.*:%d+: ' .. prefix .. '.*'`
+-- against the whole error message.  The leading `.*` makes that match behave
+-- quadratically, so a message that embeds the one megabyte manual HTML (or the
+-- 300 KB markdown mirror) takes minutes instead of failing.  Cutting the
+-- message keeps the location, the assertion text and the start of the report.
+local function bounded(assertion)
+    return function(...)
+        local ok, err = pcall(assertion, ...)
+        if ok then
+            return
+        end
+        err = tostring(err)
+        if #err > MAX_FAILURE_MESSAGE then
+            err = err:sub(1, MAX_FAILURE_MESSAGE) .. "\n... (failure message truncated)"
+        end
+        error(err, 0)
+    end
+end
+
+-- The manual HTML is over a megabyte, so these are the assertions that must
+-- never hand a raw haystack to LuaUnit.
+local assert_contains = bounded(lu.assertStrContains)
+local assert_not_contains = bounded(lu.assertNotStrContains)
+
 local function index_entry(index, name)
     for _, item in ipairs(index.entries or {}) do
         if item.n == name then return item end
@@ -84,7 +159,7 @@ function Test_docs.Test_structured_entries_are_available()
     local entry = docs.find("string.byte")
     lu.assertNotNil(entry)
     lu.assertEquals("function", entry.kind)
-    lu.assertStrContains(entry.signature, "string.byte")
+    assert_contains(entry.signature, "string.byte")
 
     entry = docs.find("filesystem.path")
     lu.assertNotNil(entry)
@@ -118,17 +193,17 @@ function Test_docs.Test_c_api_is_absent()
             local text = markdown.render_inline_text(
                 node.title or node.signature or node.name or "")
             for _, needle in ipairs(forbidden) do
-                lu.assertNotStrContains(text, needle, "C API content in manual nodes")
+                assert_not_contains(text, needle, "C API content in manual nodes")
             end
         end
     end
 
     local html = docs.render_manual_html()
     for _, needle in ipairs(forbidden) do
-        lu.assertNotStrContains(html, needle)
+        assert_not_contains(html, needle)
     end
-    lu.assertNotStrContains(html, "lua_absindex")
-    lu.assertNotStrContains(html, "luaL_openlibs")
+    assert_not_contains(html, "lua_absindex")
+    assert_not_contains(html, "luaL_openlibs")
 end
 
 function Test_docs.Test_search_ranks_exact_names()
@@ -146,12 +221,12 @@ end
 
 function Test_docs.Test_manual_html_embeds_search_index()
     local html = docs.render_manual_html()
-    lu.assertStrContains(html, 'id="zli-search-index"')
-    lu.assertStrContains(html, 'id="zli-search-form"')
-    lu.assertStrContains(html, 'id="zli-search-view"')
-    lu.assertStrContains(html, 'id="zli-search-heading"')
-    lu.assertStrContains(html, "scroll-padding-top")
-    lu.assertStrContains(html, "URLSearchParams")
+    assert_contains(html, 'id="zli-search-index"')
+    assert_contains(html, 'id="zli-search-form"')
+    assert_contains(html, 'id="zli-search-view"')
+    assert_contains(html, 'id="zli-search-heading"')
+    assert_contains(html, "scroll-padding-top")
+    assert_contains(html, "URLSearchParams")
 
     local payload = html:match('<script type="application/json" id="zli%-search%-index">(.-)</script>')
     lu.assertNotNil(payload)
@@ -164,7 +239,7 @@ function Test_docs.Test_manual_html_embeds_search_index()
     lu.assertNotNil(item)
     lu.assertEquals(expected.anchor, item.a)
     lu.assertEquals(expected.signature, item.s)
-    lu.assertStrContains(item.sh, "string.byte")
+    assert_contains(item.sh, "string.byte")
 end
 
 function Test_docs.Test_search_index_matches_search_inputs()
@@ -200,78 +275,78 @@ function Test_docs.Test_search_index_is_script_safe()
     table.remove(docs.entries)
 
     lu.assertTrue(ok, json)
-    lu.assertNotStrContains(json, "</script")
-    lu.assertNotStrContains(json, "<!--")
-    lu.assertNotStrContains(json, "\226\128\168")
-    lu.assertNotStrContains(json, "\226\128\169")
+    assert_not_contains(json, "</script")
+    assert_not_contains(json, "<!--")
+    assert_not_contains(json, "\226\128\168")
+    assert_not_contains(json, "\226\128\169")
     lu.assertNil(json:find("[<>&]"))
 
     local index = cjson.decode(json)
     local item = index_entry(index, "synthetic</script><!-- \"quote\" \\slash")
     lu.assertNotNil(item)
-    lu.assertStrContains(item.n, "</script>")
-    lu.assertStrContains(item.b, "line\n")
+    assert_contains(item.n, "</script>")
+    assert_contains(item.b, "line\n")
     lu.assertEquals("alias</script>", item.l[1])
     lu.assertEquals("quote\"slash\\", item.l[2])
 end
 
 function Test_docs.Test_manual_html_has_no_server_search_route()
     local html = docs.render_manual_html()
-    lu.assertNotStrContains(html, 'action="/search"')
-    lu.assertNotStrContains(html, 'href="/#')
-    lu.assertStrContains(html, '<form id="zli-search-form"')
+    assert_not_contains(html, 'action="/search"')
+    assert_not_contains(html, 'href="/#')
+    assert_contains(html, '<form id="zli-search-form"')
 end
 
 function Test_docs.Test_markdown_renderer()
     local html = markdown.to_html("- **`+`**: addition\n- plain")
-    lu.assertStrContains(html, "<li><strong><code>+</code></strong>: addition</li>")
-    lu.assertStrContains(html, "<li>plain</li>")
+    assert_contains(html, "<li><strong><code>+</code></strong>: addition</li>")
+    assert_contains(html, "<li>plain</li>")
 
     html = markdown.to_html("```lua\nlocal x = 1 < 2\n```")
-    lu.assertStrContains(html, "local x = 1 &lt; 2")
+    assert_contains(html, "local x = 1 &lt; 2")
 
     -- Documentation signatures contain angle brackets that must stay text.
     html = markdown.to_html("zli @compile <config>")
-    lu.assertStrContains(html, "&lt;config&gt;")
-    lu.assertNotStrContains(html, "<config>")
+    assert_contains(html, "&lt;config&gt;")
+    assert_not_contains(html, "<config>")
 
     local text = markdown.to_text("# Title\n\nSome `code` here.")
-    lu.assertStrContains(text, "Title")
-    lu.assertStrContains(text, "Some code here.")
+    assert_contains(text, "Title")
+    assert_contains(text, "Some code here.")
 
     text = markdown.to_text("| `Name` | `Value` |\n| --- | --- |\n| `a` | `longer` |")
-    lu.assertStrContains(text, "| Name | Value  |")
-    lu.assertStrContains(text, "| a    | longer |")
-    lu.assertNotStrContains(text, "`")
+    assert_contains(text, "| Name | Value  |")
+    assert_contains(text, "| a    | longer |")
+    assert_not_contains(text, "`")
 
     text = markdown.to_text("| A | B |\n| --- | --- |\n| | x |")
-    lu.assertStrContains(text, "| A | B |")
-    lu.assertStrContains(text, "|   | x |")
+    assert_contains(text, "| A | B |")
+    assert_contains(text, "|   | x |")
 end
 
 function Test_docs.Test_markdown_text_handles_list_continuations_and_wide_tables()
     -- Continuation lines belong to the list item, not a separate paragraph.
     local text = markdown.to_text("- first\n  continued\n- second", 80)
-    lu.assertStrContains(text, "- first continued")
-    lu.assertNotStrContains(text, "\n\ncontinued")
+    assert_contains(text, "- first continued")
+    assert_not_contains(text, "\n\ncontinued")
 
     -- Cell widths above Lua's string.format limit used to raise an error.
     local long = string.rep("long description ", 20)
     text = markdown.to_text("| Name | Description |\n| --- | --- |\n| x | " .. long .. " |", 80)
-    lu.assertStrContains(text, "long description")
+    assert_contains(text, "long description")
 end
 
 function Test_docs.Test_help_renders_wide_dialect_table()
     local output, status = run({ "@help", "markdown.dialects" })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "commonmark")
-    lu.assertStrContains(output, "GitHub-style dialect")
+    assert_contains(output, "commonmark")
+    assert_contains(output, "GitHub-style dialect")
 end
 
 function Test_docs.Test_markdown_renders_nested_emphasis()
     local html = markdown.to_html("***x***")
-    lu.assertStrContains(html, "<strong>x</strong>")
-    lu.assertStrContains(html, "<em>")
+    assert_contains(html, "<strong>x</strong>")
+    assert_contains(html, "<em>")
 
     lu.assertEquals("x", markdown.render_inline_text("***x***"))
     lu.assertEquals("x", markdown.render_inline_text("**x**"))
@@ -281,54 +356,54 @@ function Test_docs.Test_markdown_renders_nested_emphasis()
     local entry = docs.find("the-numerical-for-loop")
     lu.assertNotNil(entry)
     lu.assertEquals("section", entry.kind)
-    lu.assertStrContains(entry.signature, "**for**")
+    assert_contains(entry.signature, "**for**")
 
     local text = docs.render_entry(entry, "text", 80)
-    lu.assertStrContains(text, "The numerical for loop")
-    lu.assertNotStrContains(text, "**")
+    assert_contains(text, "The numerical for loop")
+    assert_not_contains(text, "**")
 
     html = docs.render_entry(entry, "html")
-    lu.assertStrContains(html, "<strong>for</strong>")
-    lu.assertNotStrContains(html, "**")
+    assert_contains(html, "<strong>for</strong>")
+    assert_not_contains(html, "**")
 end
 
 function Test_docs.Test_help_output_has_no_markdown_markers()
     local output, status = run({ "@help", "filesystem.walk" })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "Walk a directory tree, calling func(path) for each entry.")
-    lu.assertNotStrContains(output, "`")
+    assert_contains(output, "Walk a directory tree, calling func(path) for each entry.")
+    assert_not_contains(output, "`")
 
     output, status = run({ "@help", "--search", "call func" })
     lu.assertEquals(0, status, output)
-    lu.assertNotStrContains(output, "`")
+    assert_not_contains(output, "`")
 
     output, status = run({ "@help", "--search", "numerical for loop" })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "The numerical for loop")
-    lu.assertNotStrContains(output, "**")
+    assert_contains(output, "The numerical for loop")
+    assert_not_contains(output, "**")
 end
 
 function Test_docs.Test_manual_html_contains_language_and_libraries()
     local html = docs.render_manual_html()
-    lu.assertStrContains(html, "ZLI Reference Manual")
-    lu.assertStrContains(html, "The Language")
-    lu.assertStrContains(html, "The Standard Libraries")
-    lu.assertNotStrContains(html, "The Complete Syntax of Lua")
-    lu.assertNotStrContains(html, "id=\"9\"")
-    lu.assertStrContains(html, "id=\"pdf-string.byte\"")
-    lu.assertStrContains(html, "filesystem")
-    lu.assertStrContains(html, "Third-party libraries")
+    assert_contains(html, "ZLI Reference Manual")
+    assert_contains(html, "The Language")
+    assert_contains(html, "The Standard Libraries")
+    assert_not_contains(html, "The Complete Syntax of Lua")
+    assert_not_contains(html, "id=\"9\"")
+    assert_contains(html, "id=\"pdf-string.byte\"")
+    assert_contains(html, "filesystem")
+    assert_contains(html, "Third-party libraries")
 
-    lu.assertNotStrContains(html, "The Application Program Interface")
-    lu.assertNotStrContains(html, "The Auxiliary Library")
-    lu.assertNotStrContains(html, "Loading the Libraries in C code")
-    lu.assertNotStrContains(html, "lua_absindex")
-    lu.assertNotStrContains(html, "luaL_openlibs")
+    assert_not_contains(html, "The Application Program Interface")
+    assert_not_contains(html, "The Auxiliary Library")
+    assert_not_contains(html, "Loading the Libraries in C code")
+    assert_not_contains(html, "lua_absindex")
+    assert_not_contains(html, "luaL_openlibs")
 end
 
 function Test_docs.Test_manual_html_has_overview_after_header()
     local html = docs.render_manual_html()
-    lu.assertStrContains(html, "portable Lua 5.5 interpreter")
+    assert_contains(html, "portable Lua 5.5 interpreter")
 
     local header = html:find("<h1>ZLI Reference Manual</h1>", 1, true)
     local overview = html:find("portable Lua 5.5 interpreter", 1, true)
@@ -343,31 +418,31 @@ end
 function Test_docs.Test_authored_chapters_are_numbered()
     local html = docs.render_manual_html()
 
-    lu.assertStrContains(html, "5 – ZLI libraries")
-    lu.assertStrContains(html, "5.1 – auxiliary")
-    lu.assertStrContains(html, "5.2 – benchmark")
-    lu.assertStrContains(html, "6 – Third-party libraries")
-    lu.assertStrContains(html, "6.1 – argparse")
-    lu.assertStrContains(html, "7 – Command line tools")
-    lu.assertStrContains(html, "8 – ZLI")
+    assert_contains(html, "5 – ZLI libraries")
+    assert_contains(html, "5.1 – auxiliary")
+    assert_contains(html, "5.2 – benchmark")
+    assert_contains(html, "6 – Third-party libraries")
+    assert_contains(html, "6.1 – argparse")
+    assert_contains(html, "7 – Command line tools")
+    assert_contains(html, "8 – ZLI")
 
-    lu.assertStrContains(html, "<h1 id=\"group-command-line-tools\">7 – Command line tools</h1>")
-    lu.assertStrContains(html, "<h1 id=\"group-zli\">8 – ZLI</h1>")
+    assert_contains(html, "<h1 id=\"group-command-line-tools\">7 – Command line tools</h1>")
+    assert_contains(html, "<h1 id=\"group-zli\">8 – ZLI</h1>")
 
     -- Tools and the ZLI runtime are flattened into their chapters.
-    lu.assertNotStrContains(html, "7.1 –")
-    lu.assertNotStrContains(html, "8.1 –")
-    lu.assertNotStrContains(html, "<h2 id=\"module-tools\"")
-    lu.assertNotStrContains(html, "<h2 id=\"module-zli\"")
+    assert_not_contains(html, "7.1 –")
+    assert_not_contains(html, "8.1 –")
+    assert_not_contains(html, "<h2 id=\"module-tools\"")
+    assert_not_contains(html, "<h2 id=\"module-zli\"")
 
     -- Their module anchors still work for search results and deep links.
-    lu.assertStrContains(html, "<span id=\"module-tools\"></span>")
-    lu.assertStrContains(html, "<span id=\"module-zli\"></span>")
+    assert_contains(html, "<span id=\"module-tools\"></span>")
+    assert_contains(html, "<span id=\"module-zli\"></span>")
 
     -- The left TOC uses the same level1/level2 list as the Lua chapters.
-    lu.assertStrContains(html, "<a href=\"#group-zli-libraries\">5 – ZLI libraries</a>")
-    lu.assertStrContains(html, "<a href=\"#module-auxiliary\">5.1 – auxiliary</a>")
-    lu.assertNotStrContains(html, "<h3><a href=\"#group-")
+    assert_contains(html, "<a href=\"#group-zli-libraries\">5 – ZLI libraries</a>")
+    assert_contains(html, "<a href=\"#module-auxiliary\">5.1 – auxiliary</a>")
+    assert_not_contains(html, "<h3><a href=\"#group-")
 end
 
 function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
@@ -384,15 +459,15 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
         lu.assertNotNil(entry, "missing module documentation: " .. item[1])
         lu.assertEquals(item[2], entry.upstream, "wrong upstream for " .. item[1])
         lu.assertEquals("MIT", entry.license, "wrong license for " .. item[1])
-        lu.assertStrContains(html, item[2], false, "missing upstream URL for " .. item[1])
+        assert_contains(html, item[2], false, "missing upstream URL for " .. item[1])
     end
 
-    lu.assertStrContains(html, "license: MIT")
-    lu.assertStrContains(html, "source: third_party")
-    lu.assertStrContains(html, "id=\"licenses\"")
-    lu.assertStrContains(html, "Licenses and attribution")
-    lu.assertStrContains(html, "href=\"#licenses\"")
-    lu.assertStrContains(html, "Lua license")
+    assert_contains(html, "license: MIT")
+    assert_contains(html, "source: third_party")
+    assert_contains(html, "id=\"licenses\"")
+    assert_contains(html, "Licenses and attribution")
+    assert_contains(html, "href=\"#licenses\"")
+    assert_contains(html, "Lua license")
 end
 
 function Test_docs.Test_libraries_markdown_does_not_repeat_upstream()
@@ -414,8 +489,8 @@ function Test_docs.Test_libraries_markdown_does_not_repeat_upstream()
     local module = docs.find("argparse")
     local entry = docs.find("argparse:parse")
     lu.assertEquals(module.upstream, entry.upstream)
-    lu.assertStrContains(text, "### argparse")
-    lu.assertNotStrContains(text,
+    assert_contains(text, "### argparse")
+    assert_not_contains(text,
         "#### `parser:parse([args])`\n\nParse command-line arguments.\n\nUpstream:")
 end
 
@@ -446,9 +521,8 @@ end
 
 function Test_docs.Test_help_markdown_matches_committed_mirror()
     local output, status = run({ "@help", "--markdown" })
-    lu.assertEquals(0, status, output)
-    local committed = fs.read_all("doc/libraries.md")
-    lu.assertEquals(normalized(committed), normalized(output))
+    lu.assertEquals(0, status, excerpt(output, 4000))
+    assert_same_document(fs.read_all("doc/libraries.md"), output, "doc/libraries.md")
 end
 
 function Test_docs.Test_markdown_mirror_survives_hostile_init()
@@ -460,13 +534,12 @@ function Test_docs.Test_markdown_mirror_survives_hostile_init()
     local output_file = support.temp_path("docs_hostile_markdown")
     local stdout, status = run(
         { "@help", "--markdown", "--output", output_file }, { home = home })
-    lu.assertEquals(0, status, stdout)
+    lu.assertEquals(0, status, excerpt(stdout, 4000))
 
     -- The init script really runs (and prints), but it cannot corrupt the
     -- file mirror because @help renders into a buffer before writing.
-    lu.assertStrContains(stdout, "INIT NOISE")
-    local committed = fs.read_all("doc/libraries.md")
-    lu.assertEquals(normalized(committed), normalized(fs.read_all(output_file)))
+    assert_contains(stdout, "INIT NOISE")
+    assert_same_document(fs.read_all("doc/libraries.md"), fs.read_all(output_file), "doc/libraries.md")
 end
 
 function Test_docs.Test_require_docs_from_script_run_by_binary()
@@ -481,33 +554,33 @@ print("toc=" .. tostring(#docs.toc > 0))
 
     local output, status = run({ script })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "entry=string.byte")
-    lu.assertStrContains(output, "nodes=true")
-    lu.assertStrContains(output, "toc=true")
+    assert_contains(output, "entry=string.byte")
+    assert_contains(output, "nodes=true")
+    assert_contains(output, "toc=true")
 end
 
 function Test_docs.Test_help_cli_lookup_and_errors()
     local output, status = run({ "@help", "string.byte" })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "string.byte")
+    assert_contains(output, "string.byte")
     local version = docs.meta.version or ""
     local major_minor = version:match("^(%d+%.%d+)") or version
-    lu.assertStrContains(output, "Lua " .. major_minor .. " manual")
+    assert_contains(output, "Lua " .. major_minor .. " manual")
 
     output, status = run({ "@help", "does-not-exist-anywhere" })
     lu.assertNotEquals(0, status, output)
-    lu.assertStrContains(output, "no documentation found")
+    assert_contains(output, "no documentation found")
 
     output, status = run({ "@help", "--search", "trim" })
     lu.assertEquals(0, status, output)
-    lu.assertStrContains(output, "string.trim")
+    assert_contains(output, "string.trim")
 end
 
 function Test_docs.Test_help_list_output_and_search_errors()
     local list_output, status = run({ "@help", "--list" })
     lu.assertEquals(0, status, list_output)
-    lu.assertStrContains(list_output, "Lua standard library")
-    lu.assertStrContains(list_output, "\n  tools\n")
+    assert_contains(list_output, "Lua standard library")
+    assert_contains(list_output, "\n  tools\n")
 
     local list_file = support.temp_path("help_list_output")
     local stdout, list_status = run({ "@help", "--list", "--output", list_file })
@@ -519,19 +592,19 @@ function Test_docs.Test_help_list_output_and_search_errors()
     stdout, status = run({ "@help", "--output", lookup_file, "string.byte" })
     lu.assertEquals(0, status, stdout)
     lu.assertEquals("", stdout)
-    lu.assertStrContains(fs.read_all(lookup_file), "string.byte")
+    assert_contains(fs.read_all(lookup_file), "string.byte")
 
     local search_file = support.temp_path("help_search_output")
     stdout, status = run({ "@help", "--output", search_file, "--search", "trim" })
     lu.assertEquals(0, status, stdout)
     lu.assertEquals("", stdout)
-    lu.assertStrContains(fs.read_all(search_file), "string.trim")
+    assert_contains(fs.read_all(search_file), "string.trim")
 
     local index_file = support.temp_path("help_index_output")
     stdout, status = run({ "@help", "--output", index_file })
     lu.assertEquals(0, status, stdout)
     lu.assertEquals("", stdout)
-    lu.assertStrContains(fs.read_all(index_file), "ZLI reference manual")
+    assert_contains(fs.read_all(index_file), "ZLI reference manual")
 
     local markdown_output, markdown_status = run({ "@help", "--markdown" })
     lu.assertEquals(0, markdown_status, markdown_output)
@@ -544,7 +617,7 @@ function Test_docs.Test_help_list_output_and_search_errors()
     local output
     output, status = run({ "@help", "--search" })
     lu.assertEquals(2, status, output)
-    lu.assertStrContains(output, "--search requires a query")
+    assert_contains(output, "--search requires a query")
 end
 
 function Test_docs.Test_manual_heading_titles_are_unique()
@@ -564,35 +637,35 @@ function Test_docs.Test_manual_entry_and_toc_anchors_resolve()
 
     local html = docs.render_manual_html()
     for _, entry in ipairs(docs.entries) do
-        lu.assertStrContains(html, 'id="' .. entry.anchor .. '"', false,
+        assert_contains(html, 'id="' .. entry.anchor .. '"', false,
             "missing entry anchor " .. tostring(entry.anchor) .. " for " .. tostring(entry.name))
     end
     for _, item in ipairs(docs.toc) do
-        lu.assertStrContains(html, 'id="' .. item.anchor .. '"', false,
+        assert_contains(html, 'id="' .. item.anchor .. '"', false,
             "missing TOC anchor " .. tostring(item.anchor) .. " for " .. tostring(item.title))
     end
 end
 
 function Test_docs.Test_toc_has_collapsible_module_entries()
     local html = docs.render_manual_html()
-    lu.assertStrContains(html, 'class="level2 toc-module"')
-    lu.assertStrContains(html, 'class="toc-toggle"')
-    lu.assertStrContains(html, 'aria-expanded="false"')
-    lu.assertStrContains(html, '<ul class="toc-entries" hidden>')
-    lu.assertStrContains(html, 'href="#module-luaunit"')
+    assert_contains(html, 'class="level2 toc-module"')
+    assert_contains(html, 'class="toc-toggle"')
+    assert_contains(html, 'aria-expanded="false"')
+    assert_contains(html, '<ul class="toc-entries" hidden>')
+    assert_contains(html, 'href="#module-luaunit"')
 
     local luaunit = docs.find("luaunit.assertEquals")
     lu.assertNotNil(luaunit)
-    lu.assertStrContains(html, 'href="#' .. luaunit.anchor .. '"')
-    lu.assertStrContains(html, ">luaunit.assertEquals</a>")
+    assert_contains(html, 'href="#' .. luaunit.anchor .. '"')
+    assert_contains(html, ">luaunit.assertEquals</a>")
 
     local byte = docs.find("string.byte")
     lu.assertNotNil(byte)
-    lu.assertStrContains(html, 'href="#' .. byte.anchor .. '"')
+    assert_contains(html, 'href="#' .. byte.anchor .. '"')
 
     -- Modules without own entries stay links without an expand control.
-    lu.assertStrContains(html, '<span class="toc-spacer" aria-hidden="true"></span>')
-    lu.assertNotStrContains(html, "Toggle entries for memoize")
+    assert_contains(html, '<span class="toc-spacer" aria-hidden="true"></span>')
+    assert_not_contains(html, "Toggle entries for memoize")
 end
 
 function Test_docs.Test_synthesized_heading_anchors_are_emitted()
@@ -608,7 +681,7 @@ function Test_docs.Test_synthesized_heading_anchors_are_emitted()
         "the-numerical-for-loop",
     }
     for _, anchor in ipairs(expected) do
-        lu.assertStrContains(html, 'id="' .. anchor .. '"', false,
+        assert_contains(html, 'id="' .. anchor .. '"', false,
             "missing synthesized heading anchor " .. anchor)
     end
 end
@@ -654,9 +727,9 @@ function Test_docs.Test_summary_only_entry_has_single_blank_line()
     local entry = docs.find("collection.list:for_each")
     lu.assertNotNil(entry)
     local text = docs.render_entry(entry, "text", 80)
-    lu.assertStrContains(text, "Call func for every item.")
-    lu.assertStrContains(text, "source: zli")
-    lu.assertNotStrContains(text, "\n\n\n")
+    assert_contains(text, "Call func for every item.")
+    assert_contains(text, "source: zli")
+    assert_not_contains(text, "\n\n\n")
 end
 
 function Test_docs.Test_lua_source_label_uses_manual_version()
@@ -665,7 +738,7 @@ function Test_docs.Test_lua_source_label_uses_manual_version()
     local text = docs.render_entry(entry, "text", 80)
     local version = docs.meta.version or ""
     local major_minor = version:match("^(%d+%.%d+)") or version
-    lu.assertStrContains(text, "source: Lua " .. major_minor .. " manual")
+    assert_contains(text, "source: Lua " .. major_minor .. " manual")
 end
 
 -- Modules whose authored entries have completed the documentation depth pass.

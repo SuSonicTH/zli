@@ -53,6 +53,12 @@ body {
     padding: 16px;
 }
 
+/* the `hidden` prop is an attribute, and the component classes below set their
+   own display, which would otherwise win over the browser default */
+[hidden] {
+    display: none !important;
+}
+
 .webui-layout {
     display: flex;
     gap: var(--webui-gap);

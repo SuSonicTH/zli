@@ -3062,10 +3062,31 @@ change the tree; the page is re-rendered and pushed to every connected browser
 afterwards.  Errors are logged on the server and reported as a toast; the last
 good tree stays visible.
 
-Layout and styling use `align` (`'vertical'`/`'horizontal'`), `gap`, `padding`,
-`margin`, `justify`, `wrap`, `width`/`height` (number, `"50%"`, `"full"`),
-`grow`, `hidden`, `disabled`, `style`, `aria` and `data`.  Inline style values
-are validated; the page level `css` option appends raw CSS.
+Every component accepts the same base options, whatever its kind:
+
+| option            | meaning                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `name`            | registers the component for `ui.current.<name>`; value holding kinds also submit it with every event           |
+| `class`           | extra space separated classes, added after the built in ones                                                   |
+| `width`, `height` | pixel count (`300`), CSS length (`"50%"`) or `"full"`                                                          |
+| `grow`            | flex grow factor inside a layout                                                                               |
+| `hidden`          | renders the `hidden` attribute, which hides the component even when its kind sets a display style               |
+| `disabled`        | disables the component where the kind has a disabled state                                                     |
+| `style`           | table of CSS properties: `{ ["text-align"] = "right" }`; names and values are validated                        |
+| `aria`            | table of ARIA attributes without the prefix: `{ label = "backspace" }` renders `aria-label="backspace"`        |
+| `data`            | table rendered as `data-*` attributes: `{ row = 3 }` renders `data-row="3"`                                    |
+
+`name` has to be unique on a page and may not be `id`, `kind` or `values`.
+`style` values may not contain `;`, braces or `url(...)`; `aria` and `data`
+names are checked as attribute names and their values are escaped.
+
+Layout components take the arrangement options on top of the base ones: `align`
+(`'vertical'`/`'horizontal'`, or `'column'`/`'row'`), `gap` and `padding` (pixel
+count or CSS length), plus `justify` (for example `'space-between'`,
+`'flex-end'`) and `wrap` on `verticalLayout` and `horizontalLayout`.  A page
+adds `title`, `theme`, `lang` and `css` (raw CSS appended to the document
+head); a panel adds `title`.  `margin` is not a component option; use
+`style = { margin = ... }`.
 
 The browser side bundles htmx 2.0.11, idiomorph 0.7.4 and htmx-ext-sse 2.2.4,
 all published under 0BSD by the htmx project; the assets are compiled into the
