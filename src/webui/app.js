@@ -74,6 +74,28 @@
         event.detail.parameters.kind = trigger;
     });
 
+    // SSE frames bypass htmx's request pipeline, so the route and revision
+    // checks have to happen before the extension swaps the message in.
+    document.body.addEventListener("htmx:sseBeforeMessage", function (event) {
+        var data = event.detail && event.detail.data;
+        if (typeof data !== "string") {
+            return;
+        }
+        var el = root();
+        if (!el) {
+            return;
+        }
+        var route = /data-route="([^"]*)"/.exec(data);
+        if (route && route[1] !== (el.getAttribute("data-route") || "/")) {
+            event.preventDefault();
+            return;
+        }
+        var rev = /data-rev="(\d+)"/.exec(data);
+        if (rev && parseInt(rev[1], 10) <= revision()) {
+            event.preventDefault();
+        }
+    });
+
     // The POST response and the SSE push race; the newest revision wins.
     document.body.addEventListener("htmx:beforeSwap", function (event) {
         var target = event.detail.target;
@@ -148,6 +170,10 @@
             var data = parseJson(trigger, null);
             if (!data) {
                 return;
+            }
+            var failure = data["webui:error"];
+            if (failure) {
+                toast({ kind: "error", text: failure.text, ms: 5000 });
             }
             var toasts = data["webui:toasts"];
             if (toasts) {

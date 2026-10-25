@@ -217,6 +217,7 @@ function ui.serve(options)
             error("ui.serve: route '" .. path .. "' is not a page", 2)
         end
         page._rev = 0
+        page._root = render.render_root(page, { route = path, rev = 0 })
     end
 
     local api = options.api or {}
@@ -224,9 +225,15 @@ function ui.serve(options)
 
     local function bump_and_broadcast()
         for path, page in pairs(pages) do
-            revision = revision + 1
-            page._rev = revision
-            web.broadcast("html", render.render_root(page, { route = path, rev = page._rev }))
+            local root = render.render_root(page, { route = path, rev = page._rev })
+            local forced = page.dirty == true
+            page.dirty = nil
+            if forced or root ~= page._root then
+                revision = revision + 1
+                page._rev = revision
+                page._root = render.render_root(page, { route = path, rev = page._rev })
+                web.broadcast("html", page._root)
+            end
         end
     end
 
@@ -273,7 +280,8 @@ function ui.serve(options)
 
         return {
             status = 200,
-            body = render.render_root(target_page, { route = target_route, rev = target_page._rev }),
+            body = target_page._root
+                or render.render_root(target_page, { route = target_route, rev = target_page._rev }),
             header = header,
         }
     end
@@ -282,9 +290,10 @@ function ui.serve(options)
         local params = events.parse_form(request.body)
         local node, route, page = events.find(pages, params.id)
         if node == nil then
+            -- a stale id (for example a double click on a button that removed
+            -- itself) must not morph the page to an empty body
             return {
-                status = 200,
-                body = "",
+                status = 204,
                 header = { content_type = "text/html; charset=utf-8" },
             }
         end

@@ -2640,7 +2640,7 @@ web.serve {
 | `address`     | Bind address, default `"127.0.0.1"`.                                                    |
 | `port`        | TCP port, default `8080`.  `0` asks the operating system for a free port.               |
 | `allow_remote` | Allow binding to a non loopback address.  Off by default.                              |
-| `token`       | Session token.  Generated per run when omitted.                                          |
+| `token`       | Session token, at most 64 characters.  Generated per run when omitted.                   |
 | `routes`      | Table of method name to target/response pairs, or `handler`.                             |
 | `handler`     | `function(request) -> response` used instead of `routes`.                                |
 | `assets_dir`  | Development override: read registered assets from this directory first.                  |
@@ -2777,6 +2777,9 @@ Events:
 | `onRowClick`  | `table`                                     | a table row is clicked                       |
 | `onClose`     | `dialog`                                    | the close button is used                     |
 
+The browser only applies updates for the route it is currently showing, so a
+page with several routes never morphs into another route by accident.
+
 Handlers are called as `function(src, event)`.  `event` contains `kind`,
 `value`, `client` and `values` (all submitted form values).  A callback may
 change the tree; the page is re-rendered and pushed to every connected browser
@@ -2904,7 +2907,7 @@ Start the UI server and block.  Options:
 | `api`          | Optional REST routes as `{ GET = { ["/api/x"] = fn } }`; used before pages.        |
 | `address`      | Bind address, default `"127.0.0.1"`.                                              |
 | `port`         | TCP port, default `8080`; `0` picks a free port.                                   |
-| `token`        | Session token; generated per run when omitted.                                     |
+| `token`        | Session token, at most 64 characters; generated per run when omitted.               |
 | `allow_remote` | Allow a non loopback bind.                                                        |
 | `assets_dir`   | Development override for the `/__webui/` assets.                                   |
 | `stop_path`    | Target that stops the server on `POST` (tests and tools).                          |

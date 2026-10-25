@@ -60,7 +60,9 @@ function M.apply_values(page, params)
         if value_kinds[node.kind] then
             if node.kind == "checkbox" then
                 node.state.value = params[name] ~= nil
-            else
+            elseif params[name] ~= nil then
+                -- disabled controls and unchecked radios are not submitted;
+                -- keep the last known value instead of clearing it
                 node.state.value = params[name]
             end
         end

@@ -270,7 +270,7 @@ const Server = struct {
     jobs_head: ?*Job = null,
     jobs_tail: ?*Job = null,
 
-    stopping: bool = false,
+    stopping: std.atomic.Value(bool) = .init(false),
     inflight: std.atomic.Value(u32) = .init(0),
 
     snapshots: std.ArrayList(Snapshot) = .empty,
@@ -326,8 +326,21 @@ const Server = struct {
         }
     }
 
-    fn pushJob(self: *Server, job: *Job) void {
+    /// Set the stop flag under the job lock, so a job cannot be queued after the
+    /// queue has been drained during shutdown.
+    fn requestStop(self: *Server) void {
         self.jobs_mutex.lockUncancelable(io);
+        self.stopping.store(true, .release);
+        self.jobs_condition.broadcast(io);
+        self.jobs_mutex.unlock(io);
+    }
+
+    fn pushJob(self: *Server, job: *Job) bool {
+        self.jobs_mutex.lockUncancelable(io);
+        if (self.stopping.load(.acquire)) {
+            self.jobs_mutex.unlock(io);
+            return false;
+        }
         if (self.jobs_tail) |tail| {
             tail.next = job;
         } else {
@@ -336,11 +349,12 @@ const Server = struct {
         self.jobs_tail = job;
         self.jobs_condition.signal(io);
         self.jobs_mutex.unlock(io);
+        return true;
     }
 
     fn popJob(self: *Server) ?*Job {
         self.jobs_mutex.lockUncancelable(io);
-        while (self.jobs_head == null and !self.stopping) {
+        while (self.jobs_head == null and !self.stopping.load(.acquire)) {
             self.jobs_condition.waitTimeout(io, &self.jobs_mutex, .{ .duration = .{
                 .raw = std.Io.Duration.fromMilliseconds(100),
                 .clock = .awake,
@@ -433,15 +447,19 @@ fn originAllowed(server: *const Server, request: *const std.http.Server.Request)
     }
     if (!found) return true; // non-browser client; the session cookie still applies
 
+    // Compare whole origins; a prefix test would accept host names such as
+    // "127.0.0.1.attacker.example".
     var buffer: [128]u8 = undefined;
-    var port_buffer: [16]u8 = undefined;
     const expected = std.fmt.bufPrint(&buffer, "http://{s}:{d}", .{ server.host, server.port }) catch return false;
     if (std.mem.eql(u8, origin, expected)) return true;
 
-    const port_suffix = std.fmt.bufPrint(&port_buffer, ":{d}", .{server.port}) catch return false;
-    if (!std.mem.endsWith(u8, origin, port_suffix)) return false;
-    return std.mem.startsWith(u8, origin, "http://127.0.0.1") or
-        std.mem.startsWith(u8, origin, "http://localhost");
+    var loopback_buffer: [128]u8 = undefined;
+    const loopback = std.fmt.bufPrint(&loopback_buffer, "http://127.0.0.1:{d}", .{server.port}) catch return false;
+    if (std.mem.eql(u8, origin, loopback)) return true;
+
+    var localhost_buffer: [128]u8 = undefined;
+    const localhost = std.fmt.bufPrint(&localhost_buffer, "http://localhost:{d}", .{server.port}) catch return false;
+    return std.mem.eql(u8, origin, localhost);
 }
 
 // ---------------------------------------------------------------------------
@@ -483,6 +501,10 @@ fn serve(lua: *Lua) !i32 {
 
     var token: []u8 = undefined;
     if (luax.getOptionalString(lua, "token", 1)) |given| {
+        // The cookie header is formatted into a fixed buffer.
+        if (given.len > 64) {
+            luaerror.argError(lua, 1, "token has to be at most 64 characters", .{});
+        }
         token = try allocator.dupe(u8, given);
     } else {
         token = try allocator.alloc(u8, 32);
@@ -551,14 +573,14 @@ fn serve(lua: *Lua) !i32 {
     };
 
     // Dispatch loop: the only place that ever enters the Lua state.
-    while (!server.stopping) {
+    while (!server.stopping.load(.acquire)) {
         const job = server.popJob() orelse continue;
         handleJob(server, job);
     }
 
     // Tear down: give in-flight responses a chance to flush, then wake the
     // listener and every connection and join.
-    server.stopping = true;
+    server.requestStop();
     waitInflight(server, 500);
     server.closeSseClients();
     const listener_stream = std.Io.net.Stream{ .socket = server.listener.socket };
@@ -605,11 +627,11 @@ fn pushInfoTable(lua: *Lua, server: *const Server) void {
 }
 
 fn acceptLoop(server: *Server) Io.Cancelable!void {
-    while (!server.stopping) {
+    while (!server.stopping.load(.acquire)) {
         var stream = server.listener.accept(io) catch |err| switch (err) {
             error.SocketNotListening, error.Canceled => return,
             else => {
-                if (server.stopping) return;
+                if (server.stopping.load(.acquire)) return;
                 continue;
             },
         };
@@ -638,7 +660,7 @@ fn connectionLoop(server: *Server, stream: std.Io.net.Stream, client_id: u64) Io
     var writer = stream.writer(io, &write_buffer);
     var http_server = std.http.Server.init(&reader.interface, &writer.interface);
 
-    while (!server.stopping) {
+    while (!server.stopping.load(.acquire)) {
         var request = http_server.receiveHead() catch return;
         if (std.mem.eql(u8, util.withoutQuery(request.head.target), sse_path)) {
             handleSse(server, &request, stream, client_id) catch {};
@@ -656,8 +678,10 @@ fn serveAsset(server: *Server, request: *std.http.Server.Request, name: []const 
     if (server.assets_dir) |dir| {
         if (readAssetFile(dir, name)) |data| {
             defer allocator.free(data);
-            var headers: [2]std.http.Header = undefined;
+            var headers: [3]std.http.Header = undefined;
             var count: usize = 0;
+            headers[count] = .{ .name = "content-type", .value = util.contentType(name) };
+            count += 1;
             headers[count] = .{ .name = "cache-control", .value = "no-store" };
             count += 1;
             if (!has_cookie) {
@@ -735,7 +759,7 @@ fn handleRequest(server: *Server, request: *std.http.Server.Request, client_id: 
         var name_buffer: [256]u8 = undefined;
         const name = std.fmt.bufPrint(&name_buffer, "webui/{s}", .{rest}) catch "";
         if (name.len > 0 and try serveAsset(server, request, name)) {
-            return keep_alive and !server.stopping;
+            return keep_alive and !server.stopping.load(.acquire);
         }
     }
 
@@ -770,7 +794,7 @@ fn handleRequest(server: *Server, request: *std.http.Server.Request, client_id: 
 
     if (server.stop_path) |stop_path| {
         if (method == .POST and std.mem.eql(u8, util.withoutQuery(target), stop_path)) {
-            server.stopping = true;
+            server.requestStop();
             try respondText(request, .ok, "stopping");
             return false;
         }
@@ -793,7 +817,11 @@ fn handleRequest(server: *Server, request: *std.http.Server.Request, client_id: 
     };
     body = .empty;
 
-    server.pushJob(job);
+    if (!server.pushJob(job)) {
+        job.deinit();
+        try respondText(request, .service_unavailable, "server stopping");
+        return false;
+    }
 
     job.mutex.lockUncancelable(io);
     while (!job.done) job.condition.waitUncancelable(io, &job.mutex);
@@ -823,7 +851,7 @@ fn handleRequest(server: *Server, request: *std.http.Server.Request, client_id: 
     response.deinit();
     responded catch return false;
 
-    return response_keep_alive and !server.stopping;
+    return response_keep_alive and !server.stopping.load(.acquire);
 }
 
 fn copyHeaders(request: *const std.http.Server.Request) ![]Header {
@@ -1204,8 +1232,7 @@ fn readResponse(lua: *Lua, job: *Job) !void {
 fn stop(lua: *Lua) !i32 {
     _ = lua;
     if (active.server) |server| {
-        server.stopping = true;
-        server.jobs_condition.broadcast(io);
+        server.requestStop();
     }
     return 0;
 }

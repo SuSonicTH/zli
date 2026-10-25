@@ -1328,6 +1328,7 @@ return function(httpserver)
     httpserver.status = status
     httpserver.serve_file = serve_file
     httpserver.resolve_web_path = resolve_web_path
+    httpserver.is_within = is_within
     httpserver.content_type = content_type_from_file_name
     httpserver.cache = cache
     httpserver.cache_free_cycle = cache_free_cycle

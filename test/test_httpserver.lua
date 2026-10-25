@@ -2,6 +2,7 @@ local lu = require 'luaunit'
 lu.ORDER_ACTUAL_EXPECTED = false
 
 local http = require "httpserver"
+local support = require "test/support"
 
 Test_httpserver = {}
 
@@ -33,6 +34,20 @@ function Test_httpserver.Test_cache_and_free_cache()
     lu.assertEquals("value", cached({}, { target = "/a" }))
     lu.assertEquals(2, calls)
     http.clear_cache()
+end
+
+function Test_httpserver.Test_is_within_blocks_paths_outside_the_root()
+    local root = support.temp_dir("serve_root")
+    local inside = support.temp_file("serve_inside", "x")
+    local outside = support.temp_file("serve_outside", "x")
+
+    -- keep the inside file below the root
+    root = root .. "/"
+    inside = root .. "inside.txt"
+    io.write_file(inside, "x")
+
+    lu.assertTrue(http.is_within(root, inside))
+    lu.assertFalse(http.is_within(root, outside))
 end
 
 function Test_httpserver.Test_serve_file_missing_returns_404()

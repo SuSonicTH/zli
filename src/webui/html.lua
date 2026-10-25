@@ -107,18 +107,25 @@ local function style_of(node)
     return table.concat(parts, ";")
 end
 
-local function common_attrs(node)
+local function common_attrs(node, base_class)
     local out = { 'data-id="' .. esc(node.id) .. '"' }
     local style = style_of(node)
     if style then
         out[#out + 1] = 'style="' .. esc(style) .. '"'
+    end
+    local classes = {}
+    if base_class then
+        classes[#classes + 1] = base_class
     end
     if node.props.class then
         local class = tostring(node.props.class)
         if not class:match("^[%w%-_ ]+$") then
             error("invalid class '" .. class .. "'", 3)
         end
-        out[#out + 1] = 'class="' .. esc(class) .. '"'
+        classes[#classes + 1] = class
+    end
+    if #classes > 0 then
+        out[#out + 1] = 'class="' .. esc(table.concat(classes, " ")) .. '"'
     end
     if node.props.hidden then
         out[#out + 1] = "hidden"
@@ -213,15 +220,15 @@ local function layout(node)
     if node.props.wrap then
         classes[#classes + 1] = "webui-layout-wrap"
     end
-    return '<div class="' .. table.concat(classes, " ") .. '" '
-        .. common_attrs(node) .. ">" .. children_html(node) .. "</div>"
+    return '<div ' .. common_attrs(node, table.concat(classes, " ")) .. ">"
+        .. children_html(node) .. "</div>"
 end
 
 renderers.verticalLayout = layout
 renderers.horizontalLayout = layout
 
 renderers.panel = function(node)
-    local out = { '<div class="webui-panel" ', common_attrs(node), ">" }
+    local out = { '<div ', common_attrs(node, "webui-panel"), ">" }
     if node.props.title then
         out[#out + 1] = '<div class="webui-panel-title">' .. esc(node.props.title) .. "</div>"
     end
@@ -232,7 +239,7 @@ end
 
 renderers.label = function(node)
     local class = node.props.muted and "webui-label webui-muted" or "webui-label"
-    return '<span class="' .. class .. '" ' .. common_attrs(node) .. ">"
+    return "<span " .. common_attrs(node, class) .. ">"
         .. esc(node.props.text or "") .. "</span>"
 end
 
@@ -242,19 +249,19 @@ renderers.heading = function(node)
         error("heading level has to be between 1 and 6", 3)
     end
     local tag = "h" .. level
-    return "<" .. tag .. ' class="webui-heading" ' .. common_attrs(node) .. ">"
+    return "<" .. tag .. " " .. common_attrs(node, "webui-heading") .. ">"
         .. esc(node.props.text or "") .. "</" .. tag .. ">"
 end
 
 renderers.button = function(node)
-    local attrs = common_attrs(node)
+    local attrs = common_attrs(node, "webui-button")
     if node.props.disabled then
         attrs = attrs .. " disabled"
     end
     if node.handlers.onClick then
         attrs = attrs .. " " .. event_attrs(node, "click", "click", TARGET .. ":queue all")
     end
-    return '<button type="button" class="webui-button" ' .. attrs .. ">"
+    return '<button type="button" ' .. attrs .. ">"
         .. esc(node.props.text or "") .. "</button>"
 end
 
@@ -264,7 +271,6 @@ renderers.textField = function(node)
         error("invalid text field type", 3)
     end
     local attrs = {
-        'class="webui-input"',
         'type="' .. esc(input_type) .. '"',
     }
     if node.props.name then
@@ -280,7 +286,7 @@ renderers.textField = function(node)
         attrs[#attrs + 1] = "disabled"
     end
     attrs[#attrs + 1] = 'value="' .. esc(node.state.value or "") .. '"'
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-input")
     if node.handlers.onInput or node.handlers.onChange then
         attrs[#attrs + 1] = event_attrs(node, nil, "input changed delay:120ms, change", "this:queue last")
     end
@@ -289,7 +295,7 @@ renderers.textField = function(node)
 end
 
 renderers.textArea = function(node)
-    local attrs = { 'class="webui-textarea"' }
+    local attrs = {}
     if node.props.name then
         attrs[#attrs + 1] = 'name="' .. esc(node.props.name) .. '"'
     end
@@ -305,7 +311,7 @@ renderers.textArea = function(node)
     if node.props.disabled then
         attrs[#attrs + 1] = "disabled"
     end
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-textarea")
     if node.handlers.onInput or node.handlers.onChange then
         attrs[#attrs + 1] = event_attrs(node, nil, "input changed delay:120ms, change", "this:queue last")
     end
@@ -315,8 +321,8 @@ renderers.textArea = function(node)
 end
 
 renderers.checkbox = function(node)
+    local wrapper = common_attrs(node, "webui-checkbox")
     local attrs = {
-        'class="webui-checkbox"',
         'type="checkbox"',
     }
     if node.props.name then
@@ -329,11 +335,10 @@ renderers.checkbox = function(node)
     if node.props.disabled then
         attrs[#attrs + 1] = "disabled"
     end
-    attrs[#attrs + 1] = common_attrs(node)
     if node.handlers.onChange then
         attrs[#attrs + 1] = event_attrs(node, "change", "change", "this:queue last")
     end
-    return "<label " .. attrs[1] .. "><input " .. table.concat(attrs, " ", 2) .. ">"
+    return "<label " .. wrapper .. "><input " .. table.concat(attrs, " ") .. ">"
         .. "<span>" .. esc(node.props.text or "") .. "</span></label>"
 end
 
@@ -355,14 +360,14 @@ local function options_list(node)
 end
 
 renderers.select = function(node)
-    local attrs = { 'class="webui-select"' }
+    local attrs = {}
     if node.props.name then
         attrs[#attrs + 1] = 'name="' .. esc(node.props.name) .. '"'
     end
     if node.props.disabled then
         attrs[#attrs + 1] = "disabled"
     end
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-select")
     if node.handlers.onChange then
         attrs[#attrs + 1] = event_attrs(node, "change", "change", "this:queue last")
     end
@@ -384,7 +389,7 @@ end
 
 renderers.radioGroup = function(node)
     local out = { '<div class="' .. field_class(node) .. '">', label_html(node) }
-    out[#out + 1] = '<div class="webui-radio-group" role="radiogroup" ' .. common_attrs(node) .. ">"
+    out[#out + 1] = '<div role="radiogroup" ' .. common_attrs(node, "webui-radio-group") .. ">"
     for _, option in ipairs(options_list(node)) do
         local checked = tostring(option.value) == tostring(node.state.value) and " checked" or ""
         local name = node.props.name and (' name="' .. esc(node.props.name) .. '"') or ""
@@ -404,7 +409,7 @@ end
 
 renderers.list = function(node)
     local tag = node.props.ordered and "ol" or "ul"
-    local out = { "<" .. tag .. ' class="webui-list" ' .. common_attrs(node) .. ">" }
+    local out = { "<" .. tag .. " " .. common_attrs(node, "webui-list") .. ">" }
     for index, item in ipairs(node.props.items or {}) do
         local attrs = ""
         if node.handlers.onSelect then
@@ -441,7 +446,7 @@ renderers.table = function(node)
     local rows = node.props.rows or {}
     local key_function = node.props.rowKey
 
-    local out = { '<table class="webui-table" ' .. common_attrs(node) .. ">" }
+    local out = { '<table ' .. common_attrs(node, "webui-table") .. ">" }
     if #columns > 0 then
         out[#out + 1] = "<thead><tr>"
         for index, column in ipairs(columns) do
@@ -476,21 +481,20 @@ renderers.image = function(node)
     if node.props.src == nil then
         error("image requires src", 3)
     end
-    local attrs = { 'class="webui-image"', 'src="' .. esc(node.props.src) .. '"' }
+    local attrs = { 'src="' .. esc(node.props.src) .. '"' }
     if node.props.alt then
         attrs[#attrs + 1] = 'alt="' .. esc(node.props.alt) .. '"'
     end
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-image")
     return "<img " .. table.concat(attrs, " ") .. ">"
 end
 
 renderers.link = function(node)
     local href = node.props.href or "#"
     local attrs = {
-        'class="webui-link"',
         'href="' .. esc(href) .. '"',
     }
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-link")
     if node.props.route then
         attrs[#attrs + 1] = 'hx-get="' .. esc(href) .. '"'
         attrs[#attrs + 1] = 'hx-target="' .. TARGET .. '"'
@@ -502,26 +506,26 @@ end
 
 renderers.markdown = function(node)
     local rendered = markdown.html(node.props.text or "")
-    return '<div class="webui-markdown" ' .. common_attrs(node) .. ">" .. rendered .. "</div>"
+    return '<div ' .. common_attrs(node, "webui-markdown") .. ">" .. rendered .. "</div>"
 end
 
 renderers.html = function(node)
-    return '<div class="webui-html" ' .. common_attrs(node) .. ">" .. tostring(node.props.text or "") .. "</div>"
+    return '<div ' .. common_attrs(node, "webui-html") .. ">" .. tostring(node.props.text or "") .. "</div>"
 end
 
 renderers.divider = function(node)
-    return '<hr class="webui-divider" ' .. common_attrs(node) .. ">"
+    return '<hr ' .. common_attrs(node, "webui-divider") .. ">"
 end
 
 renderers.progress = function(node)
-    local attrs = { 'class="webui-progress"' }
+    local attrs = {}
     if node.props.max then
         attrs[#attrs + 1] = 'max="' .. esc(node.props.max) .. '"'
     end
     if not node.props.indeterminate then
         attrs[#attrs + 1] = 'value="' .. esc(node.state.value or node.props.value or 0) .. '"'
     end
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-progress")
     return "<progress " .. table.concat(attrs, " ") .. "></progress>"
 end
 
@@ -529,7 +533,7 @@ renderers.tabs = function(node)
     local labels = node.props.labels or {}
     local active = tonumber(node.state.value) or 1
 
-    local out = { '<div class="webui-tabs" ' .. common_attrs(node) .. ">" }
+    local out = { '<div ' .. common_attrs(node, "webui-tabs") .. ">" }
     out[#out + 1] = '<div class="webui-tabbar" role="tablist">'
     for index = 1, math.max(#labels, #node.children) do
         local label = labels[index] or tostring(index)
@@ -553,11 +557,11 @@ renderers.tabs = function(node)
 end
 
 renderers.dialog = function(node)
-    local attrs = { 'class="webui-dialog"' }
+    local attrs = {}
     if node.state.open or node.props.open then
         attrs[#attrs + 1] = "open"
     end
-    attrs[#attrs + 1] = common_attrs(node)
+    attrs[#attrs + 1] = common_attrs(node, "webui-dialog")
 
     local out = { "<dialog " .. table.concat(attrs, " ") .. ">" }
     if node.props.title then

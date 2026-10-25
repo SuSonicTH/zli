@@ -179,6 +179,7 @@ function Test_webserver:Test_assets_dir_overrides_embedded_assets()
     with_server(function(_, request)
         local response, body = request("GET", "/__webui/app.css")
         lu.assertEquals(200, response.status)
+        lu.assertEquals("text/css; charset=utf-8", response.content_type)
         lu.assertEquals("/* override */", body)
     end, { assets_dir = dir })
 end
@@ -254,6 +255,29 @@ function Test_webserver:Test_serve_validates_options()
 
     lu.assertNil(webserver.info())
     lu.assertEquals(0, #webserver.clients())
+end
+
+function Test_webserver:Test_long_tokens_are_rejected()
+    lu.assertError(function()
+        webserver.serve { routes = {}, token = string.rep("x", 65) }
+    end)
+end
+
+function Test_webserver:Test_origin_lookalike_hosts_are_rejected()
+    with_server(function(url, request)
+        local port = url:match(":(%d+)/$")
+        local response = request("POST", "/echo", "x", {
+            cookie = "webui_session=" .. TOKEN,
+            origin = "http://127.0.0.1.evil.example:" .. port,
+        })
+        lu.assertEquals(403, response.status)
+
+        local localhost_lookalike = request("POST", "/echo", "x", {
+            cookie = "webui_session=" .. TOKEN,
+            origin = "http://localhost.evil.example:" .. port,
+        })
+        lu.assertEquals(403, localhost_lookalike.status)
+    end)
 end
 
 function Test_webserver:Test_status_constants()

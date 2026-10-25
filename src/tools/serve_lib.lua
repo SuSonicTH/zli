@@ -16,9 +16,13 @@ local function serve(dir)
     webserver.serve {
         handler = function(request)
             -- httpserver.resolve_web_path/serve_file keep the previous
-            -- behaviour: index.html, directory listings, 404s and traversal
-            -- protection.
-            return httpserver.serve_file(httpserver.resolve_web_path(dir, request.path))
+            -- behaviour: index.html, directory listings and 404s. The
+            -- containment check also catches symlinks pointing outside.
+            local resolved = httpserver.resolve_web_path(dir, request.path)
+            if not httpserver.is_within(dir, resolved) then
+                return { status = webserver.status.forbidden }
+            end
+            return httpserver.serve_file(resolved)
         end,
         on_start = function(info)
             print("serving at " .. info.url)

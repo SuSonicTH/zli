@@ -200,6 +200,25 @@ function Test_webui:Test_ids_are_stable_across_renders()
     lu.assertEquals(before, button.id)
 end
 
+function Test_webui:Test_user_classes_are_merged()
+    new_page()
+    local page = ui.page {}
+    page:add(ui.label { text = "x", class = "custom" })
+    page:add(ui.button { text = "go", class = "primary", onClick = function() end })
+    page:add(ui.textField { name = "user", class = "wide" })
+
+    local body = render.render_body(page)
+    lu.assertStrContains(body, 'class="webui-label custom"')
+    lu.assertStrContains(body, 'class="webui-button primary"')
+    lu.assertStrContains(body, 'class="webui-input wide"')
+    lu.assertNil(body:find('class="webui-label" data%-id[^>]*class=', 1))
+
+    -- malformed class names still raise
+    lu.assertError(function()
+        render.render_body(ui.page { ui.label { text = "x", class = 'bad"name' } })
+    end)
+end
+
 function Test_webui:Test_styles_are_validated()
     new_page()
     local page = ui.page {}
@@ -232,9 +251,12 @@ function Test_webui:Test_components_render()
     page:add(ui.tabs { labels = { "one", "two" }, ui.label { text = "first" }, ui.label { text = "second" } })
 
     local body = render.render_body(page)
-    lu.assertStrContains(body, "<h1 class=\"webui-heading\"")
-    lu.assertStrContains(body, "<progress class=\"webui-progress\" max=\"10\" value=\"5\"")
-    lu.assertStrContains(body, "<hr class=\"webui-divider\"")
+    lu.assertStrContains(body, '<h1 data-id=')
+    lu.assertStrContains(body, 'class="webui-heading">Title</h1>')
+    lu.assertStrContains(body, '<progress max="10" value="5"')
+    lu.assertStrContains(body, 'class="webui-progress"')
+    lu.assertStrContains(body, '<hr data-id=')
+    lu.assertStrContains(body, 'class="webui-divider"')
     lu.assertStrContains(body, 'src="/x.png"')
     lu.assertStrContains(body, "<h1>hi</h1>")
     lu.assertStrContains(body, "<em>raw</em>")
@@ -336,6 +358,7 @@ local go = ui.button { text = "Go B", onClick = function() ui.navigate("/b") end
 page:add(ui.horizontalLayout {
     ui.label { text = "User Name" }, field, echo, button, broken, go,
 })
+page:add(ui.textField { name = "locked", value = "keep", disabled = true })
 
 local second = ui.page { title = "Second" }
 second:add(ui.label { text = "this is B" })
@@ -458,6 +481,28 @@ function Test_webui:Test_callback_errors_keep_the_server_working()
         -- the server is still alive and serving
         local alive = request("GET", "/")
         lu.assertEquals(200, alive.status)
+    end)
+end
+
+function Test_webui:Test_stale_event_id_is_not_swapped()
+    with_page(function(_, _, request)
+        local response, body = request("POST", "/__webui/event", "id=c999999&kind=click", {
+            cookie = "webui_session=" .. TOKEN,
+        })
+        lu.assertEquals(204, response.status)
+        lu.assertEquals("", body)
+    end)
+end
+
+function Test_webui:Test_disabled_fields_keep_their_value()
+    with_page(function(_, ids, request)
+        -- the browser does not submit disabled controls; the server must not
+        -- clear their value on an unrelated event
+        local response, body = request("POST", "/__webui/event",
+            "id=" .. ids.button .. "&kind=click&user=alice",
+            { cookie = "webui_session=" .. TOKEN })
+        lu.assertEquals(200, response.status)
+        lu.assertStrContains(body, 'value="keep"')
     end)
 end
 
