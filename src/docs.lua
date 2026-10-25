@@ -463,7 +463,7 @@ function docs.render_entry(entry, format, width)
     if entry == nil then return "" end
     if format == "html" then
         local out = {
-            '<h3 id="', entry.anchor or entry.name, '"><code>',
+            '<h3 class="entry" id="', entry.anchor or entry.name, '"><code>',
             markdown.render_inline_html(entry.signature or entry.name),
             "</code></h3>",
         }
@@ -564,6 +564,25 @@ nav.toc li.level1 { padding-left: 0; font-weight: bold; margin-top: 0.45em; }
 nav.toc li.level2 { padding-left: 1em; font-weight: normal; }
 nav.toc a { color: var(--blue); text-decoration: none; }
 nav.toc a:hover { text-decoration: underline; }
+nav.toc .toc-row { display: flex; align-items: baseline; gap: 0.25em; }
+nav.toc .toc-toggle, nav.toc .toc-spacer { flex: none; width: 1.1em; }
+nav.toc .toc-toggle {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--blue);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    text-align: center;
+}
+nav.toc .toc-toggle::before { content: "▸"; }
+nav.toc .toc-toggle[aria-expanded="true"]::before { content: "▾"; }
+nav.toc .toc-toggle:focus-visible { outline: 1px solid var(--blue); outline-offset: 1px; }
+nav.toc ul.toc-entries { margin-top: 0.1em; padding-left: 1.2em; overflow-wrap: anywhere; }
+nav.toc li.level3 { padding-left: 0; font-size: 0.95em; }
+nav.toc li.level3 a { color: #333; }
+nav.toc li.level3 a:hover { color: var(--blue); }
 main {
     min-width: 0;
     max-width: 70em;
@@ -605,7 +624,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 1.6em 0; }
 table { border-collapse: collapse; margin: 1em 0; }
 th, td { border: 1px solid var(--rule); padding: 0.35em 0.6em; text-align: left; vertical-align: top; }
 th { background: var(--shade); }
-.entry { margin-bottom: 0.4em; }
+h3.entry {
+    margin: 2.2em 0 0.65em;
+    padding-top: 1.15em;
+    border-top: 1px solid var(--rule);
+    font-weight: bold;
+}
+h3.entry code { font-weight: inherit; }
 .overview { margin: 0.8em 0 1.6em; }
 .source, .meta { color: #666; font-size: 0.85em; }
 .meta a { color: #666; text-decoration: underline; }
@@ -652,6 +677,7 @@ local search_script = [==[
     var form = document.getElementById("zli-search-form");
     var input = document.getElementById("zli-search-input");
     var layout = document.querySelector(".layout");
+    var toc = document.querySelector("nav.toc");
     var view = document.getElementById("zli-search-view");
     var status = document.getElementById("zli-search-status");
     var list = document.getElementById("zli-search-results");
@@ -753,6 +779,30 @@ local search_script = [==[
         }
     }
 
+    function setTocExpanded(moduleItem, expanded) {
+        if (!moduleItem) return;
+        var sub = moduleItem.querySelector(".toc-entries");
+        var toggle = moduleItem.querySelector(".toc-toggle");
+        if (!sub || !toggle) return;
+        sub.hidden = !expanded;
+        toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+
+    function expandTocForHash(hash) {
+        if (!toc || !hash || hash.length < 2) return;
+        var anchor = hash.charAt(0) === "#" ? hash.slice(1) : hash;
+        var modules = toc.querySelectorAll(".toc-module");
+        for (var i = 0; i < modules.length; i++) {
+            var links = modules[i].querySelectorAll(".toc-entries a");
+            for (var j = 0; j < links.length; j++) {
+                if (links[j].getAttribute("href") === "#" + anchor) {
+                    setTocExpanded(modules[i], true);
+                    return;
+                }
+            }
+        }
+    }
+
     function showManual() {
         cancelTimer();
         view.hidden = true;
@@ -840,7 +890,32 @@ local search_script = [==[
             cancelTimer();
             layout.hidden = false;
             view.hidden = true;
+            var href = target.getAttribute("href") || "";
+            if (href.charAt(0) === "#") expandTocForHash(href);
         }
+    });
+
+    if (toc) {
+        toc.addEventListener("click", function (event) {
+            var button = event.target.closest ? event.target.closest(".toc-toggle") : null;
+            if (button) {
+                event.preventDefault();
+                var moduleItem = button.closest(".toc-module");
+                var expanded = button.getAttribute("aria-expanded") === "true";
+                setTocExpanded(moduleItem, !expanded);
+                return;
+            }
+            var link = event.target.closest ? event.target.closest("a") : null;
+            if (link) {
+                var owner = link.closest(".toc-module");
+                if (owner) setTocExpanded(owner, true);
+            }
+        });
+    }
+
+    expandTocForHash(window.location.hash);
+    window.addEventListener("hashchange", function () {
+        expandTocForHash(window.location.hash);
     });
 
     var initial = new URLSearchParams(window.location.search).get("q") || "";
@@ -869,6 +944,29 @@ local function page(title, body)
     })
 end
 
+local function toc_module_html(anchor, label_html, module_name)
+    local entries = module_name and docs.by_module[module_name] or nil
+    local out = { '<li class="level2 toc-module"><div class="toc-row">' }
+    if entries and #entries > 0 then
+        out[#out + 1] = '<button type="button" class="toc-toggle" aria-expanded="false" aria-label="Toggle entries for ' ..
+            markdown.escape_html(module_name) .. '"></button>'
+    else
+        out[#out + 1] = '<span class="toc-spacer" aria-hidden="true"></span>'
+    end
+    out[#out + 1] = '<a href="#' .. markdown.escape_html(anchor) .. '">' .. label_html .. '</a></div>'
+    if entries and #entries > 0 then
+        out[#out + 1] = '<ul class="toc-entries" hidden>'
+        for _, entry in ipairs(entries) do
+            out[#out + 1] = '<li class="level3"><a href="#' ..
+                markdown.escape_html(entry.anchor or entry.name) .. '">' ..
+                markdown.escape_html(entry.name) .. '</a></li>'
+        end
+        out[#out + 1] = '</ul>'
+    end
+    out[#out + 1] = '</li>'
+    return table.concat(out)
+end
+
 local function toc_html()
     local out = { "<nav class=\"toc\"><h2>Contents</h2><ul class=\"manual-toc\">" }
     out[#out + 1] = "<li class=\"level1\"><a href=\"#lua-manual\">Lua " ..
@@ -876,10 +974,20 @@ local function toc_html()
     for _, node in ipairs(docs.manual_nodes) do
         if node.type == "heading" and node.level <= 2 then
             local anchor = heading_anchor(node)
-            local class = node.level == 1 and "level1" or "level2"
-            out[#out + 1] = "<li class=\"" .. class .. "\"><a href=\"#" ..
-                markdown.escape_html(anchor) .. "\">" ..
-                markdown.render_inline_html(node.title) .. "</a></li>"
+            if node.level == 1 then
+                out[#out + 1] = "<li class=\"level1\"><a href=\"#" ..
+                    markdown.escape_html(anchor) .. "\">" ..
+                    markdown.render_inline_html(node.title) .. "</a></li>"
+            else
+                local module = section_modules[anchor]
+                if module then
+                    out[#out + 1] = toc_module_html(anchor, markdown.render_inline_html(node.title), module)
+                else
+                    out[#out + 1] = "<li class=\"level2\"><a href=\"#" ..
+                        markdown.escape_html(anchor) .. "\">" ..
+                        markdown.render_inline_html(node.title) .. "</a></li>"
+                end
+            end
         end
     end
     for _, group in ipairs(docs.groups) do
@@ -888,9 +996,8 @@ local function toc_html()
             markdown.render_inline_html(group_heading(group)) .. "</a></li>"
         if not group.flat then
             for _, module in ipairs(group.modules or {}) do
-                out[#out + 1] = "<li class=\"level2\"><a href=\"#" ..
-                    markdown.escape_html(module_anchor(module)) .. "\">" ..
-                    markdown.render_inline_html(module_heading(module)) .. "</a></li>"
+                out[#out + 1] = toc_module_html(module_anchor(module),
+                    markdown.render_inline_html(module_heading(module)), module.name)
             end
         end
     end

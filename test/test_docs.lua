@@ -573,6 +573,28 @@ function Test_docs.Test_manual_entry_and_toc_anchors_resolve()
     end
 end
 
+function Test_docs.Test_toc_has_collapsible_module_entries()
+    local html = docs.render_manual_html()
+    lu.assertStrContains(html, 'class="level2 toc-module"')
+    lu.assertStrContains(html, 'class="toc-toggle"')
+    lu.assertStrContains(html, 'aria-expanded="false"')
+    lu.assertStrContains(html, '<ul class="toc-entries" hidden>')
+    lu.assertStrContains(html, 'href="#module-luaunit"')
+
+    local luaunit = docs.find("luaunit.assertEquals")
+    lu.assertNotNil(luaunit)
+    lu.assertStrContains(html, 'href="#' .. luaunit.anchor .. '"')
+    lu.assertStrContains(html, ">luaunit.assertEquals</a>")
+
+    local byte = docs.find("string.byte")
+    lu.assertNotNil(byte)
+    lu.assertStrContains(html, 'href="#' .. byte.anchor .. '"')
+
+    -- Modules without own entries stay links without an expand control.
+    lu.assertStrContains(html, '<span class="toc-spacer" aria-hidden="true"></span>')
+    lu.assertNotStrContains(html, "Toggle entries for memoize")
+end
+
 function Test_docs.Test_synthesized_heading_anchors_are_emitted()
     local html = docs.render_manual_html()
     local expected = {
