@@ -8268,7 +8268,7 @@ The ZLI version string.
 Version string of the running ZLI build.
 
 The value comes from the version file embedded in the binary, for example
-`"0.2.0"`. It is a string and should be treated as read-only.
+`"0.2.1"`. It is a string and should be treated as read-only.
 
 ```lua
 print(ZLI.version)

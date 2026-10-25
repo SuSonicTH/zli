@@ -1,7 +1,7 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.2.0",
+    .version = "0.2.1",
     .minimum_zig_version = "0.17.0",
     .paths = .{""},
     .dependencies = .{

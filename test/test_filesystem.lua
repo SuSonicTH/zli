@@ -44,7 +44,7 @@ function Test_filesystem.Test_lines()
         lines[#lines + 1] = line
     end
     lu.assertEquals(1, #lines)
-    lu.assertEquals("0.2.0", lines[1])
+    lu.assertEquals("0.2.1", lines[1])
 end
 
 function Test_filesystem.Test_create_tree_and_delete_tree()

@@ -126,6 +126,20 @@ Two configuration files are read automatically when they exist:
 - `~/.config/zli/init.lua` — executed before every script and REPL session
 - `~/.config/zli/repl_init.lua` — executed only when the REPL starts
 
+## Examples
+
+The [`examples/`](examples/) directory collects small, self-contained programs
+that show how ZLI can be used, from command line scripts to browser UIs built
+on `webui`. Every example is a plain Lua script that runs directly from the
+filesystem and has a companion Markdown description:
+
+```bash
+zig build
+./zig-out/bin/zli examples/graphcalc.lua
+```
+
+See [`examples/README.md`](examples/README.md) for the list of examples.
+
 ## Error handling
 
 ZLI libraries that can fail at runtime can either return an error or raise one. Returning errors is the default:
@@ -180,7 +194,7 @@ For optimized builds of all release targets (UPX-compressed, statically linked o
 zig build release
 ```
 
-Release binaries are written to `zig-out/bin` with a platform and version suffix (for example `zli-x86_64-linux-0.2.0`).
+Release binaries are written to `zig-out/bin` with a platform and version suffix (for example `zli-x86_64-linux-0.2.1`).
 
 > A plain `zig build` and `zig build native` use the host ABI and may link against the host's shared libc (glibc on Linux). Use `zig build release` or pass an explicit target, such as `zig build -Dtarget=x86_64-linux`, for a static musl binary. Note that `zig build native` always uses the host target and ignores `-Dtarget`.
 >

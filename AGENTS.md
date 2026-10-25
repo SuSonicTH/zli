@@ -214,6 +214,7 @@ pub fn register(lua: *Lua) !i32 {
 | `test/`                                                                              | LuaUnit suites, auto-discovered; `support.lua` has shared helpers.                                                                                     |
 | `test/temp/`                                                                         | Scratch directory cleaned before/after the suite (`.gitignore` tracked).                                                                               |
 | `benchmark/`                                                                         | Standalone benchmark scripts run by `require "benchmark"`.                                                                                             |
+| `examples/`                                                                          | Standalone example scripts, each with a same-named Markdown description and an entry in `examples/README.md`.                                            |
 | `zig-pkg/`, `.zig-cache/`, `zig-out/`                                                | Generated/downloaded; ignored, do not edit.                                                                                                            |
 
 ## Documentation system
@@ -319,6 +320,28 @@ entry(name, signature, kind, summary, markdown, aliases)
    `doc/README.md`; document it in the `tools` module in `doc/libraries.lua`.
 4. Add a CLI test in `test/test_cli.lua` using `support.run` with an isolated
    `HOME`. Run `zig build docs` and `zig build test`.
+
+### Add an example
+
+Examples are standalone programs, not payload tools: no `build.zig` entry, no
+`src/libraries.zig` registration and no `doc/libraries.lua` documentation.
+When asked for an example, add all three parts in one change:
+
+1. `examples/<name>.lua` — one self-contained script. It runs with
+   `zli examples/<name>.lua`, receives its arguments in `arg[1..]` and may
+   `require` any bundled library. Keep it focused on the API or feature the
+   example is about.
+2. `examples/<name>.md` — the companion description with the same basename:
+   what it does, how to run it, its options/behaviour and a short tour of the
+   interesting parts of the script.
+3. A row in `examples/README.md` linking the script and its Markdown, with a
+   one-line description.
+
+Run it once from the repository root before finishing, for example
+`./zig-out/bin/zli examples/graphcalc.lua --eval "sin(pi/2)"`. Examples are not
+shipped in the payload, so they need no per-example `README.md`,
+`src/main.lua` usage or `doc/libraries.lua` entries; add tests only when an
+example is promoted to a payload tool (see above).
 
 ### Bump the version
 
