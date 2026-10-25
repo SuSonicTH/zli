@@ -207,6 +207,9 @@ const payload_entries = [_]payload_entry{
     .{ .input = "src/webui/vendor.js", .name = "webui/vendor.js" },
     .{ .input = "src/webui/app.js", .name = "webui/app.js" },
     .{ .input = "src/webui/app.css", .name = "webui/app.css" },
+    .{ .input = "src/webui/init.lua", .name = "webui/init.lua" },
+    .{ .input = "src/webui/component.lua", .name = "webui/component.lua" },
+    .{ .input = "src/webui/html.lua", .name = "webui/html.lua" },
 };
 
 /// Copies a compiled executable and appends the zli Lua payload to it.
@@ -323,6 +326,9 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },
     .{ .input = "src/httpserver.lua", .name = "httpserver.lua" },
     .{ .input = "src/webserver.lua", .name = "webserver.lua" },
+    .{ .input = "src/webui/init.lua", .name = "webui.init.lua" },
+    .{ .input = "src/webui/component.lua", .name = "webui.component.lua" },
+    .{ .input = "src/webui/html.lua", .name = "webui.html.lua" },
     .{ .input = "src/init.lua", .name = "init.lua" },
     .{ .input = "src/logger.lua", .name = "logger.lua" },
     .{ .input = "src/memoize.lua", .name = "memoize.lua" },
