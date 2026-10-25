@@ -319,6 +319,22 @@ function Test_cli.Test_help_without_docs_manual_reports_clear_error()
     lu.assertStrContains(stdout, "missing docs_manual")
 end
 
+function Test_cli.Test_manual_output_writes_self_contained_page()
+    local output = support.temp_path("cli_manual_output")
+    local stdout, status = support.run({ "@manual", "--output", output }, {
+        home = new_home(),
+    })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "wrote " .. output)
+
+    local html = fs.read_all(output)
+    lu.assertStrContains(html, 'id="zli-search-index"')
+    lu.assertStrContains(html, 'id="zli-search-form"')
+    lu.assertStrContains(html, "URLSearchParams")
+    lu.assertNotStrContains(html, 'action="/search"')
+    lu.assertNotStrContains(html, 'href="/#')
+end
+
 function Test_cli.Test_manual_rejects_invalid_port()
     for _, value in ipairs({ "0", "-1", "1.5", "65536", "not-a-port" }) do
         local stdout, status = support.run({ "@manual", "--port", value }, {

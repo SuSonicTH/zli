@@ -365,6 +365,86 @@ function docs.render_inline_text(text)
     return markdown.render_inline_text(text or "")
 end
 
+-- The manual is a single self-contained page: the search index is embedded as
+-- JSON and scored by the inline script below.  Keep the encoder local and
+-- deliberately small; it only needs to serialize the fixed index schema.
+local function json_string(value)
+    value = tostring(value or "")
+    value = value:gsub("\\", "\\\\")
+    value = value:gsub('"', '\\"')
+    value = value:gsub("%c", function(c)
+        return string.format("\\u%04x", c:byte())
+    end)
+    value = value:gsub("<", "\\u003c")
+    value = value:gsub(">", "\\u003e")
+    value = value:gsub("&", "\\u0026")
+    value = value:gsub("\226\128\168", "\\u2028")
+    value = value:gsub("\226\128\169", "\\u2029")
+    return '"' .. value .. '"'
+end
+
+local function index_entry(entry)
+    local item = {
+        n = entry.name or "",
+        a = entry.anchor or entry.name or "",
+    }
+    if entry.aliases and #entry.aliases > 0 then
+        item.l = entry.aliases
+    end
+    if entry.signature and entry.signature ~= "" then
+        item.s = entry.signature
+    end
+    if entry.summary and entry.summary ~= "" then
+        item.u = entry.summary
+    end
+    local module = entry.module or entry.parent
+    if module and module ~= "" then
+        item.m = module
+    end
+    if entry.markdown and entry.markdown ~= "" then
+        item.b = entry.markdown
+    end
+    item.sh = docs.render_inline(entry.signature or entry.name)
+    if entry.summary and entry.summary ~= "" then
+        item.uh = docs.render_inline(entry.summary)
+    end
+    return item
+end
+
+function docs.search_index()
+    local entries = {}
+    for i, entry in ipairs(docs.entries) do
+        entries[i] = index_entry(entry)
+    end
+    return { v = 1, entries = entries }
+end
+
+function docs.search_index_json()
+    local index = docs.search_index()
+    local out = { '{"v":', tostring(index.v), ',"entries":[' }
+    for i, item in ipairs(index.entries) do
+        if i > 1 then out[#out + 1] = "," end
+        out[#out + 1] = '{"n":' .. json_string(item.n)
+        out[#out + 1] = ',"a":' .. json_string(item.a)
+        if item.l then
+            local aliases = {}
+            for j, alias in ipairs(item.l) do
+                aliases[j] = json_string(alias)
+            end
+            out[#out + 1] = ',"l":[' .. table.concat(aliases, ",") .. "]"
+        end
+        if item.s then out[#out + 1] = ',"s":' .. json_string(item.s) end
+        if item.u then out[#out + 1] = ',"u":' .. json_string(item.u) end
+        if item.m then out[#out + 1] = ',"m":' .. json_string(item.m) end
+        if item.b then out[#out + 1] = ',"b":' .. json_string(item.b) end
+        out[#out + 1] = ',"sh":' .. json_string(item.sh)
+        if item.uh then out[#out + 1] = ',"uh":' .. json_string(item.uh) end
+        out[#out + 1] = "}"
+    end
+    out[#out + 1] = "]}"
+    return table.concat(out)
+end
+
 local function major_minor(version)
     version = tostring(version or "")
     return version:match("^(%d+%.%d+)") or version
@@ -436,7 +516,7 @@ local css = [==[
     --shade: #f8f8f8;
 }
 * { box-sizing: border-box; }
-html { background: var(--shade); }
+html { background: var(--shade); scroll-padding-top: 4.5em; }
 body {
     margin: 0;
     color: var(--ink);
@@ -534,6 +614,11 @@ th { background: var(--shade); }
 .search-results li { margin: 0.8em 0; }
 .search-results .name { font-family: "DejaVu Sans Mono", Consolas, monospace; }
 .search-results .summary { color: #444; }
+.search-status { color: #444; }
+#zli-search-view h1 { margin-top: 0; }
+.search-back { font: inherit; padding: 0.4em 0.9em; border: 1px solid #a0a0a0; background: var(--shade); border-radius: 4px; cursor: pointer; }
+.noscript { margin: 1em 1.2em; padding: 0.6em 0.9em; background: #fff3cd; border: 1px solid #e0c36a; }
+[hidden] { display: none !important; }
 @media (max-width: 820px) {
     .layout { display: block; }
     nav.toc { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--rule); }
@@ -557,6 +642,215 @@ library, and the command-line tools.  Use the search box above, or
 `zli @help` / `:help` in the REPL, to look up an API.
 ]==], overview_lua_version)
 
+-- Keep this in sync with docs.search().  The page is used both from the HTTP
+-- server and from `zli @manual --output`; there is no Lua search fallback.
+local search_script = [==[
+(function () {
+    "use strict";
+
+    var data = document.getElementById("zli-search-index");
+    var form = document.getElementById("zli-search-form");
+    var input = document.getElementById("zli-search-input");
+    var layout = document.querySelector(".layout");
+    var view = document.getElementById("zli-search-view");
+    var status = document.getElementById("zli-search-status");
+    var list = document.getElementById("zli-search-results");
+    var heading = document.getElementById("zli-search-heading");
+    var back = document.getElementById("zli-search-back");
+    if (!data || !form || !input || !layout || !view || !status || !list || !heading) return;
+
+    var index;
+    try {
+        index = JSON.parse(data.textContent);
+    } catch (error) {
+        return;
+    }
+    var entries = index.entries || [];
+    var MAX_RESULTS = 100;
+    var DEBOUNCE_MS = 100;
+    var timer = null;
+
+    function lower(value) {
+        return String(value == null ? "" : value).toLowerCase();
+    }
+
+    function contains(haystack, needle) {
+        if (!haystack || !needle) return false;
+        return lower(haystack).indexOf(needle) !== -1;
+    }
+
+    function scoreToken(entry, token) {
+        var name = lower(entry.n);
+        var score = 0;
+        if (name === token) {
+            score = 10000;
+        } else {
+            var aliases = entry.l || [];
+            for (var i = 0; i < aliases.length; i++) {
+                if (lower(aliases[i]) === token) {
+                    score = 9500;
+                    break;
+                }
+            }
+            if (score === 0 && (name.slice(-(token.length + 1)) === "." + token ||
+                    name.slice(-(token.length + 1)) === ":" + token)) {
+                score = 8000;
+            } else if (score === 0 && name.indexOf(token) === 0) {
+                score = 7000;
+            } else if (score === 0 && name.indexOf(token) !== -1) {
+                score = 6000;
+            }
+        }
+
+        if (score === 0 && contains(entry.s, token)) score = 4000;
+        if (score === 0 && contains(entry.u, token)) score = 3000;
+        if (score === 0 && contains(entry.b, token)) score = 1000;
+        if (score === 0 && contains(entry.m, token)) score = 2000;
+        return score;
+    }
+
+    function search(query) {
+        var text = lower(query).trim();
+        var tokens = text === "" ? [] : text.split(/\s+/);
+        if (tokens.length === 0) return null;
+
+        var results = [];
+        for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
+            var score = 0;
+            var matched = 0;
+            for (var j = 0; j < tokens.length; j++) {
+                var value = scoreToken(entry, tokens[j]);
+                if (value > 0) {
+                    matched += 1;
+                    score += value;
+                }
+            }
+            if (matched > 0) {
+                if (matched === tokens.length) score += 5000;
+                results.push({ entry: entry, score: score });
+            }
+        }
+
+        results.sort(function (a, b) {
+            if (a.score !== b.score) return b.score - a.score;
+            var an = lower(a.entry.n);
+            var bn = lower(b.entry.n);
+            return an < bn ? -1 : (an > bn ? 1 : 0);
+        });
+        if (results.length > MAX_RESULTS) results.length = MAX_RESULTS;
+        return results;
+    }
+
+    function clear(element) {
+        while (element.firstChild) element.removeChild(element.firstChild);
+    }
+
+    function cancelTimer() {
+        if (timer !== null) {
+            clearTimeout(timer);
+            timer = null;
+        }
+    }
+
+    function showManual() {
+        cancelTimer();
+        view.hidden = true;
+        layout.hidden = false;
+        status.textContent = "";
+        clear(list);
+    }
+
+    function render(query, focusResults) {
+        var text = String(query == null ? "" : query).trim();
+        if (text === "") {
+            showManual();
+            return;
+        }
+
+        var results = search(text) || [];
+        layout.hidden = true;
+        view.hidden = false;
+        clear(list);
+        if (results.length === 0) {
+            status.textContent = "No matching entries.";
+        } else {
+            status.textContent = results.length + " result(s) for \"" + text + "\".";
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < results.length; i++) {
+                var entry = results[i].entry;
+                var item = document.createElement("li");
+                var link = document.createElement("a");
+                link.className = "name";
+                link.href = "#" + entry.a;
+                link.innerHTML = entry.sh || "";
+                item.appendChild(link);
+                if (entry.uh) {
+                    var summary = document.createElement("div");
+                    summary.className = "summary";
+                    summary.innerHTML = entry.uh;
+                    item.appendChild(summary);
+                }
+                fragment.appendChild(item);
+            }
+            list.appendChild(fragment);
+        }
+        if (focusResults) heading.focus();
+    }
+
+    function update(focusResults) {
+        render(input.value, focusResults);
+    }
+
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        cancelTimer();
+        update(true);
+    });
+
+    input.addEventListener("input", function () {
+        cancelTimer();
+        timer = setTimeout(function () {
+            timer = null;
+            update(false);
+        }, DEBOUNCE_MS);
+    });
+
+    if (back) {
+        back.addEventListener("click", function () {
+            showManual();
+            input.focus();
+        });
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !view.hidden) {
+            input.value = "";
+            showManual();
+            input.focus();
+        }
+    });
+
+    list.addEventListener("click", function (event) {
+        var target = event.target;
+        while (target && target !== list && target.tagName !== "A") {
+            target = target.parentNode;
+        }
+        if (target && target !== list) {
+            cancelTimer();
+            layout.hidden = false;
+            view.hidden = true;
+        }
+    });
+
+    var initial = new URLSearchParams(window.location.search).get("q") || "";
+    if (initial !== "") {
+        input.value = initial;
+        render(initial, true);
+    }
+})();
+]==]
+
 local function page(title, body)
     return table.concat({
         "<!DOCTYPE html><html><head><meta charset=\"utf-8\">",
@@ -564,8 +858,13 @@ local function page(title, body)
         "<title>", markdown.escape_html(title), "</title>",
         "<style>", css, "</style></head><body>",
         "<header><div class=\"brand\"><strong>ZLI</strong> reference manual</div>",
-        "<form action=\"/search\" method=\"get\"><input type=\"search\" name=\"q\" placeholder=\"search documentation\"></form></header>",
+        "<form id=\"zli-search-form\" role=\"search\"><input id=\"zli-search-input\" type=\"search\" name=\"q\" placeholder=\"search documentation\" aria-label=\"search documentation\"></form></header>",
+        "<noscript><p class=\"noscript\">Search requires JavaScript. Use <code>zli @help</code> in a terminal.</p></noscript>",
         body,
+        "<script type=\"application/json\" id=\"zli-search-index\">",
+        docs.search_index_json(),
+        "</script>",
+        "<script>", search_script, "</script>",
         "</body></html>",
     })
 end
@@ -715,6 +1014,12 @@ end
 
 function docs.render_manual_html()
     local body = table.concat({
+        "<main id=\"zli-search-view\" hidden>",
+        "<h1 id=\"zli-search-heading\" tabindex=\"-1\">Search</h1>",
+        "<p id=\"zli-search-status\" class=\"search-status\" aria-live=\"polite\"></p>",
+        "<ul id=\"zli-search-results\" class=\"search-results\"></ul>",
+        "<p><button type=\"button\" id=\"zli-search-back\" class=\"search-back\">Back to the manual</button></p>",
+        "</main>",
         "<div class=\"layout\">",
         toc_html(),
         "<main>",
@@ -730,36 +1035,6 @@ function docs.render_manual_html()
         "</main></div>",
     })
     return page("ZLI Reference Manual", body)
-end
-
-function docs.render_search_html(query, results)
-    local out = {
-        "<main style=\"max-width:70em;margin:0 auto;padding:2em 3em 5em\">",
-        "<h1>Search</h1>",
-    }
-    if query == nil or trim(query) == "" then
-        out[#out + 1] = "<p>Enter a name or search term in the box above.</p>"
-    else
-        out[#out + 1] = "<p>" .. tostring(#results) .. " result(s) for <code>" ..
-            markdown.escape_html(query) .. "</code>.</p>"
-        if #results == 0 then
-            out[#out + 1] = "<p>No matching entries.</p>"
-        else
-            out[#out + 1] = "<ul class=\"search-results\">"
-            for _, entry in ipairs(results) do
-                out[#out + 1] = "<li><a class=\"name\" href=\"/#" ..
-                    markdown.escape_html(entry.anchor or entry.name) .. "\">" ..
-                    markdown.render_inline_html(entry.signature or entry.name) .. "</a>"
-                if entry.summary and entry.summary ~= "" then
-                    out[#out + 1] = "<div class=\"summary\">" .. markdown.render_inline_html(entry.summary) .. "</div>"
-                end
-                out[#out + 1] = "</li>"
-            end
-            out[#out + 1] = "</ul>"
-        end
-    end
-    out[#out + 1] = "<p><a href=\"/\">back to the manual</a></p></main>"
-    return page("Search - ZLI Reference Manual", table.concat(out))
 end
 
 local function parent_upstream(entry)

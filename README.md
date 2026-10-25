@@ -80,6 +80,9 @@ zli @help string.byte       # command line lookup
 zli @help --search trim     # full-text search
 ```
 
+The served manual and `zli @manual --output manual.html` use the same embedded
+client-side search; the exported file works from `file://` without a server.
+
 Inside the REPL use `:help`, `:help <name>` or `:help --search <term>`.  Scripts
 can `require "docs"` to use the same structured documentation (`find`, `search`
 and render helpers).

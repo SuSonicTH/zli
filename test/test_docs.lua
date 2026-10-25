@@ -5,11 +5,19 @@ local fs = require "filesystem"
 local support = require "test/support"
 local docs = require "docs"
 local markdown = require "docs_markdown"
+local cjson = require "cjson"
 
 Test_docs = {}
 
 local function normalized(text)
     return (text:gsub("\r\n", "\n"))
+end
+
+local function index_entry(index, name)
+    for _, item in ipairs(index.entries or {}) do
+        if item.n == name then return item end
+    end
+    return nil
 end
 
 -- Always isolate the payload tools from the developer's real configuration.
@@ -136,6 +144,84 @@ function Test_docs.Test_search_ranks_exact_names()
     lu.assertNotEquals(0, #results)
 end
 
+function Test_docs.Test_manual_html_embeds_search_index()
+    local html = docs.render_manual_html()
+    lu.assertStrContains(html, 'id="zli-search-index"')
+    lu.assertStrContains(html, 'id="zli-search-form"')
+    lu.assertStrContains(html, 'id="zli-search-view"')
+    lu.assertStrContains(html, 'id="zli-search-heading"')
+    lu.assertStrContains(html, "scroll-padding-top")
+    lu.assertStrContains(html, "URLSearchParams")
+
+    local payload = html:match('<script type="application/json" id="zli%-search%-index">(.-)</script>')
+    lu.assertNotNil(payload)
+    local index = cjson.decode(payload)
+    lu.assertEquals(1, index.v)
+    lu.assertEquals(#docs.entries, #index.entries)
+
+    local expected = docs.find("string.byte")
+    local item = index_entry(index, "string.byte")
+    lu.assertNotNil(item)
+    lu.assertEquals(expected.anchor, item.a)
+    lu.assertEquals(expected.signature, item.s)
+    lu.assertStrContains(item.sh, "string.byte")
+end
+
+function Test_docs.Test_search_index_matches_search_inputs()
+    local index = docs.search_index()
+    lu.assertEquals(#docs.entries, #index.entries)
+    for i, entry in ipairs(docs.entries) do
+        local item = index.entries[i]
+        lu.assertEquals(entry.name, item.n)
+        lu.assertEquals(entry.anchor, item.a)
+        lu.assertEquals(entry.signature or "", item.s or "")
+        lu.assertEquals(entry.summary or "", item.u or "")
+        lu.assertEquals(entry.markdown or "", item.b or "")
+        lu.assertEquals(entry.module or entry.parent or "", item.m or "")
+        if entry.aliases and #entry.aliases > 0 then
+            lu.assertEquals(entry.aliases, item.l)
+        end
+        lu.assertNotEquals("", item.sh)
+    end
+end
+
+function Test_docs.Test_search_index_is_script_safe()
+    local before = #docs.entries
+    docs.entries[before + 1] = {
+        name = "synthetic</script><!-- \"quote\" \\slash",
+        anchor = "synthetic",
+        signature = "</script>\"\\\1\226\128\169",
+        summary = "<!-- & > \226\128\168",
+        markdown = "line\n\1\226\128\168\226\128\169",
+        module = "synthetic\2",
+        aliases = { "alias</script>", "quote\"slash\\" },
+    }
+    local ok, json = pcall(docs.search_index_json)
+    table.remove(docs.entries)
+
+    lu.assertTrue(ok, json)
+    lu.assertNotStrContains(json, "</script")
+    lu.assertNotStrContains(json, "<!--")
+    lu.assertNotStrContains(json, "\226\128\168")
+    lu.assertNotStrContains(json, "\226\128\169")
+    lu.assertNil(json:find("[<>&]"))
+
+    local index = cjson.decode(json)
+    local item = index_entry(index, "synthetic</script><!-- \"quote\" \\slash")
+    lu.assertNotNil(item)
+    lu.assertStrContains(item.n, "</script>")
+    lu.assertStrContains(item.b, "line\n")
+    lu.assertEquals("alias</script>", item.l[1])
+    lu.assertEquals("quote\"slash\\", item.l[2])
+end
+
+function Test_docs.Test_manual_html_has_no_server_search_route()
+    local html = docs.render_manual_html()
+    lu.assertNotStrContains(html, 'action="/search"')
+    lu.assertNotStrContains(html, 'href="/#')
+    lu.assertStrContains(html, '<form id="zli-search-form"')
+end
+
 function Test_docs.Test_markdown_renderer()
     local html = markdown.to_html("- **`+`**: addition\n- plain")
     lu.assertStrContains(html, "<li><strong><code>+</code></strong>: addition</li>")
@@ -203,9 +289,6 @@ function Test_docs.Test_markdown_renders_nested_emphasis()
 
     html = docs.render_entry(entry, "html")
     lu.assertStrContains(html, "<strong>for</strong>")
-    lu.assertNotStrContains(html, "**")
-
-    html = docs.render_search_html("numerical for loop", docs.search("numerical for loop"))
     lu.assertNotStrContains(html, "**")
 end
 

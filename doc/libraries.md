@@ -6988,12 +6988,15 @@ The manual combines the Lua language and standard-library reference with all
 authored library, tool and ZLI documentation. It listens on `127.0.0.1:8080`
 by default and opens a browser using the platform launcher unless `--no-open`
 is given. `/` (also `/index.html` and `/manual.html`) serves the manual,
-`/search...` serves search results, and `/favicon.ico` returns `204`.
+`/search...` redirects to `/?q=...`, and `/favicon.ico` returns `204`.
+Search runs in the browser from an index embedded in the page; there is no
+server-rendered results page. A `?q=` parameter opens the page with search
+results.
 
 Options are `--port <port>`, `--address <address>`, `--no-open` and
-`--output <file>`. `--output` writes the complete HTML manual to the file and
-exits instead of starting the server. Invalid options or values print usage and
-exit with status `2`.
+`--output <file>`. `--output` writes the same self-contained HTML manual to the
+file and exits instead of starting the server. Invalid options or values print
+usage and exit with status `2`.
 
 ```bash
 zli @manual --port 9000 --no-open

@@ -21,7 +21,7 @@ Options:
   --port <port>      listen on this port (default 8080)
   --address <addr>   bind address (default 127.0.0.1)
   --no-open          do not open the system browser
-  --output <file>    write the rendered manual as HTML and exit
+  --output <file>    write a self-contained HTML manual and exit
   -h, --help         show this help]])
 end
 
@@ -35,11 +35,14 @@ local function write_file(path, contents)
     fh:close()
 end
 
-local function url_decode(value)
-    value = value:gsub("+", " ")
-    return (value:gsub("%%(%x%x)", function(hex)
-        return string.char(tonumber(hex, 16))
-    end))
+local function search_redirect_handler(_, header)
+    local target = header.target or ""
+    local query = target:match("[?&]q=([^&]*)") or ""
+    query = query:gsub("[%c]", "")
+    return {
+        status = httpserver.status.found,
+        header = { location = query == "" and "/" or "/?q=" .. query },
+    }
 end
 
 local port = 8080
@@ -112,14 +115,6 @@ local function index_handler()
     return html_response(html)
 end
 
-local function search_handler(_, header)
-    local target = header.target or ""
-    local query = target:match("[?&]q=([^&]*)") or ""
-    query = url_decode(query)
-    local results = docs.search(query, { limit = 100 })
-    return html_response(docs.render_search_html(query, results))
-end
-
 local function favicon_handler()
     return { status = httpserver.status.no_content }
 end
@@ -141,9 +136,12 @@ httpserver.serve {
     port = port,
     GET = {
         ["/"] = index_handler,
+        ["/%?.*"] = index_handler,
         ["/index.html"] = index_handler,
+        ["/index%.html%?.*"] = index_handler,
         ["/manual.html"] = index_handler,
-        ["/search.*"] = search_handler,
+        ["/manual%.html%?.*"] = index_handler,
+        ["/search.*"] = search_redirect_handler,
         ["/favicon.ico"] = favicon_handler,
     },
 }

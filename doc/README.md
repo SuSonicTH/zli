@@ -98,14 +98,16 @@ zli @manual
 standard libraries, all bundled libraries, the command line tools and ZLI
 topics) and serves it at `http://127.0.0.1:8080/`.  The manual is part of the
 payload; it is generated at build time from the `lua55` dependency's
-`doc/manual.html` plus `doc/libraries.lua`.  Options:
+`doc/manual.html` plus `doc/libraries.lua`.  Search runs client-side from an
+index embedded in the page, so the served manual and the `--output` export use
+the same implementation.  `/search?q=...` redirects to `/?q=...`.  Options:
 
 | option          | description                                      |
 | --------------- | ------------------------------------------------ |
 | `--port <port>` | listen port (default `8080`)                     |
 | `--address <a>` | bind address (default `127.0.0.1`)               |
 | `--no-open`     | do not open the system browser                   |
-| `--output <f>`  | write the rendered HTML manual to a file and exit |
+| `--output <f>`  | write a self-contained HTML manual to a file and exit |
 
 ## Documentation lookup
 
