@@ -1,6 +1,7 @@
 const std = @import("std");
 const flags_c99 = &.{"-std=gnu99"};
 const strip = @import("src/strip.zig").strip;
+const shouldStrip = @import("src/strip.zig").shouldStrip;
 const docgen = @import("src/docgen.zig");
 
 pub fn build(b: *std.Build) void {
@@ -193,6 +194,9 @@ const payload_entries = [_]payload_entry{
     .{ .input = "src/tools/help.lua", .name = "help.lua" },
     .{ .input = "src/docs.lua", .name = "docs.lua" },
     .{ .input = "src/docs_markdown.lua", .name = "docs_markdown.lua" },
+    .{ .input = "src/webui/vendor.js", .name = "webui/vendor.js" },
+    .{ .input = "src/webui/app.js", .name = "webui/app.js" },
+    .{ .input = "src/webui/app.css", .name = "webui/app.css" },
 };
 
 /// Copies a compiled executable and appends the zli Lua payload to it.
@@ -248,6 +252,12 @@ fn payloadFile(
     name: []const u8,
 ) std.Build.LazyPath {
     if (optimize == .debug) {
+        return b.path(input);
+    }
+
+    // Only Lua sources are stripped. Assets such as the web UI JavaScript and
+    // CSS are shipped byte-identical.
+    if (!shouldStrip(name)) {
         return b.path(input);
     }
 
@@ -323,7 +333,7 @@ fn luaLibs(b: *std.Build, optimize: std.builtin.OptimizeMode, module: *std.Build
         var source: []const u8 = undefined;
 
         if (script.dependency[0] == 0) {
-            if (optimize == .debug) {
+            if (optimize == .debug or !shouldStrip(script.name)) {
                 source = readFile(b, b.path(script.input));
             } else {
                 source = strip(readFile(b, b.path(script.input)), b.allocator) catch |err| {
@@ -333,7 +343,7 @@ fn luaLibs(b: *std.Build, optimize: std.builtin.OptimizeMode, module: *std.Build
         } else {
             const dependency = b.dependency(script.dependency, .{});
             const path = dependency.path(script.input);
-            if (optimize == .debug) {
+            if (optimize == .debug or !shouldStrip(script.name)) {
                 source = readFile(b, path);
             } else {
                 source = strip(readFile(b, path), b.allocator) catch |err| {

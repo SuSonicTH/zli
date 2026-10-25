@@ -26,6 +26,13 @@ pub fn file(io: std.Io, input: [:0]const u8, output: [:0]const u8, allocator: st
     try writer.flush();
 }
 
+/// Payload entries are only stripped when they are Lua source. Everything else
+/// (for example the web UI JavaScript and CSS assets) ships byte-identical.
+pub fn shouldStrip(name: []const u8) bool {
+    if (name.len < 4) return false;
+    return std.ascii.eqlIgnoreCase(name[name.len - 4 ..], ".lua");
+}
+
 pub fn strip(source: []const u8, allocator: std.mem.Allocator) ![]const u8 {
     var tokenizer = Tokenizer.init(source);
 
@@ -398,6 +405,19 @@ test "strip malformed input does not crash" {
         const output = try strip(input, allocator);
         allocator.free(output);
     }
+}
+
+test "shouldStrip only accepts lua source names" {
+    try testing.expect(shouldStrip("main.lua"));
+    try testing.expect(shouldStrip("webui/init.lua"));
+    try testing.expect(shouldStrip("INIT.LUA"));
+    try testing.expect(shouldStrip(".lua"));
+
+    try testing.expect(!shouldStrip("app.js"));
+    try testing.expect(!shouldStrip("webui/app.css"));
+    try testing.expect(!shouldStrip("lua"));
+    try testing.expect(!shouldStrip("lua.txt"));
+    try testing.expect(!shouldStrip(""));
 }
 
 test "getBlockLen with simple block with no mathcing end" {

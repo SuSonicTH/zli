@@ -1,0 +1,299 @@
+/* webui base styles. Served as /__webui/app.css. */
+
+:root {
+    --webui-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --webui-fg: #1c1f23;
+    --webui-bg: #ffffff;
+    --webui-muted: #5d6673;
+    --webui-border: #d3d8de;
+    --webui-accent: #2f6feb;
+    --webui-accent-fg: #ffffff;
+    --webui-surface: #f5f7fa;
+    --webui-danger: #c23b3b;
+    --webui-radius: 6px;
+    --webui-gap: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --webui-fg: #e7eaee;
+        --webui-bg: #14171c;
+        --webui-muted: #9aa4b2;
+        --webui-border: #333a44;
+        --webui-accent: #6b9dff;
+        --webui-accent-fg: #0b1220;
+        --webui-surface: #1c2229;
+        --webui-danger: #ff8080;
+    }
+}
+
+:root[data-theme="dark"] {
+    --webui-fg: #e7eaee;
+    --webui-bg: #14171c;
+    --webui-muted: #9aa4b2;
+    --webui-border: #333a44;
+    --webui-accent: #6b9dff;
+    --webui-accent-fg: #0b1220;
+    --webui-surface: #1c2229;
+    --webui-danger: #ff8080;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--webui-bg);
+    color: var(--webui-fg);
+    font-family: var(--webui-font);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+#webui-root {
+    padding: 16px;
+}
+
+.webui-layout {
+    display: flex;
+    gap: var(--webui-gap);
+}
+
+.webui-layout-vertical {
+    flex-direction: column;
+}
+
+.webui-layout-horizontal {
+    flex-direction: row;
+    align-items: center;
+}
+
+.webui-layout-wrap {
+    flex-wrap: wrap;
+}
+
+.webui-panel {
+    background: var(--webui-surface);
+    border: 1px solid var(--webui-border);
+    border-radius: var(--webui-radius);
+    padding: 12px;
+}
+
+.webui-label {
+    display: block;
+}
+
+.webui-heading {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.webui-muted {
+    color: var(--webui-muted);
+}
+
+.webui-button {
+    font: inherit;
+    color: var(--webui-accent-fg);
+    background: var(--webui-accent);
+    border: 1px solid transparent;
+    border-radius: var(--webui-radius);
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.webui-button:hover {
+    filter: brightness(1.08);
+}
+
+.webui-button[disabled] {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.webui-input,
+.webui-select,
+.webui-textarea {
+    font: inherit;
+    color: inherit;
+    background: var(--webui-bg);
+    border: 1px solid var(--webui-border);
+    border-radius: var(--webui-radius);
+    padding: 6px 8px;
+    min-width: 12ch;
+}
+
+.webui-textarea {
+    min-height: 5em;
+    resize: vertical;
+}
+
+.webui-input:focus,
+.webui-select:focus,
+.webui-textarea:focus {
+    outline: 2px solid var(--webui-accent);
+    outline-offset: 1px;
+}
+
+.webui-error .webui-input,
+.webui-error .webui-select,
+.webui-error .webui-textarea {
+    border-color: var(--webui-danger);
+}
+
+.webui-error-text {
+    color: var(--webui-danger);
+    font-size: 0.85em;
+}
+
+.webui-checkbox,
+.webui-radio {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.webui-list {
+    margin: 0;
+    padding-left: 1.2em;
+}
+
+.webui-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.webui-table th,
+.webui-table td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--webui-border);
+}
+
+.webui-table th {
+    color: var(--webui-muted);
+    font-weight: 600;
+}
+
+.webui-table tr[data-id]:hover {
+    background: var(--webui-surface);
+    cursor: pointer;
+}
+
+.webui-divider {
+    border: 0;
+    border-top: 1px solid var(--webui-border);
+    width: 100%;
+    margin: 4px 0;
+}
+
+.webui-progress {
+    width: 100%;
+    accent-color: var(--webui-accent);
+}
+
+.webui-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--webui-gap);
+}
+
+.webui-tabbar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--webui-border);
+}
+
+.webui-tab {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.webui-tab-active {
+    border-bottom-color: var(--webui-accent);
+    color: var(--webui-accent);
+}
+
+.webui-dialog {
+    border: 1px solid var(--webui-border);
+    border-radius: var(--webui-radius);
+    background: var(--webui-bg);
+    color: var(--webui-fg);
+    padding: 16px;
+    max-width: min(560px, 90vw);
+}
+
+.webui-dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+
+.webui-image {
+    max-width: 100%;
+    height: auto;
+}
+
+.webui-link {
+    color: var(--webui-accent);
+}
+
+.webui-markdown :first-child {
+    margin-top: 0;
+}
+
+.webui-markdown pre {
+    overflow-x: auto;
+    background: var(--webui-surface);
+    padding: 10px;
+    border-radius: var(--webui-radius);
+}
+
+.webui-markdown code {
+    background: var(--webui-surface);
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.webui-markdown pre code {
+    padding: 0;
+    background: none;
+}
+
+#webui-toasts {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.webui-toast {
+    background: var(--webui-surface);
+    color: var(--webui-fg);
+    border: 1px solid var(--webui-border);
+    border-left: 4px solid var(--webui-accent);
+    border-radius: var(--webui-radius);
+    padding: 8px 12px;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+    max-width: 42ch;
+}
+
+.webui-toast-warn {
+    border-left-color: #d28b1d;
+}
+
+.webui-toast-error {
+    border-left-color: var(--webui-danger);
+}
+
+@media (max-width: 640px) {
+    .webui-layout-horizontal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
