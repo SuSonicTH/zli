@@ -109,6 +109,35 @@ the same implementation.  `/search?q=...` redirects to `/?q=...`.  Options:
 | `--no-open`     | do not open the system browser                   |
 | `--output <f>`  | write a self-contained HTML manual to a file and exit |
 
+## Web UI
+
+`webui` turns a Lua table of components into a browser UI and calls back into
+Lua on interaction; `webserver` is the HTTP/SSE server underneath it.
+
+```lua
+local ui = require "webui"
+
+local page = ui.page { title = "Hello" }
+page:add(ui.textField {
+    name = "user", value = "world",
+    onChange = function(src) ui.notify("hello " .. src:value()) end,
+})
+
+ui.serve { page = page, port = 8080 }
+```
+
+`ui.serve` prints the URL, opens the browser and blocks.  Stop it with
+`ui.stop()` from a callback, or with `Ctrl-C`.  Pages can also be split into
+routes with `pages = { ["/"] = a, ["/b"] = b }`, alongside optional REST routes
+in `api = { GET = { ["/api/x"] = function(request) ... end } }`.
+
+The browser side (htmx, idiomorph and the SSE extension) is compiled into the
+executable and served from `/__webui/`.  `assets_dir` overrides those files from
+disk during development.  `webserver` can be used without `webui` when only the
+transport is wanted; `httpserver` remains the simple blocking server.
+
+See `doc/libraries.md` (`webui`, `webserver`) for the full API.
+
 ## Documentation lookup
 
 ```bash

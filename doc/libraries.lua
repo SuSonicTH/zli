@@ -2608,6 +2608,324 @@ http.clear_cache()
 ]]),
                 }),
 
+                module("webserver", "webserver", "Concurrent HTTP server with keep-alive, assets and server sent events.", [==[
+`webserver` is the transport used by `webui`, and is usable on its own.  It
+serves HTTP/1.1 keep-alive requests from concurrent connection tasks while all
+Lua callbacks run on the task that called `serve`; the Lua state therefore has
+exactly one entering task.
+
+Events are delivered with server sent events, so a connection can push updates
+to the browser at any time:
+
+```lua
+local web = require "webserver"
+
+web.asset_set("webui/hello.txt", "hello", "text/plain; charset=utf-8")
+
+web.serve {
+    port = 8080,
+    stop_path = "/__stop",
+    on_start = function(info) print(info.url) end,
+    routes = {
+        GET = { ["/"] = function() return "<h1>hello</h1>" end },
+        POST = { ["/echo"] = function(request) return { status = 201, body = request.body } end },
+    },
+}
+```
+
+`serve` options:
+
+| Option        | Description                                                                             |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `address`     | Bind address, default `"127.0.0.1"`.                                                    |
+| `port`        | TCP port, default `8080`.  `0` asks the operating system for a free port.               |
+| `allow_remote` | Allow binding to a non loopback address.  Off by default.                              |
+| `token`       | Session token.  Generated per run when omitted.                                          |
+| `routes`      | Table of method name to target/response pairs, or `handler`.                             |
+| `handler`     | `function(request) -> response` used instead of `routes`.                                |
+| `assets_dir`  | Development override: read registered assets from this directory first.                  |
+| `stop_path`   | Target that stops the server on `POST`.  Off by default.                                 |
+| `warn_ms`     | Log handlers that run longer than this.  Default `500`, `0` disables the warning.        |
+
+Responses are a string, a `{ status, body, header }` table, or a plain data
+table which is encoded as JSON.  Headers are lower cased on the request side.
+Parameters come from the query string or a form encoded body and are available
+as `method`, `target`, `path`, `query`, `body`, `client` and `headers`.
+
+Security: mutating requests require the session cookie (`webui_session`) and,
+when present, an `Origin` header that matches the bound host and port.  Assets
+are served under `/__webui/` and resolved as runtime, filesystem (only with
+`assets_dir`), payload and finally compiled in data.
+]==], {
+                    entry("webserver.serve", "webserver.serve(options)", "function",
+                        [==[Start the server and dispatch requests until stop is called.]==],
+                        [==[
+Start the HTTP server and block.  The call is the dispatcher: connection tasks
+hand requests to it and it runs the Lua route handler on the calling task.
+
+```lua
+web.serve {
+    port = 0,
+    routes = { GET = { ["/"] = "hello" } },
+    on_start = function(info) print(info.url) end,
+}
+```
+
+`on_start` receives a table with `address`, `port`, `url` and `token`.  The call
+returns after `webserver.stop()` and joins every connection task before it
+returns, so the payload archive and the Lua state can be released safely.
+
+Limits: 16 KiB request head, 1 MiB body (larger bodies get `413` and the
+connection is closed) and 16 concurrent connections.
+]==]),
+                    entry("webserver.stop", "webserver.stop()", "function",
+                        [==[Stop the running server.]==],
+                        [==[Requests the dispatcher to return from `serve`.  Listener and client sockets are woken up and every task is joined before `serve` returns.  Calling it without a running server does nothing.]==]),
+                    entry("webserver.asset", "webserver.asset(name)", "function",
+                        [==[Return a registered or payload asset.]==],
+                        [==[
+Return `body, content_type, source` for an asset such as `"webui/app.css"`.
+`source` is `"runtime"`, `"filesystem"`, `"payload"` or `"embedded"`.
+
+```lua
+local body, content_type, source = web.asset("webui/app.js")
+```
+]==]),
+                    entry("webserver.asset_set", "webserver.asset_set(name, body [, content_type])", "function",
+                        [==[Register an asset served by the web server.]==],
+                        [==[
+Add or replace an asset.  The content type is derived from the name when it is
+omitted.  Assets can only change before `serve` starts; calls while serving
+return `nil, message`.
+
+```lua
+web.asset_set("webui/extra.txt", "hello", "text/plain; charset=utf-8")
+```
+]==]),
+                    entry("webserver.asset_list", "webserver.asset_list()", "function",
+                        [==[List the registered assets.]==],
+                        [==[Returns an array of `{ name, content_type, source }` tables in registration order.  Assets that only exist in the payload or on disk are not listed.]==]),
+                    entry("webserver.broadcast", "webserver.broadcast(event, data)", "function",
+                        [==[Send a server sent event to every client.]==],
+                        [==[
+Publish an event to all connected browsers and return the number of clients it
+was queued for.  `data` may contain newlines; each line is sent as its own SSE
+`data:` field.  `html` events are coalesced per client so only the newest tree
+stays queued.
+
+```lua
+web.broadcast("toast", '{"kind":"info","text":"hello"}')
+```
+]==]),
+                    entry("webserver.sse", "webserver.sse(client_id, event, data)", "function",
+                        [==[Send a server sent event to one client.]==],
+                        [==[Like `webserver.broadcast`, but only for the given client id.  Returns the number of clients the event was queued for (`0` or `1`).]==]),
+                    entry("webserver.clients", "webserver.clients()", "function",
+                        [==[List the connected clients.]==],
+                        [==[Returns an array of `{ id, transport }` tables, where `transport` is `'http'` or `'sse'`.  Ids are also passed to request tables and event callbacks.]==]),
+                    entry("webserver.info", "webserver.info()", "function",
+                        [==[Describe the running server.]==],
+                        [==[Returns `{ address, port, url, token }` while serving and `nil` otherwise.  With `port = 0` the table contains the port the operating system assigned.]==]),
+                    entry("webserver.config", "webserver:config(options)", "method",
+                        [==[Configure a loaded webserver module.]==],
+                        [==[The supported option is `error_handling`, set to `'return'` or `'raise'`.  It controls failures such as an address that cannot be bound; argument errors still raise.]==]),
+                    entry("webserver.status", "webserver.status", "table",
+                        [==[Named HTTP status codes.]==],
+                        [==[Maps lower case names to numeric codes, for example `webserver.status.not_found` (`404`) or `webserver.status.internal_server_error` (`500`).  Unknown names return `nil`.]==]),
+                }),
+
+                module("webui", "webui", "Server side component model that renders pages for the browser.", [==[
+`webui` lets a Lua program describe its user interface as a tree of components.
+The server renders HTML, the browser only executes htmx and the event stream:
+
+```lua
+local ui = require "webui"
+
+local page = ui.page { title = "Hello World" }
+local field = ui.textField {
+    name = "user", value = "world",
+    onChange = function(src) ui.current.greeting:setText("Hello " .. src:value()) end,
+}
+page:add(ui.horizontalLayout {
+    ui.label { text = "User Name" }, field,
+    ui.button { text = "Say hello", onClick = function() ui.notify("hello " .. ui.current.user:value()) end },
+    ui.label { name = "greeting", text = "" },
+})
+
+ui.serve { page = page }
+```
+
+Components accept their children in the table constructor or through
+`parent:add(child)`; `add` returns the parent so calls can be chained.  Unknown
+options raise immediately, which catches typos such as `onCLick`.
+
+Display text and editable values are separate: `label`, `button`, `heading`
+and `link` use `text`, while `textField`, `textArea`, `checkbox`, `select` and
+`radioGroup` use `value` (all reachable with `:text()`, `:value()`,
+`:setText()`, `:setValue()`).  `name = "user"` registers a component, makes it
+reachable as `ui.current.user` inside a callback, and makes the browser submit
+its value with every event.
+
+Events:
+
+| Handler       | Components                                  | Fired when                                   |
+| ------------- | ------------------------------------------- | -------------------------------------------- |
+| `onClick`     | `button`, `link`                            | the component is clicked                     |
+| `onInput`     | `textField`, `textArea`                     | the text changes (debounced by 120 ms)       |
+| `onChange`    | `textField`, `textArea`, `checkbox`, `select`, `radioGroup`, `tabs` | the value is committed |
+| `onSelect`    | `list`                                      | a list item is selected                      |
+| `onRowClick`  | `table`                                     | a table row is clicked                       |
+| `onClose`     | `dialog`                                    | the close button is used                     |
+
+Handlers are called as `function(src, event)`.  `event` contains `kind`,
+`value`, `client` and `values` (all submitted form values).  A callback may
+change the tree; the page is re-rendered and pushed to every connected browser
+afterwards.  Errors are logged on the server and reported as a toast; the last
+good tree stays visible.
+
+Layout and styling use `align` (`'vertical'`/`'horizontal'`), `gap`, `padding`,
+`margin`, `justify`, `wrap`, `width`/`height` (number, `"50%"`, `"full"`),
+`grow`, `hidden`, `disabled`, `style`, `aria` and `data`.  Inline style values
+are validated; the page level `css` option appends raw CSS.
+
+The browser side bundles htmx 2.0.11, idiomorph 0.7.4 and htmx-ext-sse 2.2.4,
+all published under 0BSD by the htmx project; the assets are compiled into the
+binary and served from `/__webui/`.
+]==], {
+                    entry("webui.page", "ui.page(options)", "function",
+                        [==[Create a page.]==],
+                        [==[Creates the root component.  Options include `title`, `theme` (`'auto'`, `'light'`, `'dark'`), `lang`, `align`, `gap`, `padding` and `css` (raw CSS appended to the document head).  Children may be passed in the table constructor.]==]),
+                    entry("webui.verticalLayout", "ui.verticalLayout(options)", "function",
+                        [==[Stack children vertically.]==],
+                        [==[Flex container with `align = 'vertical'` by default.  Accepts `gap`, `padding`, `width`, `height`, `justify`, `wrap`, `align` and the common options.]==]),
+                    entry("webui.horizontalLayout", "ui.horizontalLayout(options)", "function",
+                        [==[Place children in a row.]==],
+                        [==[Flex container with `align = 'horizontal'` by default.  The same options as `verticalLayout` apply; narrow screens wrap it into a column.]==]),
+                    entry("webui.panel", "ui.panel(options)", "function",
+                        [==[Group children in a bordered panel.]==],
+                        [==[Container with an optional `title` header.  `ui.card` is an alias.  Accepts children and the common layout options.]==]),
+                    entry("webui.label", "ui.label(options)", "function",
+                        [==[Show a piece of text.]==],
+                        [==[Renders `text` as escaped inline text.  `muted = true` uses the secondary text colour.  `ui.label "text"` is shorthand for `ui.label { text = "text" }`.]==]),
+                    entry("webui.heading", "ui.heading(options)", "function",
+                        [==[Show a heading.]==],
+                        [==[Renders `text` as `<hN>` where `N` is `level` (1 to 6, default 2).  An invalid level raises.]==]),
+                    entry("webui.button", "ui.button(options)", "function",
+                        [==[Show a button.]==],
+                        [==[Renders a `<button type="button">` with `text` and calls `onClick` when it is clicked.  `disabled = true` disables it.  Buttons never submit a form.]==]),
+                    entry("webui.textField", "ui.textField(options)", "function",
+                        [==[Single line text input.]==],
+                        [==[`type` selects `text` (default), `password`, `email` or another browser input type.  Supports `label`, `placeholder`, `readonly`, `value`, `onInput` and `onChange`.  A `name` makes the value available to callbacks and to `ui.current`.]==]),
+                    entry("webui.textArea", "ui.textArea(options)", "function",
+                        [==[Multi line text input.]==],
+                        [==[Like `textField`, but rendered as a `<textarea>` with `rows` and `value`.  `onInput` fires while typing, `onChange` when the value is committed.]==]),
+                    entry("webui.checkbox", "ui.checkbox(options)", "function",
+                        [==[Checkbox with a label.]==],
+                        [==[`checked` is the boolean value, `text` the label.  `onChange` fires when the box is toggled; named checkboxes report `true` when checked and `false` when not.]==]),
+                    entry("webui.select", "ui.select(options)", "function",
+                        [==[Drop down selection.]==],
+                        [==[`options` is an array of strings or `{ value, label }` tables.  `value` is the selected entry and `placeholder` adds an empty first entry.  `onChange` fires on selection.]==]),
+                    entry("webui.radioGroup", "ui.radioGroup(options)", "function",
+                        [==[Group of radio buttons.]==],
+                        [==[`options` uses the same shape as `select`.  `value` is the selected entry and `onChange` fires when the selection changes.  All radios share the component `name`.]==]),
+                    entry("webui.list", "ui.list(options)", "function",
+                        [==[Simple bullet or numbered list.]==],
+                        [==[`items` is an array of strings; `ordered = true` renders `<ol>`.  With `onSelect` every item becomes clickable and `event.value` is the 1 based index.]==]),
+                    entry("webui.table", "ui.table(options)", "function",
+                        [==[Table with columns and rows.]==],
+                        [==[
+`columns` is an array of field names or `{ header, field }` tables; `rows` is an
+array of tables.  `empty` is shown for an empty row list.  With `rowKey`, the
+returned key keeps the row id stable across renders.
+
+```lua
+ui.table {
+    columns = { "name", { header = "Age", field = "age" } },
+    rows = { { name = "Ada", age = 36 } },
+    rowKey = function(row) return row.name end,
+    onRowClick = function(_, event) print(event.value) end,
+}
+```
+]==]),
+                    entry("webui.image", "ui.image(options)", "function",
+                        [==[Show an image.]==],
+                        [==[Requires `src`; `alt` is passed through.  The image is limited to the available width by the stylesheet.]==]),
+                    entry("webui.link", "ui.link(options)", "function",
+                        [==[Show a link.]==],
+                        [==[Renders `text` as an `<a href>`.  With `route = true` the link navigates inside the page: htmx fetches the target route, morphs the page and updates the browser history.]==]),
+                    entry("webui.markdown", "ui.markdown(options)", "function",
+                        [==[Render Markdown.]==],
+                        [==[Renders `text` with the bundled `markdown` module.  The result is trusted HTML, so only pass content you control.]==]),
+                    entry("webui.html", "ui.html(options)", "function",
+                        [==[Render raw HTML.]==],
+                        [==[Inserts `text` without escaping.  Use it for trusted markup only; scripts are blocked by the page CSP but everything else is inserted as is.]==]),
+                    entry("webui.divider", "ui.divider(options)", "function",
+                        [==[Horizontal divider line.]==],
+                        [==[Renders an `<hr>` across the available width and accepts the common options such as `width`, `margin` and `style`.  Useful to separate groups of components inside a layout.]==]),
+                    entry("webui.progress", "ui.progress(options)", "function",
+                        [==[Progress bar.]==],
+                        [==[`value` and `max` set the progress; `indeterminate = true` renders a bar without a value.  Values outside the range are rendered as given and normalised by the browser.]==]),
+                    entry("webui.tabs", "ui.tabs(options)", "function",
+                        [==[Tabbed container.]==],
+                        [==[`labels` names the tabs and the children are the tab bodies.  `index` or `value` selects the visible tab; with `onChange` clicking a tab reports the new index in `event.value`.]==]),
+                    entry("webui.dialog", "ui.dialog(options)", "function",
+                        [==[Modal dialog.]==],
+                        [==[Renders a modal `<dialog>` with an optional `title`.  `ui.open(dialog)` adds it to the page and opens it; `dialog:close()` closes it.  `onClose` runs when the close button (`closeText`, default `'Close'`) is used.]==]),
+                    entry("webui.open", "ui.open(dialog)", "function",
+                        [==[Add a dialog to the page and open it.]==],
+                        [==[Appends the dialog to the active page, marks it open and returns it.  The dialog stays in the tree after closing, so it can be reopened without being recreated.]==]),
+                    entry("webui.confirm", "ui.confirm(options)", "function",
+                        [==[Ask for confirmation without blocking.]==],
+                        [==[Creates and opens a dialog with `text`, a yes button and a no button.  `onYes` or `onNo` is called after the dialog closes; the server never waits for the answer.]==]),
+                    entry("webui.notify", "ui.notify(text [, options])", "function",
+                        [==[Show a toast in the browser.]==],
+                        [==[Queues a notification for the browser that sent the current event.  `options.kind` is `'info'` (default), `'warn'` or `'error'` and `options.ms` is the display time in milliseconds (`0` keeps it).]==]),
+                    entry("webui.focus", "ui.focus(component)", "function",
+                        [==[Move the browser focus.]==],
+                        [==[Asks the client to focus the component after the next update.  Useful after validation errors or when a dialog opens.]==]),
+                    entry("webui.navigate", "ui.navigate(path)", "function",
+                        [==[Switch to another route.]==],
+                        [==[Replaces the page with the page served at `path`, pushes the new URL into the browser history and re-renders the target page.  An unknown route is reported as a toast and ignored.]==]),
+                    entry("webui.refresh", "ui.refresh()", "function",
+                        [==[Force a re-render.]==],
+                        [==[Marks the page as changed even when the callback did not touch the tree.  Useful when a callback changes data that a renderer reads from Lua closures.]==]),
+                    entry("webui.stop", "ui.stop()", "function",
+                        [==[Stop the UI server.]==],
+                        [==[Calls `webserver.stop()`, so `ui.serve` returns.  Cleanup code after `ui.serve` runs normally.]==]),
+                    entry("webui.serve", "ui.serve(options)", "function",
+                        [==[Render one page or several routes and handle events.]==],
+                        [==[
+Start the UI server and block.  Options:
+
+| Option         | Description                                                                       |
+| -------------- | --------------------------------------------------------------------------------- |
+| `page`         | Single page served at `/`.                                                        |
+| `pages`        | Table of route to page, for example `{ ["/"] = a, ["/b"] = b }`.                  |
+| `api`          | Optional REST routes as `{ GET = { ["/api/x"] = fn } }`; used before pages.        |
+| `address`      | Bind address, default `"127.0.0.1"`.                                              |
+| `port`         | TCP port, default `8080`; `0` picks a free port.                                   |
+| `token`        | Session token; generated per run when omitted.                                     |
+| `allow_remote` | Allow a non loopback bind.                                                        |
+| `assets_dir`   | Development override for the `/__webui/` assets.                                   |
+| `stop_path`    | Target that stops the server on `POST` (tests and tools).                          |
+| `warn_ms`      | Warn about callbacks slower than this (default `500`).                             |
+| `open_browser` | Open the URL with `xdg-open`/`start`/`open`.  Default `true`.                       |
+| `on_start`     | Called with `{ address, port, url, token }` before serving.                         |
+
+The printed URL is the one to open.  `ui.serve` returns after `ui.stop()`.
+]==]),
+                    entry("ui.current", "ui.current.name", "table",
+                        [==[Access named components inside a callback.]==],
+                        [==[
+Returns the component registered with `name = "..."` on the page whose callback
+is running.  Names are unique per page, so two routes cannot shadow each other.
+Using `ui.current` outside a callback, or with an unknown name, raises.
+
+```lua
+onClick = function() ui.current.user:setValue("clicked") end
+```
+]==]),
+                }),
                 module("log", "log", "Simple logging library.", [==[
 `require "log"` returns the root logger.  Named child loggers are created by
 indexing the root logger.  The root logger writes to stdout by default.
@@ -7162,7 +7480,7 @@ The `ZLI` table is available to every script and REPL session.
 Version string of the running ZLI build.
 
 The value comes from the version file embedded in the binary, for example
-`"0.1.9"`. It is a string and should be treated as read-only.
+`"0.2.0"`. It is a string and should be treated as read-only.
 
 ```lua
 print(ZLI.version)

@@ -165,8 +165,18 @@ function Test_zip.Test_crc_mismatch_is_reported()
     z:add_file("src/version", "version.txt", 0)
     z:close_zip()
 
+    -- flip one digit of the embedded version so the content no longer matches
+    -- the stored CRC, without depending on the current version string
+    local current = io.read_file("./src/version")
+    local corrupted = current:gsub("%d", function(digit)
+        return tostring((tonumber(digit) + 1) % 10)
+    end, 1)
+    lu.assertNotEquals(current, corrupted)
+
     local data = io.read_file(path)
-    data = data:gsub("0%.1%.9", "0.1.8", 1)
+    local start = data:find(current, 1, true)
+    lu.assertNotNil(start)
+    data = data:sub(1, start - 1) .. corrupted .. data:sub(start + #current)
     io.write_file(path, data)
 
     local u = assert(unzip.open(path))

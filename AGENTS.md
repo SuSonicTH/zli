@@ -173,8 +173,9 @@ pub fn register(lua: *Lua) !i32 {
   `@cImport`-style `addTranslateC`.
 - `luaLibs` embeds Lua files as anonymous imports. In non-debug modes library
   Lua and payload scripts pass through `src/strip.zig` (comments and
-  unnecessary whitespace are removed); the generated/authored documentation
-  entries are attached as-is.
+  unnecessary whitespace are removed); only entries whose name ends in `.lua`
+  are stripped, so JavaScript and CSS assets ship byte-identical. The
+  generated/authored documentation entries are attached as-is.
 - `attachPayload` appends the zip. Release builds UPX-pack the executable
   **before** attaching the payload and name it
   `zli-<target>-<src/version>`.
@@ -379,7 +380,14 @@ The documentation tests are strict by design.
    surrounding code.
 8. The plain debug binary is large and dynamically linked; use release builds
    when checking portability or size.
-9. `@compile`/payload entry selection is based on the executable basename and
+9. `webui` ships its browser assets both as payload entries and as `@embedFile`
+   data in `src/webserver.zig`; changing `src/webui/app.js` or `app.css`
+   therefore needs a rebuild, not just a payload refresh. `assets_dir` is the
+   development escape hatch.
+10. `webserver` is concurrent and non-blocking for connections, but all Lua
+    callbacks still run on the `serve` task: a slow callback stalls every
+    client. `httpserver` is the older blocking server; do not mix them up.
+11. `@compile`/payload entry selection is based on the executable basename and
    payload lookup order, not on the selected script's position in `arg`;
    preserve `ZLI.exe_path` behavior when touching startup.
 10. `docgen.zig` intentionally drops the Lua C API and grammar-only chapter.
