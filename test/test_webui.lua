@@ -4,6 +4,8 @@ lu.ORDER_ACTUAL_EXPECTED = false
 local ui = require "webui"
 local render = require "webui.html"
 local component = require "webui.component"
+local support = require "test/support"
+local http = require "httpclient"
 
 Test_webui = {}
 
@@ -303,6 +305,185 @@ function Test_webui:Test_component_index_helper()
         return count
     end)())
     lu.assertEquals("textField", names.a.kind)
+end
+
+-- ---------------------------------------------------------------------------
+-- integration with the real server
+-- ---------------------------------------------------------------------------
+
+local TOKEN = "webtoken"
+
+local function page_source()
+    return ([[
+local ui = require "webui"
+
+local page = ui.page { title = "Hello <World>" }
+local echo = ui.label { text = "" }
+local field = ui.textField {
+    name = "user", value = "world",
+    onChange = function(src) echo:setText("saw:" .. tostring(src:value())) end,
+}
+local button = ui.button {
+    text = "Say hello",
+    onClick = function()
+        ui.current.user:setValue("clicked")
+        ui.notify("hello " .. tostring(ui.current.user:value()))
+    end,
+}
+local broken = ui.button { text = "Broken", onClick = function() error("boom") end }
+local go = ui.button { text = "Go B", onClick = function() ui.navigate("/b") end }
+
+page:add(ui.horizontalLayout {
+    ui.label { text = "User Name" }, field, echo, button, broken, go,
+})
+
+local second = ui.page { title = "Second" }
+second:add(ui.label { text = "this is B" })
+
+ui.serve {
+    pages = { ["/"] = page, ["/b"] = second },
+    api = { GET = { ["/api"] = function() return { ok = true } end } },
+    port = 0,
+    token = %q,
+    stop_path = "/__stop",
+    open_browser = false,
+    on_start = function(info)
+        print(info.url, button.id, broken.id, go.id, field.id)
+    end,
+}
+print("done")
+]]):format(TOKEN)
+end
+
+--- Start the demo page and run `fn(url, ids)` against it, then stop it.
+local function with_page(fn)
+    local script = support.temp_file("webui_page", page_source())
+    local handle = support.spawn({ script }, { home = support.temp_dir("webhome") })
+
+    if handle.line == nil then
+        local rest, code = support.spawn_finish(handle)
+        error("page did not start, exit " .. tostring(code) .. ": " .. rest)
+    end
+    local line = handle.pipe:read("*l") or ""
+    local url, button, broken, go, field = line:match("^(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)$")
+    if url == nil then
+        support.spawn_finish(handle)
+        error("unexpected ready line: " .. line)
+    end
+
+    local function request(method, path, body, headers)
+        return http.call(method, url .. (path:gsub("^/", "")), { header = headers or {} }, body)
+    end
+
+    local ids = { button = button, broken = broken, go = go, field = field }
+    local ok, err = pcall(fn, url, ids, request)
+    pcall(request, "POST", "/__stop", nil, { cookie = "webui_session=" .. TOKEN })
+    local rest, code = support.spawn_finish(handle)
+    if not ok then
+        error(err, 0)
+    end
+    lu.assertEquals(0, code, "server exit status: " .. rest)
+    lu.assertStrContains(rest, "done")
+end
+
+function Test_webui:Test_serve_renders_the_document()
+    with_page(function(_, _, request)
+        local response, body = request("GET", "/")
+        lu.assertEquals(200, response.status)
+        lu.assertStrContains(body, "<title>Hello &lt;World&gt;</title>")
+        lu.assertStrContains(body, 'id="webui-root"')
+        lu.assertStrContains(body, 'sse-connect="/__webui/events"')
+        lu.assertStrContains(body, "Content-Security-Policy")
+        lu.assertStrContains(body, 'name="webui-token" content="' .. TOKEN .. '"')
+
+        local fragment, fragment_body = request("GET", "/", nil, { ["hx-request"] = "true" })
+        lu.assertEquals(200, fragment.status)
+        lu.assertEquals("<main", fragment_body:sub(1, 5))
+        lu.assertNotStrContains(fragment_body, "<!DOCTYPE")
+
+        local missing = request("GET", "/nope")
+        lu.assertEquals(404, missing.status)
+
+        local api, api_body = request("GET", "/api")
+        lu.assertEquals(200, api.status)
+        lu.assertEquals(true, require("cjson").decode(api_body).ok)
+
+        local second, second_body = request("GET", "/b")
+        lu.assertEquals(200, second.status)
+        lu.assertStrContains(second_body, "this is B")
+    end)
+end
+
+function Test_webui:Test_event_runs_callbacks_and_syncs_values()
+    with_page(function(_, ids, request)
+        local response, body = request("POST", "/__webui/event",
+            "id=" .. ids.button .. "&kind=click&user=alice",
+            { cookie = "webui_session=" .. TOKEN })
+
+        lu.assertEquals(200, response.status)
+        lu.assertStrContains(body, 'value="clicked"')
+        lu.assertStrContains(body, 'data-route="/"')
+
+        -- input events apply the submitted value before any callback runs
+        local input, input_body = request("POST", "/__webui/event",
+            "id=" .. ids.field .. "&kind=input&user=bob",
+            { cookie = "webui_session=" .. TOKEN })
+        lu.assertEquals(200, input.status)
+        lu.assertStrContains(input_body, 'value="bob"')
+
+        -- commit runs onChange, which rewrites the label text
+        local change, change_body = request("POST", "/__webui/event",
+            "id=" .. ids.field .. "&kind=change&user=bob",
+            { cookie = "webui_session=" .. TOKEN })
+        lu.assertEquals(200, change.status)
+        lu.assertStrContains(change_body, "saw:bob")
+    end)
+end
+
+function Test_webui:Test_event_requires_the_session_cookie()
+    with_page(function(_, ids, request)
+        local response = request("POST", "/__webui/event", "id=" .. ids.button .. "&kind=click")
+        lu.assertEquals(403, response.status)
+    end)
+end
+
+function Test_webui:Test_callback_errors_keep_the_server_working()
+    with_page(function(_, ids, request)
+        local response, body = request("POST", "/__webui/event",
+            "id=" .. ids.broken .. "&kind=click",
+            { cookie = "webui_session=" .. TOKEN })
+        lu.assertEquals(200, response.status)
+        lu.assertStrContains(body, 'id="webui-root"')
+
+        -- the server is still alive and serving
+        local alive = request("GET", "/")
+        lu.assertEquals(200, alive.status)
+    end)
+end
+
+function Test_webui:Test_navigate_switches_the_page()
+    with_page(function(_, ids, request)
+        local response, body = request("POST", "/__webui/event",
+            "id=" .. ids.go .. "&kind=click",
+            { cookie = "webui_session=" .. TOKEN })
+        lu.assertEquals(200, response.status)
+        lu.assertStrContains(body, 'data-route="/b"')
+        lu.assertStrContains(body, "this is B")
+    end)
+end
+
+function Test_webui:Test_sse_stream_serves_the_page()
+    with_page(function(_, _, request)
+        -- the event stream is a plain SSE endpoint; ?once=1 keeps the test
+        -- single threaded
+        local response, body = request("GET", "/__webui/events?once=1&push=hi", nil, {
+            cookie = "webui_session=" .. TOKEN,
+        })
+        lu.assertEquals(200, response.status)
+        lu.assertEquals("text/event-stream", response.content_type)
+        lu.assertStrContains(body, "event: html")
+        lu.assertStrContains(body, "data: hi")
+    end)
 end
 
 if not RUN_ALL then

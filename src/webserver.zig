@@ -1104,9 +1104,16 @@ fn pushRequestTable(lua: *Lua, job: *const Job) void {
     luax.setTableString(lua, -1, "body", job.body);
     luax.setTableInteger(lua, -1, "client", @intCast(job.client_id));
     luax.setTableBoolean(lua, -1, "keep_alive", job.keep_alive);
+    // Header names are lower cased so routes can use one spelling
+    // ("hx-request", "content-type", ...) regardless of the client casing.
     lua.newTable();
+    var name_buffer: [128]u8 = undefined;
     for (job.headers) |header| {
-        luax.setTableString(lua, -1, header.name, header.value);
+        const length = @min(header.name.len, name_buffer.len);
+        for (header.name[0..length], 0..) |byte, index| {
+            name_buffer[index] = std.ascii.toLower(byte);
+        }
+        luax.setTableString(lua, -1, name_buffer[0..length], header.value);
     }
     luax.setTableValue(lua, -2, "headers", -1, true);
 }

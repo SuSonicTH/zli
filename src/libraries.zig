@@ -117,6 +117,7 @@ const luascripts: []const luascript = &.{
     .{ .name = "webui", .source = @embedFile("webui.init.lua") },
     .{ .name = "webui.component", .source = @embedFile("webui.component.lua") },
     .{ .name = "webui.html", .source = @embedFile("webui.html.lua") },
+    .{ .name = "webui.event", .source = @embedFile("webui.event.lua") },
     .{ .name = "xlsxmlwriter", .source = @embedFile("xlsxmlwriter.lua") },
     .{ .name = "xml2lua", .source = @embedFile("xml2lua.lua") },
     .{ .name = "XmlParser", .source = @embedFile("XmlParser.lua") },
