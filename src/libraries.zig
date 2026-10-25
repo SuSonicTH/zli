@@ -110,6 +110,11 @@ const luascripts: []const luascript = &.{
     .{ .name = "stream", .source = @embedFile("stream.lua") },
     .{ .name = "timer", .source = @embedFile("timer.lua") },
     .{ .name = "xlsxmlwriter", .source = @embedFile("xlsxmlwriter.lua") },
+    .{ .name = "xml2lua", .source = @embedFile("xml2lua.lua") },
+    .{ .name = "XmlParser", .source = @embedFile("XmlParser.lua") },
+    .{ .name = "xmlhandler.dom", .source = @embedFile("xmlhandler.dom.lua") },
+    .{ .name = "xmlhandler.print", .source = @embedFile("xmlhandler.print.lua") },
+    .{ .name = "xmlhandler.tree", .source = @embedFile("xmlhandler.tree.lua") },
 };
 
 pub fn openlibs(io: std.Io, lua: *Lua) i32 {

@@ -51,6 +51,7 @@ timer = require "timer"
 unzip = require "unzip"
 uuid = require "uuid"
 xlsxmlwriter = require "xlsxmlwriter"
+xml2lua = require "xml2lua"
 zip = require "zip"
 
 ]==])

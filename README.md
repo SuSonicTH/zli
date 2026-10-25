@@ -34,6 +34,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | Thin wrapper around the SQLite3 database engine                        |
 | luaunit    | https://github.com/bluebird75/luaunit       | BSD     | Unit-testing framework for Lua                                         |
 | Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer                                      |
+| xml2lua    | https://github.com/manoelcampos/xml2lua     | MIT     | Pure-Lua XML parser and table-to-XML serializer                        |
 
 ### Custom bindings to third-party libraries
 

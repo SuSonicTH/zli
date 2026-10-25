@@ -54,7 +54,7 @@ names = {
     "argparse", "benchmark", "cl", "collection", "csv", "F", "fs", "grid",
     "gzip", "httpclient", "httpserver", "json", "log", "lpeg", "lu",
     "luastrip", "markdown", "memoize", "re", "serpent", "sqlite3", "stream",
-    "tar", "timer", "unzip", "uuid", "xlsxmlwriter", "zip",
+    "tar", "timer", "unzip", "uuid", "xlsxmlwriter", "xml2lua", "zip",
 }
 missing = {}
 for _, name in ipairs(names) do

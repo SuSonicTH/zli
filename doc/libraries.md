@@ -6875,6 +6875,775 @@ flags.
 | `skip_utf8_bom` | Skip a UTF-8 byte-order mark at the start of the input. |
 | `xhtml` | Generate XHTML-style self-closing tags such as `<br />`. |
 
+### xml2lua
+
+Pure-Lua XML parser and table-to-XML serializer.
+
+Upstream: https://github.com/manoelcampos/xml2lua
+
+License: MIT
+
+`xml2lua` is a non-validating XML parser written entirely in Lua.  It parses
+well-formed XML into a handler and can also turn a Lua table back into XML.
+There is no dependency on an XML library or a C module.
+
+The parser is split into a tokenizer and a handler.  `xml2lua.parser(handler)`
+returns a parser that drives the handler; `handler` is usually one of the
+bundled handler modules:
+
+| Handler | Result |
+| --- | --- |
+| `xmlhandler.tree` | Natural Lua table with tag names as keys. |
+| `xmlhandler.dom` | DOM-like tree of typed nodes. |
+| `xmlhandler.print` | Event trace written to standard output for debugging. |
+
+```lua
+local xml2lua = require "xml2lua"
+local handler = require("xmlhandler.tree"):new()
+
+local parser = xml2lua.parser(handler)
+parser:parse [[<people><person age="42"><name>Ada</name></person></people>]]
+
+print(handler.root.people.person.name) --> Ada
+print(handler.root.people.person._attr.age) --> 42
+```
+
+The parser checks basic XML syntax and balanced tags, but it does not validate
+an XML schema.  It handles declarations, processing instructions, comments,
+CDATA, DOCTYPE declarations and the standard XML entities.  Namespaces and
+character-set conversion are not interpreted.
+
+The table representation uses `_attr` for attributes.  A single child is
+reduced to a plain value where possible, while repeated siblings become an
+array.  `xml2lua.toXml` reverses that convention: fields named `_attr` become
+attributes, arrays repeat the containing tag, and all other fields become
+nested elements.
+
+#### `xml2lua.parser(handler)`
+
+Create an XML parser for a handler.
+
+Create a parser object that sends parser events to `handler`.
+
+The handler is a table with any of the callbacks `starttag`, `endtag`, `text`,
+`cdata`, `comment`, `dtd`, `pi` and `decl`; missing callbacks are ignored.  Use
+`xmlhandler.tree`, `xmlhandler.dom`, `xmlhandler.print`, or a custom handler.
+
+The returned parser has a `parse(xml [, parseAttributes])` method.  `parse`
+consumes one complete XML string and resets its internal tag stack for that
+call.  Passing `false` as `parseAttributes` suppresses attribute parsing in
+handlers that honour the setting.
+
+The convenience constructor enables whitespace stripping and entity expansion
+and installs an error handler that raises `Parse Error [char=pos]`.  Use
+`XmlParser.new` directly when different options are needed.
+
+```lua
+local xml2lua = require "xml2lua"
+local handler = require("xmlhandler.tree"):new()
+xml2lua.parser(handler):parse("<root><value>42</value></root>")
+print(handler.root.root.value) --> 42
+```
+
+#### `xml2lua.toXml(table [, rootName [, level]])`
+
+Serialize a Lua table as XML.
+
+Convert a Lua table to an XML string.
+
+A table field named `_attr` is written as attributes on the containing tag.
+An array field repeats the field name for each element.  Other fields become
+nested tags whose text is the field value converted with `tostring`.  Empty
+tables produce self-closing tags.  `rootName` names the outermost element; if it
+is omitted and the table contains exactly one field, that field name is used.
+
+`level` is the initial indentation level and is mainly for internal recursion.
+Output is pretty-printed with two spaces per level when `xml2lua.pretty` is
+true.  Set it to `false` for a single-line result.
+
+```lua
+local xml2lua = require "xml2lua"
+print(xml2lua.toXml {
+    person = { name = "Ada", _attr = { id = "7" } },
+}, "people"))
+```
+
+#### `xml2lua.printable(table)`
+
+Recursively print a table.
+
+Recursively print a table with one field per line.
+
+Nested tables are indented by two spaces per level.  Scalar values are printed
+as `key=value` using `tostring`.  The function writes through `print` and does
+not return a value.  It is a debugging aid for inspecting parsed XML.
+
+```lua
+local xml2lua = require "xml2lua"
+xml2lua.printable { people = { person = { name = "Ada" } } }
+```
+
+#### `xml2lua.toString(value)`
+
+Render a value in a compact table syntax.
+
+Return a compact string representation of a value.
+
+Tables are rendered as `{key=value,...}` and nested tables are rendered
+recursively.  Scalar values are returned unchanged rather than converted with
+`tostring`.  Field order follows `pairs`, so the result is intended for
+debugging rather than stable serialization.  Recursive tables are not
+supported.
+
+```lua
+local xml2lua = require "xml2lua"
+print(xml2lua.toString { answer = 42 }) --> {answer=42}
+```
+
+#### `xml2lua.loadFile(path)`
+
+Read an XML document from a file.
+
+Open `path` in text mode, read the complete file and return its contents.
+
+The file is closed before returning.  On failure the underlying `io.open`
+error message is raised.  In ZLI the read also sees bundled payload files when
+no local file exists, because `io.open` provides that fallback.
+
+```lua
+local xml2lua = require "xml2lua"
+local text = xml2lua.loadFile("document.xml")
+```
+
+#### `xml2lua.getSpaces(level)`
+
+Return indentation for a nesting level.
+
+Return a string of spaces for the given nesting `level`.
+
+When `xml2lua.pretty` is true, the result contains `level * 2` spaces.
+Otherwise it is the empty string.  This helper is used by the XML serializers
+and can also be used by custom writers.
+
+```lua
+local xml2lua = require "xml2lua"
+print(#xml2lua.getSpaces(3)) --> 6
+```
+
+#### `xml2lua.addTagValueAttr(tagName, tagValue, attrTable, level)`
+
+Append one element to the XML output buffer.
+
+Append an opening tag, its value and a closing tag to `xml2lua.xmltb`.
+
+`attrTable` may be `nil` or a table of attribute names and values.  An empty
+`tagValue` produces a self-closing tag such as `<name/>`.  Indentation comes
+from `xml2lua.getSpaces(level)`.  This is a low-level helper used by
+`xml2lua.parseTableToXml`; callers must initialize `xml2lua.xmltb`.
+
+```lua
+local xml2lua = require "xml2lua"
+xml2lua.xmltb = {}
+xml2lua.addTagValueAttr("name", "Ada", { id = "7" }, 0)
+```
+
+#### `xml2lua.startTag(tagName, attrTable, level)`
+
+Append an opening tag to the XML output buffer.
+
+Append `<tagName ...>` to `xml2lua.xmltb`.
+
+`attrTable` may be `nil`; otherwise its fields are written as
+`name="value"` attributes.  `tagName` may be `nil`, in which case nothing is
+appended.  Indentation comes from `xml2lua.getSpaces(level)`.  The matching
+closing tag is normally added with `xml2lua.endTag`.
+
+```lua
+local xml2lua = require "xml2lua"
+xml2lua.xmltb = {}
+xml2lua.startTag("person", { id = "7" }, 0)
+xml2lua.endTag("person", 0)
+```
+
+#### `xml2lua.endTag(tagName, level)`
+
+Append a closing tag to the XML output buffer.
+
+Append `</tagName>` to `xml2lua.xmltb`.
+
+`tagName` may be `nil`, in which case nothing is appended.  Indentation comes
+from `xml2lua.getSpaces(level)`.  The function does not check that a matching
+opening tag exists.
+
+```lua
+local xml2lua = require "xml2lua"
+xml2lua.xmltb = {}
+xml2lua.startTag("empty", nil, 0)
+xml2lua.endTag("empty", 0)
+```
+
+#### `xml2lua.isChildArray(table)`
+
+Test whether a table contains array indexes.
+
+Return true when `table` has at least one numeric field.
+
+The check uses `pairs`, so the presence of any integer key is enough; a field
+named `1` and a normal array both count.  The function is used by
+`xml2lua.parseTableToXml` to decide whether a field represents repeated tags.
+
+```lua
+local xml2lua = require "xml2lua"
+assert(xml2lua.isChildArray { "a", "b" })
+assert(not xml2lua.isChildArray { name = "Ada" })
+```
+
+#### `xml2lua.isTableEmpty(table)`
+
+Test whether a table only contains attributes.
+
+Return true when `table` has no fields other than `_attr`.
+
+An empty table is empty, and a table containing only an `_attr` table is also
+considered empty for XML serialization.  Such values are written as
+self-closing tags.  Any other field, including a false boolean, makes the
+result false.
+
+```lua
+local xml2lua = require "xml2lua"
+assert(xml2lua.isTableEmpty {})
+assert(xml2lua.isTableEmpty { _attr = { id = "7" } })
+assert(not xml2lua.isTableEmpty { value = false })
+```
+
+#### `xml2lua.parseTableToXml(value, tagName, level)`
+
+Append a table value to the XML output buffer.
+
+Recursively append `value` to `xml2lua.xmltb` using `tagName` as the element
+name.
+
+Array values repeat the tag for every item.  Tables with only `_attr` become
+self-closing tags, and other tables become nested elements.  Scalar values
+become text elements.  A field named `_attr` is never emitted as an element.
+The function is normally called through `xml2lua.toXml`.
+
+```lua
+local xml2lua = require "xml2lua"
+xml2lua.xmltb = {}
+xml2lua.parseTableToXml({ "a", "b" }, "item", 0)
+print(table.concat(xml2lua.xmltb, "\n"))
+```
+
+#### `xml2lua.pretty`
+
+Enable pretty-printed XML output.
+
+When true, `xml2lua.toXml` inserts newlines and two spaces of indentation per
+level.  Set it to `false` to serialize without whitespace between tags.  The
+field is a normal module global and defaults to true.
+
+`xml2lua.toString` and parser output are not affected by this setting.
+
+### XmlParser
+
+Low-level XML tokenizer used by xml2lua.
+
+Upstream: https://github.com/manoelcampos/xml2lua
+
+License: MIT
+
+`XmlParser` is the tokenizer behind `xml2lua`.  Most programs should use
+`xml2lua.parser(handler)` instead, but constructing the tokenizer directly
+allows the parsing options to be changed.
+
+```lua
+local XmlParser = require "XmlParser"
+local handler = require("xmlhandler.tree"):new()
+local parser = XmlParser.new(handler, {
+    stripWS = false,
+    expandEntities = true,
+    errorHandler = function(message, position)
+        error(message .. " at " .. position)
+    end,
+})
+parser:parse("<root>  text  </root>")
+```
+
+The options table may contain:
+
+| Option | Description |
+| --- | --- |
+| `stripWS` | Strip leading and trailing whitespace from text events. |
+| `expandEntities` | Expand the standard XML entities and numeric character references. |
+| `errorHandler` | Function called as `errorHandler(message, position)` for parse errors. |
+
+Boolean options must be `true` or `false`; the parser tests them for truth, so
+passing `0` still enables an option.
+
+#### `XmlParser.new(handler [, options])`
+
+Create a tokenizer for a handler.
+
+Create a new tokenizer that sends events to `handler`.
+
+`options` is a table with the optional fields `stripWS`, `expandEntities` and
+`errorHandler`.  When an option is omitted it is false or nil, so text is not
+stripped and entities are not expanded.  `errorHandler` is called with the
+message and the character position of a parse error; if no handler is set,
+errors are silently ignored by the tokenizer.
+
+```lua
+local XmlParser = require "XmlParser"
+local handler = require("xmlhandler.tree"):new()
+local parser = XmlParser.new(handler, { stripWS = true })
+parser:parse("<root><value>42</value></root>")
+```
+
+#### `parser:parse(xml [, parseAttributes])`
+
+Tokenize an XML document.
+
+Parse the complete XML document in `xml` and invoke the handler callbacks.
+
+The method maintains its own tag stack and reports unbalanced or incomplete
+tags through the configured error handler.  Passing `false` as
+`parseAttributes` sets `handler.parseAttributes = false`; handlers that support
+the setting then omit attributes.  The default is true.
+
+The string is parsed as one document.  There is no streaming interface and no
+charset handling; decode non-UTF-8 input before calling.
+
+```lua
+local parser = require("XmlParser").new(require("xmlhandler.tree"):new(), {
+    stripWS = true,
+    expandEntities = true,
+})
+parser:parse("<root><value>42</value></root>")
+```
+
+### xmlhandler.tree
+
+Convert XML to a natural Lua table.
+
+Upstream: https://github.com/manoelcampos/xml2lua
+
+License: MIT
+
+`xmlhandler.tree` maps XML elements directly to Lua tables.
+
+Tag names become keys; text becomes the value of the containing key; attributes
+are collected in an `_attr` table.  A single child is reduced to a plain value,
+while repeated siblings become an array.  Mixed content is not represented
+faithfully because text and child elements are stored in the same table.
+
+Call `handler:new()` to create a handler for one document.  The module table
+itself can also be passed directly, but a new instance avoids state shared with
+other parses.
+
+```lua
+local handler = require("xmlhandler.tree"):new()
+require("xml2lua").parser(handler):parse [[
+<people>
+  <person type="natural"><name>Ada</name></person>
+</people>
+]]
+
+print(handler.root.people.person.name) --> Ada
+print(handler.root.people.person._attr.type) --> natural
+```
+
+#### `handler:new()`
+
+Create an independent tree handler.
+
+Create and return a new tree handler with an empty root and tag stack.
+
+Each handler should be used for one XML document.  Creating a new handler
+avoids reusing the root and stack from an earlier parse.
+
+```lua
+local handler = require("xmlhandler.tree"):new()
+local parser = require("xml2lua").parser(handler)
+parser:parse("<root><value>42</value></root>")
+```
+
+#### `handler:reduce(node, key, parent)`
+
+Collapse single-child nodes.
+
+Recursively collapse nodes that contain exactly one child and no attributes.
+
+When a node is an array with one value, that value replaces the array in
+`parent[key]`.  The optional `handler.options.noreduce` table can list tag names
+that must stay as arrays even when they have one child.
+
+This method is called automatically when the outermost tag closes.  It is
+exposed for custom post-processing but normally does not need to be called
+directly.
+
+#### `handler:starttag(tag)`
+
+Handle an opening tag event.
+
+Create a node for an opening tag and add it to the current parent.
+
+`tag` is a table with `name` and optional `attrs`.  Attributes are copied into
+the node's `_attr` field when attribute parsing is enabled.  Repeated siblings
+are converted to an array.  The new node becomes the current parent until its
+closing tag arrives.
+
+#### `handler:endtag(tag, position)`
+
+Handle a closing tag event.
+
+Close the current node and restore its parent.
+
+`tag.name` must match the node on top of the handler stack.  When the
+outermost element closes, `handler:reduce` collapses single-child nodes.  The
+`position` argument is accepted for parser compatibility and is only used in
+error messages.
+
+#### `handler:text(text)`
+
+Handle a text or CDATA event.
+
+Append `text` to the current node.
+
+The value is stored as the next array item on the current node.  After
+`reduce`, a node with a single text child becomes a plain string.
+
+```lua
+local handler = require("xmlhandler.tree"):new()
+require("xml2lua").parser(handler):parse("<root>text</root>")
+print(handler.root.root) --> text
+```
+
+#### `handler:cdata(text)`
+
+Handle a CDATA event.
+
+Append raw CDATA content to the current node.
+
+This is an alias of `xmlhandler.tree:text`; CDATA is not entity-expanded, so
+characters such as `&` and `<` remain as written.  The result is stored exactly
+like ordinary text and participates in the same reduction rules.
+
+#### `handler.root`
+
+Root table of the parsed document.
+
+After parsing, `root` contains the document tree.  It starts as an empty table
+and gains one field named after the outermost XML element.
+
+For a document whose root element is `<people>`, the parsed data is in
+`handler.root.people`.  The field remains empty if parsing produced no element.
+
+#### `handler.options`
+
+Tree handler options.
+
+Handler options table.  The only supported field is `noreduce`, a table of
+tag names that should stay as arrays even when they contain a single child.
+
+```lua
+local handler = require("xmlhandler.tree"):new()
+handler.options.noreduce.item = true
+```
+
+The parser also sets `parseAttributes` on the handler for each parse call.
+
+### xmlhandler.dom
+
+Build a DOM-like node tree from XML.
+
+Upstream: https://github.com/manoelcampos/xml2lua
+
+License: MIT
+
+`xmlhandler.dom` builds a tree of typed nodes instead of the natural Lua table
+produced by `xmlhandler.tree`.  Every node has a `_type` field:
+
+| Node type | Contents |
+| --- | --- |
+| `ROOT` | Document node; `_children` holds the document contents. |
+| `ELEMENT` | `_name`, optional `_attr`, and `_children`. |
+| `TEXT` | `_text` containing character data. |
+| `COMMENT` | `_text` containing the comment body. |
+| `PI` | Processing instruction with `_name` and optional `_attr`. |
+| `DECL` | XML declaration with `_name` and `_attr`. |
+| `DTD` | DOCTYPE declaration with `_name` and `_text`. |
+
+Use `handler:new()` for each document.  After parsing, `handler.root` is the
+`ROOT` node and `handler:toXml(handler.root)` renders the tree back to XML.
+
+```lua
+local handler = require("xmlhandler.dom"):new()
+require("xml2lua").parser(handler):parse [[<?xml version="1.0"?>
+<root><item id="7">value</item></root>]]
+
+print(handler.root._type)                  --> ROOT
+print(handler.root._children[2]._name)     --> root
+print(handler:toXml(handler.root))
+```
+
+Comments, processing instructions, declarations and DTD nodes are included by
+default.  Set the corresponding options to false before parsing to omit them:
+`commentNode`, `piNode`, `dtdNode` and `declNode`.
+
+#### `handler:new()`
+
+Create an independent DOM handler.
+
+Create and return a new DOM handler with an empty document root and tag
+stack.
+
+Use a new handler for each document so nodes from different parses are not
+mixed.  The handler options can be changed before parsing, for example
+`handler.options.commentNode = false`.
+
+```lua
+local handler = require("xmlhandler.dom"):new()
+handler.options.piNode = false
+```
+
+#### `handler:toXml(node)`
+
+Render a DOM node as XML.
+
+Return an XML string for `node` and its descendants.
+
+Elements are indented, attributes are written from `_attr`, and text is escaped
+for `&`, `<` and `>`.  Empty elements become self-closing tags.  Comments,
+processing instructions, declarations and DTD nodes are rendered in their XML
+syntax.
+
+Pass `handler.root` to serialize the complete document.
+
+```lua
+local handler = require("xmlhandler.dom"):new()
+require("xml2lua").parser(handler):parse("<root><item>value</item></root>")
+print(handler:toXml(handler.root))
+```
+
+#### `handler:starttag(tag)`
+
+Handle an opening tag event.
+
+Create an `ELEMENT` node for `tag` and append it to the current parent.
+
+The first element becomes `handler.root` during parsing; after the document
+closes, `handler.root` is replaced by the `ROOT` document node.  Attributes are
+stored in `_attr`, and the element becomes the current parent until its closing
+tag.
+
+#### `handler:endtag(tag)`
+
+Handle a closing tag event.
+
+Close the current element and restore its parent.
+
+`tag.name` must match the open element.  When the outermost element closes, the
+document `ROOT` node becomes `handler.root` and is used for subsequent
+preamble and postamble nodes.
+
+#### `handler:text(text)`
+
+Handle a text event.
+
+Create a `TEXT` node containing `text` and append it to the current
+element's `_children`.
+
+Text nodes are kept separate from element nodes, so the DOM representation
+preserves mixed content and whitespace exactly as reported by the parser.
+
+#### `handler:cdata(text)`
+
+Handle a CDATA event.
+
+Create a `TEXT` node from raw CDATA content.
+
+This is an alias of `xmlhandler.dom:text`; entity references inside CDATA are
+not expanded.  The node is appended to the current element in the same way as
+ordinary text.
+
+#### `handler:comment(text)`
+
+Handle a comment event.
+
+Create a `COMMENT` node containing `text` and append it to the current
+parent.
+
+Comments are included when `handler.options.commentNode` is true, which is the
+default.  Set it to false before parsing to discard comment nodes while still
+parsing the surrounding document.
+
+#### `handler:pi(tag)`
+
+Handle a processing instruction.
+
+Create a `PI` node from `tag` and append it to the current parent.
+
+`tag.name` is the instruction target and `tag.attrs` holds its attributes.
+Processing instructions are included when `handler.options.piNode` is true,
+which is the default.
+
+#### `handler:decl(tag)`
+
+Handle the XML declaration.
+
+Append a `DECL` node for the XML declaration.
+
+`tag.name` is normally `xml`, and `tag.attrs` contains fields such as `version`
+and `encoding`.  Declarations are included when `handler.options.declNode` is
+true, which is the default.
+
+#### `handler:dtd(tag)`
+
+Handle a DOCTYPE declaration.
+
+Append a `DTD` node for a DOCTYPE declaration.
+
+`tag.name` is `DOCTYPE` and `tag.value` contains the declaration text, stored
+as the node's `_text`.  DOCTYPE nodes are included when
+`handler.options.dtdNode` is true, which is the default.
+
+#### `handler.root`
+
+Document root node.
+
+After parsing, `root` is the `ROOT` node whose `_children` contains the
+document in order, including declarations, comments and processing
+instructions.
+
+Before parsing, `root` is nil.  During parsing it temporarily points at the
+outermost element; `xmlhandler.dom:endtag` replaces it with the document node
+when that element closes.
+
+#### `handler.current`
+
+Current insertion node.
+
+The node that receives new children while parsing.
+
+It starts as the document `ROOT` node, becomes each open element in turn, and
+is restored when that element closes.  Custom handler code can use it to add
+nodes at the current position.
+
+#### `handler.options`
+
+DOM handler options.
+
+Options controlling which non-element nodes are included in the tree.
+
+| Option | Description |
+| --- | --- |
+| `commentNode` | Include comment nodes. |
+| `piNode` | Include processing-instruction nodes. |
+| `dtdNode` | Include DOCTYPE nodes. |
+| `declNode` | Include the XML declaration. |
+
+All four default to true.  Set an option to false before parsing to omit that
+kind of node.
+
+```lua
+local handler = require("xmlhandler.dom"):new()
+handler.options.commentNode = false
+```
+
+### xmlhandler.print
+
+Print XML parser events for debugging.
+
+Upstream: https://github.com/manoelcampos/xml2lua
+
+License: MIT
+
+`xmlhandler.print` is a debugging handler that writes parser events to standard
+output.  It implements the same callbacks as the other handlers.
+
+```lua
+local handler = require "xmlhandler.print"
+require("xml2lua").parser(handler):parse("<root><item>value</item></root>")
+```
+
+The output uses labels such as `Start`, `End`, `Text`, `CDATA`, `Comment`,
+`DTD`, `PI` and `XML Decl`.  Attribute lines are prefixed with ` + `.
+
+#### `handler:starttag(tag, start, end)`
+
+Print an opening tag event.
+
+Write the element name and any attributes to standard output.
+
+The output starts with `Start    : ` followed by the tag name.  Each attribute
+is printed on its own line as ` + name='value'`.  The `start` and `end`
+position arguments are accepted for parser compatibility and are not printed.
+
+#### `handler:endtag(tag, start, end)`
+
+Print a closing tag event.
+
+Write `End      : ` followed by the closing tag name to standard output.
+
+The `start` and `end` position arguments are accepted for parser compatibility
+and are not printed.
+
+#### `handler:text(text, start, end)`
+
+Print a text event.
+
+Write `Text     : ` followed by the text to standard output.
+
+The text is printed exactly as supplied by the parser, so whitespace stripping
+and entity expansion follow the parser options.  Position arguments are
+accepted but not printed.
+
+#### `handler:cdata(text, start, end)`
+
+Print a CDATA event.
+
+Write `CDATA    : ` followed by the raw CDATA content to standard output.
+
+CDATA is not entity-expanded.  Position arguments are accepted for parser
+compatibility and are not printed.
+
+#### `handler:comment(text, start, end)`
+
+Print a comment event.
+
+Write `Comment  : ` followed by the comment body to standard output.
+
+The body is printed as supplied by the parser.  Position arguments are accepted
+for parser compatibility and are not printed.
+
+#### `handler:dtd(tag, start, end)`
+
+Print a DOCTYPE event.
+
+Write `DTD      : ` followed by the DOCTYPE name to standard output.
+
+Attributes on `tag` are printed as separate ` + name='value'` lines when
+present.  Position arguments are accepted but not printed.
+
+#### `handler:pi(tag, start, end)`
+
+Print a processing-instruction event.
+
+Write `PI       : ` followed by the instruction target to standard output.
+
+Attributes on `tag` are printed as separate ` + name='value'` lines when
+present.  Position arguments are accepted but not printed.
+
+#### `handler:decl(tag, start, end)`
+
+Print an XML declaration event.
+
+Write `XML Decl : ` followed by the declaration name to standard output.
+
+Attributes such as `version` and `encoding` are printed as separate
+` + name='value'` lines.  Position arguments are accepted but not printed.
+
 ## Command line tools
 
 ### tools
@@ -6895,7 +7664,8 @@ before showing the prompt. The generated `repl_init.lua` preloads every bundled
 library: `argparse`, `benchmark`, `crossline`, `collection`, `csv`, `F`,
 `filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`, `log`,
 `lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
-`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter` and `zip`;
+`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter`,
+`xml2lua` and `zip`;
 edit that file to change the defaults. History is kept in
 `~/.config/zli/repl_history`.
 
@@ -7140,7 +7910,8 @@ after the global `init.lua`. If missing, the REPL creates it with assignments
 for every bundled library: `argparse`, `benchmark`, `crossline`, `collection`,
 `csv`, `F`, `filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`,
 `log`, `lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
-`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter` and `zip`.
+`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter`,
+`xml2lua` and `zip`.
 Use it for prompt helpers and other state that should exist only in interactive
 sessions; errors abort the REPL.
 

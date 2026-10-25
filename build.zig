@@ -309,6 +309,11 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/timer.lua", .name = "timer.lua" },
     .{ .input = "src/unzip.lua", .name = "unzip.lua" },
     .{ .input = "src/xlsxmlwriter.lua", .name = "xlsxmlwriter.lua" },
+    .{ .input = "src/xml2lua/xml2lua.lua", .name = "xml2lua.lua" },
+    .{ .input = "src/xml2lua/XmlParser.lua", .name = "XmlParser.lua" },
+    .{ .input = "src/xml2lua/xmlhandler/dom.lua", .name = "xmlhandler.dom.lua" },
+    .{ .input = "src/xml2lua/xmlhandler/print.lua", .name = "xmlhandler.print.lua" },
+    .{ .input = "src/xml2lua/xmlhandler/tree.lua", .name = "xmlhandler.tree.lua" },
     .{ .input = "src/zip.lua", .name = "zip.lua" },
 };
 
