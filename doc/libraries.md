@@ -7144,6 +7144,75 @@ assert(ok)
 print(value.name)
 ```
 
+### toml (tinytoml)
+
+Pure-Lua TOML 1.1 parser and encoder.
+
+Upstream: https://github.com/FourierTransformer/tinytoml
+
+License: MIT
+
+`require "toml"` is the bundled `tinytoml` library.  It parses TOML 1.1
+documents into Lua tables and encodes Lua tables as TOML text.
+
+`toml.parse` reads a file by default; set `load_from_string = true` to parse a
+string instead.  `toml.encode` returns TOML text and does not write a file.
+
+| TOML | Lua |
+| ---- | --- |
+| string | string |
+| integer | integer |
+| float | float |
+| boolean | boolean |
+| offset date-time, local date-time, local date, local time | string by default, or a table with `parse_datetime_as = "table"` |
+| array | sequence table |
+| table | map table |
+| array of tables | sequence of map tables |
+
+Comments are not preserved.  Lua cannot distinguish an empty array from an
+empty table, so encoding `{}` produces a table rather than `[]`.  Strings that
+look like TOML date-times are emitted unquoted by the encoder.
+
+#### `toml.parse(filename [, options])`
+
+Parse a TOML file or string into a Lua table.
+
+Parse a TOML document and return a Lua table.  With the default options,
+`filename` is opened and read; pass `{ load_from_string = true }` to parse the
+argument as TOML text instead.  Invalid TOML raises an error.
+
+`parse_datetime_as` accepts `"string"` (the default) or `"table"`.
+`type_conversion` maps the four date-time kinds (`datetime`, `datetime-local`,
+`date-local`, `time-local`) to custom conversion functions.  `max_nesting_depth`
+and `max_filesize` bound resource use.
+
+```lua
+local toml = require "toml"
+local config = toml.parse("config.toml")
+local inline = toml.parse('title = "demo"', { load_from_string = true })
+print(config.title, inline.title)
+```
+
+#### `toml.encode(value [, options])`
+
+Encode a Lua table as TOML text.
+
+Encode a Lua table and return a TOML document as a string.  The result ends
+with a newline but is not written to disk.
+
+Arrays are encoded as TOML arrays and non-sequence tables as tables or arrays
+of tables.  Pass `{ allow_multiline_strings = true }` to emit strings
+containing newlines as TOML multi-line strings.  Strings that validate as a
+TOML date or time are emitted as the corresponding date-time value.  Empty
+tables and empty arrays are both encoded as an empty table because Lua does not
+distinguish them.
+
+```lua
+local toml = require "toml"
+local text = toml.encode({ title = "demo", ports = { 8080, 8081 } })
+print(text)
+```
+
 ### markdown (md4c)
 
 Markdown parsing and HTML rendering based on md4c.

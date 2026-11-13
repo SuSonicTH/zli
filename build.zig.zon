@@ -57,5 +57,9 @@
             .url = "https://github.com/mity/md4c/archive/refs/tags/v0.6.0.tar.gz",
             .hash = "N-V-__8AAEVDEgAtMuYZhXcl61grSDsy5AEXDjgWT0yKUDNs",
         },
+        .tinytoml = .{
+            .url = "https://github.com/FourierTransformer/tinytoml/archive/5517aa5d398ae0c992799decc460ec253a62552a.tar.gz",
+            .hash = "N-V-__8AAHz5AQCB6FRYhulbi9Dnuwwg3HAfbJUvhnN-fnyY",
+        },
     },
 }

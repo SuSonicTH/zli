@@ -114,6 +114,7 @@ const luascripts: []const luascript = &.{
     .{ .name = "serpent", .source = @embedFile("serpent.lua") },
     .{ .name = "stream", .source = @embedFile("stream.lua") },
     .{ .name = "timer", .source = @embedFile("timer.lua") },
+    .{ .name = "toml", .source = @embedFile("toml.lua") },
     .{ .name = "webui", .source = @embedFile("webui.init.lua") },
     .{ .name = "webui.component", .source = @embedFile("webui.component.lua") },
     .{ .name = "webui.html", .source = @embedFile("webui.html.lua") },

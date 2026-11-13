@@ -759,6 +759,7 @@ local completed_doc_modules = {
     xlsxmlwriter = true,
     luaunit = true,
     serpent = true,
+    toml = true,
     markdown = true,
     xml2lua = true,
     XmlParser = true,

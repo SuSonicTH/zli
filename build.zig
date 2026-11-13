@@ -314,6 +314,7 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "re.lua", .name = "re.lua", .dependency = "lpeg" },
     .{ .input = "src/argparse.lua", .name = "argparse.lua", .dependency = "argparse" },
     .{ .input = "src/serpent.lua", .name = "serpent.lua", .dependency = "serpent" },
+    .{ .input = "tinytoml.lua", .name = "toml.lua", .dependency = "tinytoml" },
 
     .{ .input = "src/auxiliary.lua", .name = "auxiliary.lua" },
     .{ .input = "src/benchmark.lua", .name = "benchmark.lua" },
