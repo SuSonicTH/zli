@@ -114,6 +114,7 @@ local readme_require_names = {
     ["lua-cjson"] = { "cjson" },
     ["luasqlite3"] = { "sqlite3" },
     ["logger"] = { "log" },
+    ["lyaml / yaml"] = { "lyaml", "yaml" },
     ["unzip / zip"] = { "unzip", "zip" },
 }
 
@@ -453,6 +454,7 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
         { "lpeg",      "https://www.inf.puc-rio.br/~roberto/lpeg/" },
         { "sqlite3",   "http://lua.sqlite.org/" },
         { "crossline", "https://github.com/jcwangxp/Crossline" },
+        { "libyaml",   "https://github.com/yaml/libyaml" },
     }
     for _, item in ipairs(expected) do
         local entry = docs.find(item[1])
@@ -758,6 +760,9 @@ local completed_doc_modules = {
     uuid = true,
     xlsxmlwriter = true,
     luaunit = true,
+    libyaml = true,
+    lyaml = true,
+    yaml = true,
     serpent = true,
     toml = true,
     markdown = true,

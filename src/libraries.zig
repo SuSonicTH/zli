@@ -18,6 +18,7 @@ const markdown = @import("markdown.zig");
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_cjson(state: ?*zlua.LuaState) callconv(.c) c_int;
+pub extern fn luaopen_yaml(state: ?*zlua.LuaState) callconv(.c) c_int;
 
 const std = @import("std");
 
@@ -33,6 +34,10 @@ const preload: []const zlua.FnReg = &.{
     .{
         .name = "cjson",
         .func = &luaopen_cjson,
+    },
+    .{
+        .name = "lyaml.core",
+        .func = &luaopen_yaml,
     },
     .{
         .name = "luaunit",
@@ -109,6 +114,11 @@ const luascripts: []const luascript = &.{
     .{ .name = "grid", .source = @embedFile("grid.lua") },
     .{ .name = "log", .source = @embedFile("logger.lua") },
     .{ .name = "luaunit", .source = @embedFile("luaunit.lua") },
+    .{ .name = "lyaml", .source = @embedFile("lyaml.lua") },
+    .{ .name = "lyaml.explicit", .source = @embedFile("lyaml.explicit.lua") },
+    .{ .name = "lyaml.functional", .source = @embedFile("lyaml.functional.lua") },
+    .{ .name = "lyaml.implicit", .source = @embedFile("lyaml.implicit.lua") },
+    .{ .name = "yaml", .source = @embedFile("yaml.lua") },
     .{ .name = "memoize", .source = @embedFile("memoize.lua") },
     .{ .name = "re", .source = @embedFile("re.lua") },
     .{ .name = "serpent", .source = @embedFile("serpent.lua") },

@@ -182,6 +182,7 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     exe.root_module.linkLibrary(lpeg(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(luaCJson(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(md4c(b, target, optimize));
+    exe.root_module.linkLibrary(lyaml(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
 
     return exe;
@@ -315,6 +316,11 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/argparse.lua", .name = "argparse.lua", .dependency = "argparse" },
     .{ .input = "src/serpent.lua", .name = "serpent.lua", .dependency = "serpent" },
     .{ .input = "tinytoml.lua", .name = "toml.lua", .dependency = "tinytoml" },
+    .{ .input = "lib/lyaml/explicit.lua", .name = "lyaml.explicit.lua", .dependency = "lyaml" },
+    .{ .input = "lib/lyaml/functional.lua", .name = "lyaml.functional.lua", .dependency = "lyaml" },
+    .{ .input = "lib/lyaml/implicit.lua", .name = "lyaml.implicit.lua", .dependency = "lyaml" },
+    .{ .input = "lib/lyaml/init.lua", .name = "lyaml.lua", .dependency = "lyaml" },
+    .{ .input = "src/yaml.lua", .name = "yaml.lua" },
 
     .{ .input = "src/auxiliary.lua", .name = "auxiliary.lua" },
     .{ .input = "src/benchmark.lua", .name = "benchmark.lua" },
@@ -480,6 +486,69 @@ fn luaCJson(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.built
         "lua_cjson.c",
         "strbuf.c",
     }, .flags = flags_c99 });
+    lib.root_module.link_libc = true;
+    return lib;
+}
+
+fn lyaml(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, luaPath: std.Build.LazyPath) *std.Build.Step.Compile {
+    const lib = b.addLibrary(.{
+        .name = "lyaml",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
+        .linkage = .static,
+    });
+
+    const lyaml_dep = b.dependency("lyaml", .{});
+    const libyaml_dep = b.dependency("libyaml", .{});
+    const lyaml_dir = lyaml_dep.path("ext/yaml");
+    const libyaml_inc = libyaml_dep.path("include");
+    const libyaml_src = libyaml_dep.path("src");
+
+    lib.root_module.addIncludePath(luaPath);
+    lib.root_module.addIncludePath(lyaml_dir);
+    lib.root_module.addIncludePath(libyaml_inc);
+    lib.root_module.addIncludePath(libyaml_src);
+
+    lib.root_module.addCSourceFiles(.{
+        .root = lyaml_dir,
+        .files = &[_][]const u8{
+            "yaml.c",
+            "parser.c",
+            "emitter.c",
+            "scanner.c",
+        },
+        .flags = &[_][]const u8{
+            "-std=gnu99",
+            "-DYAML_DECLARE_STATIC",
+            "-DVERSION=\"6.2.10\"",
+            "-Wno-string-plus-int",
+        },
+    });
+
+    lib.root_module.addCSourceFiles(.{
+        .root = libyaml_src,
+        .files = &[_][]const u8{
+            "api.c",
+            "dumper.c",
+            "emitter.c",
+            "loader.c",
+            "parser.c",
+            "reader.c",
+            "scanner.c",
+            "writer.c",
+        },
+        .flags = &[_][]const u8{
+            "-std=gnu99",
+            "-DYAML_DECLARE_STATIC",
+            "-DYAML_VERSION_MAJOR=0",
+            "-DYAML_VERSION_MINOR=2",
+            "-DYAML_VERSION_PATCH=5",
+            "-DYAML_VERSION_STRING=\"0.2.5\"",
+        },
+    });
+
     lib.root_module.link_libc = true;
     return lib;
 }

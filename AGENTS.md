@@ -20,7 +20,7 @@ Use this file as the map. User-facing documentation lives in:
 | Host language        | Zig 0.17.0, using the modern `std.Io` APIs                 |
 | Lua                  | Lua 5.5.1, via the `zlua` (ziglua) dependency              |
 | Package name/version | `zli`, version in `build.zig.zon` and `src/version`        |
-| Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline |
+| Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline, lyaml fork + libyaml |
 | Lua deps             | argparse, f-strings, ftcsv, luaunit, Serpent               |
 | Output               | one executable with an appended zip payload                |
 | Release platforms    | x86_64 Linux, aarch64 Linux, x86_64 Windows                |
@@ -108,7 +108,7 @@ Libraries come in three flavors:
    `src/httpserver.zig`, ...). `src/libraries.zig` imports each module and adds
    `luaopen_*`-style functions to `package.preload`. Modules that perform I/O
    expose `setIo(io)` and are wired in `openlibs`.
-2. **C libraries** (`lsqlite3`, `lpeg`, `lua-cjson`, `crossline`). They are
+2. **C libraries** (`lsqlite3`, `lpeg`, `lua-cjson`, `crossline`, `lyaml` + `libyaml`). They are
    linked statically by functions in `build.zig` and registered in
    `src/libraries.zig` via `extern luaopen_*` declarations.
 3. **Embedded Lua modules**. Pure-Lua library modules are listed in
@@ -190,6 +190,8 @@ pub fn register(lua: *Lua) !i32 {
 | `src/libraries.zig`                                                                  | `package.preload` registration for native modules and embedded Lua modules; `setIo` wiring.                                                            |
 | `src/file_reader.zig`                                                                | Shared local-filesystem-first/payload-fallback whole-file reader.                                                                                      |
 | `src/markdown.zig`                                                                   | `markdown` module: md4c event parser and md4c-html renderer.                                                                                           |
+| `src/yaml.lua`                                                                       | Safe Lua wrapper around the libYAML C binding: event validation and emitter error handling.  `lyaml` and its C binding come from the pinned fork dependency. |
+| `test/test_lyaml.lua`                                                                | lyaml/libYAML load, dump, event, error and safety tests.                                                                                               |
 | `src/luax.zig`                                                                       | Lua stack/table/userdata/config helpers used by bindings.                                                                                              |
 | `src/luaerror.zig`                                                                   | Raise-vs-return error handling and `luaerror.wrap`.                                                                                                    |
 | `src/init.lua`                                                                       | Embedded bootstrap: creates `~/.config/zli`, runs user init, reloads `filesystem`.                                                                     |
@@ -413,8 +415,14 @@ The documentation tests are strict by design.
 11. `@compile`/payload entry selection is based on the executable basename and
    payload lookup order, not on the selected script's position in `arg`;
    preserve `ZLI.exe_path` behavior when touching startup.
-10. `docgen.zig` intentionally drops the Lua C API and grammar-only chapter.
+12. `docgen.zig` intentionally drops the Lua C API and grammar-only chapter.
     Do not add them back when regenerating docs.
+13. `lyaml` is a C binding from the pinned fork dependency.  libyaml is
+    compiled into the same static library, and the C sources need
+    `YAML_DECLARE_STATIC` plus the `YAML_VERSION_*` defines because libyaml
+    0.2.5 has no generated `config.h`.  `lyaml.dump` takes a **list** of
+    documents; wrap a single table.  `lyaml.load` and `lyaml.dump` raise
+    errors; the low-level `yaml.emitter` returns `false, message`.
 
 ## Maintaining this guide
 

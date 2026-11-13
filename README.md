@@ -33,6 +33,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | lua-cjson  | https://github.com/openresty/lua-cjson      | MIT     | Fast JSON encoding/parsing                                             |
 | LuaSQLite3 | http://lua.sqlite.org/                      | MIT     | Thin wrapper around the SQLite3 database engine                        |
 | luaunit    | https://github.com/bluebird75/luaunit       | BSD     | Unit-testing framework for Lua                                         |
+| lyaml / yaml | https://github.com/SuSonicTH/lyaml        | MIT/X11 | libYAML binding: YAML 1.1 load/dump plus low-level parser, scanner and emitter |
 | Serpent    | https://github.com/pkulchenko/serpent       | MIT     | Lua serializer and pretty printer                                      |
 | toml       | https://github.com/FourierTransformer/tinytoml | MIT  | Pure-Lua TOML 1.1 parser and encoder (tinytoml)                        |
 | xml2lua    | https://github.com/manoelcampos/xml2lua     | MIT     | Pure-Lua XML parser and table-to-XML serializer                        |
@@ -42,6 +43,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | library     | link                                  | licence | description                                           |
 | ----------- | ------------------------------------- | ------- | ----------------------------------------------------- |
 | Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Small, self-contained readline/libedit replacement    |
+| libyaml     | https://github.com/yaml/libyaml       | MIT     | YAML 1.1 parser and emitter used by the lyaml binding |
 | markdown    | https://github.com/mity/md4c          | MIT     | Markdown parser and HTML renderer based on md4c       |
 
 ### ZLI libraries

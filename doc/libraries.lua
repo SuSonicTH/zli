@@ -6500,6 +6500,303 @@ print(text)
 ]]),
                 }, { upstream = "https://github.com/FourierTransformer/tinytoml", license = "MIT" }),
 
+                module("lyaml", "lyaml", "libYAML binding for Lua: YAML 1.1 load and dump.", [==[
+`require "lyaml"` is ZLI's fork of the `lyaml` library, a binding to
+libYAML.  The fork carries safety and correctness fixes for the emitter,
+scalar handling and parser error locations.  It
+reads and writes YAML 1.1 streams, including anchors, aliases, merge keys and
+explicit tags.
+
+| YAML | Lua |
+| ---- | --- |
+| mapping | table with converted scalar keys (usually strings) |
+| sequence | table with keys `1..n` |
+| scalar | string, number or boolean |
+| null (`~`, `null`, empty) | `lyaml.null` |
+| anchor/alias | shared table identity |
+| `<<` merge key | merged mapping |
+
+`lyaml.load` returns the first document of a stream.  Pass `{ all = true }` to
+return a list of every document.  Invalid YAML raises an error with the line
+and column where libYAML stopped.
+
+`lyaml.dump` takes a **list of documents**, not a single value.  To dump one
+table, wrap it: `lyaml.dump({ { foo = "bar" } })`.  A table whose keys are
+exactly `1..n` is written as a sequence; any other table is written as a
+mapping.  Mapping key order follows Lua's `pairs` order and is not sorted.
+Strings that would reload as another type are quoted, and multi-line strings
+become literal block scalars.  Functions, userdata and threads raise an error.
+
+Plain scalar conversions follow YAML 1.1: `yes`/`no`, `on`/`off`, octal,
+hexadecimal, binary, sexagesimal and `.inf`/`.nan` are converted.  Mapping
+keys are converted the same way, so `1: a`, `true: b` and `~: c` use a number,
+a boolean and `lyaml.null` as keys.  Quote a scalar or key to keep it as a
+string.
+
+`implicit_scalar` replaces the conversion function for untagged plain
+scalars; build it from the functions in `lyaml.implicit` with
+`lyaml.functional.anyof`.  `explicit_scalar` replaces the tag conversion table
+and must use full tag names such as `tag:yaml.org,2002:int`; the functions in
+`lyaml.explicit` use short converter names.  See `lyaml.explicit` for an
+example.
+
+`lyaml.load` and `lyaml.dump` raise errors, like `cjson`; they do not use
+ZLI's `nil, message` convention.  The low-level `yaml.emitter` returns
+`false, message` instead, matching the libYAML binding API.  The low-level
+libYAML binding is available as `require "yaml"`.
+]==], {
+                    entry("lyaml.load", "lyaml.load(string [, options])", "function",
+                        "Parse a YAML stream into Lua values.",
+                        [[
+Parse a YAML 1.1 stream and return its first document.  With
+`{ all = true }` it returns a sequence containing every document in the
+stream.
+
+Anchors and aliases preserve table identity: if `base` is anchored and
+`other` aliases it, then `result.base == result.other`.  Merge keys (`<<`)
+copy the referenced mapping entries without overwriting keys already present.
+Null values become the `lyaml.null` sentinel because Lua tables cannot hold
+`nil` values.
+
+`implicit_scalar` replaces the conversion function for untagged plain
+scalars.  `explicit_scalar` is a table keyed by full tag name that replaces
+the conversions for tagged scalars; the tables in `lyaml.implicit` and
+`lyaml.explicit` use short converter names, so build the option table with
+full tag keys.  Invalid YAML or an invalid value for a tag raises an error.
+The message uses libYAML's problem mark when it provides one; errors without a
+mark, such as invalid UTF-8, fall back to the previous event position.
+
+```lua
+local lyaml = require "lyaml"
+local config = lyaml.load("host: localhost\nport: 5432\n")
+print(config.host, config.port)
+
+local documents = lyaml.load("--- one\n...\n--- two\n...\n", { all = true })
+print(documents[1], documents[2])
+```
+]]),
+                    entry("lyaml.dump", "lyaml.dump(documents [, options])", "function",
+                        "Encode a list of Lua values as a YAML stream.",
+                        [[
+Encode a sequence of documents and return a YAML stream ending with a
+newline.  Each element of `documents` becomes one YAML document; wrap a
+single table in another table.
+
+A table whose keys are exactly `1..n` is emitted as a sequence and any other
+table as a mapping.  `lyaml.null` is written as `~`.  Strings that would load
+as numbers, booleans, nulls or other YAML syntax are quoted so they round
+trip as strings.  Strings containing newlines are emitted as literal block
+scalars.
+
+The `anchors` option maps anchor names to values so repeated tables can be
+emitted with anchors and aliases.  Anchor names must contain only letters,
+digits, `_` and `-`; invalid names raise an error.  Anchor and alias state is
+scoped to each document, so multi-document dumps redefine anchors in every
+document.  The `implicit_scalar`
+option must match the function used when loading if custom scalar rules are
+in use, so that strings are quoted only when necessary.
+
+Strings must be valid UTF-8.  Functions, userdata and threads cannot be
+represented; all of these raise an error.
+
+```lua
+local lyaml = require "lyaml"
+local text = lyaml.dump({ { name = "demo", ports = { 80, 443 } } })
+print(text)
+```
+]]),
+                    entry("lyaml.null", "lyaml.null", "table",
+                        "Sentinel value representing a YAML null.",
+                        [[
+A unique table value returned by `lyaml.load` for `~`, `null`, `Null`, `NULL`
+and empty values.  Compare with `value == lyaml.null`.
+
+Lua tables cannot store `nil`, so the sentinel preserves null keys and null
+sequence entries.  `lyaml.dump` writes `lyaml.null` back as `~`.
+
+```lua
+local lyaml = require "lyaml"
+local value = lyaml.load("a: ~")
+assert(value.a == lyaml.null)
+```
+]]),
+                    entry("lyaml.functional.anyof", "lyaml.functional.anyof(functions)", "function",
+                        "Combine scalar conversion functions.",
+                        [[
+Return a function that calls each function in `functions` in order and
+returns the first non-`nil` result.  It is useful for building a custom
+`implicit_scalar` converter from the functions in `lyaml.implicit`.
+
+```lua
+local functional = require "lyaml.functional"
+local implicit = require "lyaml.implicit"
+local strict = functional.anyof { implicit.null, implicit.decimal, functional.id }
+local value = require("lyaml").load("a: yes\nb: 10\n", { implicit_scalar = strict })
+print(value.a, value.b)
+```
+]]),
+                    entry("lyaml.functional.id", "lyaml.functional.id(value)", "function",
+                        "Return the argument unchanged.",
+                        [[
+Return every argument unchanged.  Use it as the final converter in an
+`anyof` chain so unrecognised plain scalars remain strings.
+]]),
+                    entry("lyaml.functional.isnull", "lyaml.functional.isnull(value)", "function",
+                        "Test whether a value is the YAML null sentinel.",
+                        [[
+Return `true` when `value` is `lyaml.null` and `false` otherwise.  This is a
+convenient predicate for code that cannot compare directly with the sentinel.
+]]),
+                    entry("lyaml.implicit", "lyaml.implicit", "table",
+                        "Default YAML 1.1 plain-scalar converters.",
+                        [[
+A table of functions that each recognise one plain-scalar form and return
+`nil` for anything else.  The defaults include `null`, `bool`, `octal`,
+`decimal`, `float`, `inf`, `nan`, `hexadecimal`, `binary`, `sexagesimal` and
+`sexfloat`.
+
+Pass a function built from these (usually with `lyaml.functional.anyof`) as
+the `implicit_scalar` option to `lyaml.load` or `lyaml.dump`.
+]]),
+                    entry("lyaml.explicit", "lyaml.explicit", "table",
+                        "Default explicit-tag converters.",
+                        [[
+A table of functions keyed by the short converter names `bool`, `float`,
+`int`, `null` and `str`.  The default `explicit_scalar` table in `lyaml`
+maps the full YAML tags `tag:yaml.org,2002:bool`, `tag:yaml.org,2002:float`,
+`tag:yaml.org,2002:int`, `tag:yaml.org,2002:null` and
+`tag:yaml.org,2002:str` to these functions.
+
+The `bool`, `float` and `int` converters return `nil` when the text does not
+suit the tag, and the loader raises an error.  `null` always returns
+`lyaml.null`, and `str` returns its argument unchanged.
+
+Pass a table in the `explicit_scalar` option to `lyaml.load` to replace the
+whole default table.  The option table must use full tag names, not the short
+names in this module:
+
+```lua
+local lyaml = require "lyaml"
+local explicit = require "lyaml.explicit"
+local converters = {
+    ["tag:yaml.org,2002:int"] = explicit.int,
+    ["tag:yaml.org,2002:str"] = explicit.str,
+}
+local value = lyaml.load("a: !!int '42'\nb: !!str 7\n", {
+    explicit_scalar = converters,
+})
+print(value.a, value.b)
+```
+]]),
+                }, { upstream = "https://github.com/SuSonicTH/lyaml", license = "MIT/X11" }),
+
+                module("yaml", "yaml", "Low-level libYAML parser, scanner and emitter binding.", [==[
+`require "yaml"` is the Lua wrapper around the libYAML C binding that the
+high-level `lyaml` module is built on.  It exposes the event, token and emitter
+APIs so callers can inspect a stream without composing Lua tables.  The raw C
+module is an internal implementation detail and is not a supported public
+module.
+
+The module is lower level than `lyaml`: events and tokens include line and
+column marks, anchors, tags and scalar styles.  Most programs should use
+`lyaml.load` and `lyaml.dump` instead.
+]==], {
+                    entry("yaml.parser", "yaml.parser(string)", "function",
+                        "Iterate over libYAML events.",
+                        [[
+Return an iterator over the libYAML events of a YAML stream.  Each event is a
+table containing at least `type`, `start_mark` and `end_mark`; scalar events
+may contain `value`, `anchor`, `tag` and `style`, and collection events contain
+their own fields.
+
+The event types follow libYAML: `STREAM_START`, `DOCUMENT_START`,
+`MAPPING_START`, `SEQUENCE_START`, `SCALAR`, `ALIAS`, `MAPPING_END`,
+`SEQUENCE_END`, `DOCUMENT_END` and `STREAM_END`.
+
+```lua
+local yaml = require "yaml"
+for event in yaml.parser("a: [1, b]") do
+    print(event.type)
+end
+```
+]]),
+                    entry("yaml.scanner", "yaml.scanner(string)", "function",
+                        "Iterate over libYAML tokens.",
+                        [[
+Return an iterator over the libYAML tokens of a YAML stream.  Each token is a
+table with `type`, `start_mark` and `end_mark` plus the fields specific to
+that token.  Scalar tokens have `value`, `length` and `style`; version
+directive tokens have `major` and `minor`; tag directive tokens have `handle`
+and `prefix`; anchor, alias and tag tokens have the corresponding names.
+
+The scanner is one level below the parser and is useful for syntax-aware
+tools that need the exact token boundaries.
+]]),
+                    entry("yaml.emitter", "yaml.emitter()", "function",
+                        "Create a libYAML event emitter.",
+                        [[
+Return an emitter object whose `emit(event)` method accepts the same event
+tables produced by `yaml.parser`.  Call `STREAM_START`, then the document and
+node events, then `STREAM_END`.
+
+The `STREAM_END` event returns `true` plus the completed YAML stream.  Invalid
+event types or styles, malformed `DOCUMENT_START` version/tag directives,
+invalid anchor names or tags, and invalid UTF-8 scalar values return `false`
+plus an error message without reaching libYAML.  An emitter is no longer
+usable after an error; further `emit` calls return `false, message`.
+
+```lua
+local yaml = require "yaml"
+local emitter = yaml.emitter()
+emitter.emit { type = "STREAM_START" }
+emitter.emit { type = "DOCUMENT_START" }
+emitter.emit { type = "SCALAR", value = "hi" }
+emitter.emit { type = "DOCUMENT_END" }
+local ok, stream = emitter.emit { type = "STREAM_END" }
+assert(ok)
+print(stream)
+```
+]]),
+                    entry("yaml.version", "yaml.version", "value",
+                        "Version string for the libYAML binding.",
+                        [[
+The version string reported by the C binding, including the Lua version and
+the lyaml release it was built from.  It is also available as
+`lyaml._VERSION`.
+]]),
+                }, { upstream = "https://github.com/SuSonicTH/lyaml", license = "MIT/X11" }),
+
+                module("libyaml", "libyaml", "YAML 1.1 parser and emitter C library used by lyaml.", [==[
+`libyaml` is the C library that implements YAML 1.1 parsing and emitting for
+the `lyaml` and `yaml` modules.  It is linked statically into ZLI and is not
+loaded with `require`; use `lyaml` or `yaml` instead.
+
+libyaml is distributed under the MIT license:
+
+```text
+Copyright (c) 2017-2020 Ingy döt Net
+Copyright (c) 2006-2016 Kirill Simonov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+]==], {}, { upstream = "https://github.com/yaml/libyaml", license = "MIT" }),
+
                 module("markdown", "markdown (md4c)", "Markdown parsing and HTML rendering based on md4c.", [==[
 `require "markdown"` exposes md4c directly.  The module has two parts: an
 event-based parser and the md4c-html renderer.

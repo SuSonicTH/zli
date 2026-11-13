@@ -331,7 +331,7 @@ fn payload_searcher(lua: *Lua) i32 {
         defer allocator.free(initName);
 
         if (payload == null or payload.?.find(initName) == null) {
-            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ &arg, &arg, prog_name.ptr });
+            _ = lua.pushFString("no file '%s.lua' or '%s/init.lua' in %s", .{ arg.ptr, arg.ptr, prog_name.ptr });
             return 1;
         }
         found_name = initName;
