@@ -363,6 +363,15 @@ Update in one change: implementation, `doc/libraries.lua`, regenerated
 `doc/libraries.md`, `README.md`/`doc/README.md` when user-facing, and tests.
 The documentation tests are strict by design.
 
+## Dependency policy
+
+- **Never vendor an external library automatically.** This includes copying
+  third-party source into the repository, or applying local patches, to fix a
+  bug. Use a `build.zig.zon` dependency instead, or ask the user whether to
+  fork and patch the upstream project.
+- Before vendoring, copying, or locally patching third-party code, stop and ask
+  the user what to do.
+
 ## Conventions and invariants
 
 - Zig style: 4 spaces, `c_allocator` in runtime code, explicit `std.Io` values,
