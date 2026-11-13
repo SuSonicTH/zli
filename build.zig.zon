@@ -61,6 +61,10 @@
             .url = "https://github.com/FourierTransformer/tinytoml/archive/5517aa5d398ae0c992799decc460ec253a62552a.tar.gz",
             .hash = "N-V-__8AAHz5AQCB6FRYhulbi9Dnuwwg3HAfbJUvhnN-fnyY",
         },
+        .xml2lua = .{
+            .url = "git+https://github.com/SuSonicTH/xml2lua#56ee54476178c8e32448a018acfa207705231738",
+            .hash = "N-V-__8AAIDPAgCXErG-cQnf8DHs_1k3iKHM73rWziYW7dSY",
+        },
         .lyaml = .{
             .url = "https://github.com/SuSonicTH/lyaml/archive/17ba1651e8b2dc9dc3028b2c50d9c40438a319a8.tar.gz",
             .hash = "N-V-__8AANDBAgAtbxT5rKFHoHLDQr2OPx2FueJByqUfMmfI",

@@ -321,6 +321,11 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "lib/lyaml/implicit.lua", .name = "lyaml.implicit.lua", .dependency = "lyaml" },
     .{ .input = "lib/lyaml/init.lua", .name = "lyaml.lua", .dependency = "lyaml" },
     .{ .input = "src/yaml.lua", .name = "yaml.lua" },
+    .{ .input = "xml2lua.lua", .name = "xml2lua.lua", .dependency = "xml2lua" },
+    .{ .input = "XmlParser.lua", .name = "XmlParser.lua", .dependency = "xml2lua" },
+    .{ .input = "xmlhandler/dom.lua", .name = "xmlhandler.dom.lua", .dependency = "xml2lua" },
+    .{ .input = "xmlhandler/print.lua", .name = "xmlhandler.print.lua", .dependency = "xml2lua" },
+    .{ .input = "xmlhandler/tree.lua", .name = "xmlhandler.tree.lua", .dependency = "xml2lua" },
 
     .{ .input = "src/auxiliary.lua", .name = "auxiliary.lua" },
     .{ .input = "src/benchmark.lua", .name = "benchmark.lua" },
@@ -345,11 +350,6 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/timer.lua", .name = "timer.lua" },
     .{ .input = "src/unzip.lua", .name = "unzip.lua" },
     .{ .input = "src/xlsxmlwriter.lua", .name = "xlsxmlwriter.lua" },
-    .{ .input = "src/xml2lua/xml2lua.lua", .name = "xml2lua.lua" },
-    .{ .input = "src/xml2lua/XmlParser.lua", .name = "XmlParser.lua" },
-    .{ .input = "src/xml2lua/xmlhandler/dom.lua", .name = "xmlhandler.dom.lua" },
-    .{ .input = "src/xml2lua/xmlhandler/print.lua", .name = "xmlhandler.print.lua" },
-    .{ .input = "src/xml2lua/xmlhandler/tree.lua", .name = "xmlhandler.tree.lua" },
     .{ .input = "src/zip.lua", .name = "zip.lua" },
 };
 
