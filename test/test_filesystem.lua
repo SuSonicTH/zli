@@ -24,13 +24,13 @@ function Test_filesystem.Test_path_resolves_dot_and_dotdot()
 end
 
 function Test_filesystem.Test_absolute_round_trip()
-    local absolute = fs.absolute("src/version")
+    local absolute = fs.absolute(".zigversion")
     lu.assertEquals(absolute, fs.path(absolute).full_path)
     lu.assertTrue(fs.path(absolute):exists())
 end
 
 function Test_filesystem.Test_millisecond_times()
-    local path = fs.path("src/version")
+    local path = fs.path(".zigversion")
     local seconds = path:access_time()
     local milliseconds = path:access_time_ms()
     lu.assertNotIsNil(seconds)
@@ -40,11 +40,11 @@ end
 
 function Test_filesystem.Test_lines()
     local lines = {}
-    for _, line in fs.lines("src/version") do
+    for _, line in fs.lines(".zigversion") do
         lines[#lines + 1] = line
     end
     lu.assertEquals(1, #lines)
-    lu.assertEquals("0.2.1", lines[1])
+    lu.assertStrMatches(lines[1], "^%d+%.%d+%.%d+$")
 end
 
 function Test_filesystem.Test_create_tree_and_delete_tree()
@@ -65,7 +65,7 @@ end
 
 function Test_filesystem.Test_parent_and_sibling()
     lu.assertEquals("test/temp", fs.path("test/temp/file"):parent().full_path)
-    lu.assertEquals("src/main.zig", fs.path("src/version"):sibling("main.zig").full_path)
+    lu.assertEquals("src/main.zig", fs.path("src/main.lua"):sibling("main.zig").full_path)
 end
 
 function Test_filesystem.Test_to_relative()

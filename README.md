@@ -197,7 +197,7 @@ For optimized builds of all release targets (UPX-compressed, statically linked o
 zig build release
 ```
 
-Release binaries are written to `zig-out/bin` with a platform and version suffix (for example `zli-x86_64-linux-0.2.1`).
+Release binaries are written to `zig-out/bin` with a platform and version suffix (for example `zli-x86_64-linux-<version>`, using the package version from `build.zig.zon`).
 
 > A plain `zig build` and `zig build native` use the host ABI and may link against the host's shared libc (glibc on Linux). Use `zig build release` or pass an explicit target, such as `zig build -Dtarget=x86_64-linux`, for a static musl binary. Note that `zig build native` always uses the host target and ignores `-Dtarget`.
 >

@@ -19,7 +19,7 @@ Use this file as the map. User-facing documentation lives in:
 | -------------------- | ---------------------------------------------------------- |
 | Host language        | Zig 0.17.0, using the modern `std.Io` APIs                 |
 | Lua                  | Lua 5.5.1, via the `zlua` (ziglua) dependency              |
-| Package name/version | `zli`, version in `build.zig.zon` and `src/version`        |
+| Package name/version | `zli`, version in `build.zig.zon`                          |
 | Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline, lyaml fork + libyaml |
 | Lua deps             | argparse, f-strings, ftcsv, luaunit, Serpent               |
 | Output               | one executable with an appended zip payload                |
@@ -178,7 +178,7 @@ pub fn register(lua: *Lua) !i32 {
   generated/authored documentation entries are attached as-is.
 - `attachPayload` appends the zip. Release builds UPX-pack the executable
   **before** attaching the payload and name it
-  `zli-<target>-<src/version>`.
+  `zli-<target>-<version>`, where the version comes from `build.zig.zon`.
 
 ## Repository map
 
@@ -347,15 +347,10 @@ example is promoted to a payload tool (see above).
 
 ### Bump the version
 
-Keep these in sync:
-
-- `src/version` — no trailing newline; embedded as `ZLI.version` and used in
-  release filenames.
-- `build.zig.zon` — package `.version`.
-- `doc/libraries.lua` (`ZLI.version` example) and regenerated
-  `doc/libraries.md`.
-- `test/test_filesystem.lua` — it asserts the exact version string.
-- `README.md` release binary example.
+Edit the `.version` field in `build.zig.zon`. It is the single source of the
+project version: `build.zig` parses it at configure time, injects it as
+`build_options.version`, and uses it for release filenames. No other file
+stores the project version.
 
 ### Change public behavior
 
@@ -408,7 +403,9 @@ The documentation tests are strict by design.
    the depth checks silently skip them.
 5. Tests execute the built binary and its payload. After editing an embedded
    Lua file, rebuild (`zig build test`) before invoking `zig-out/bin/zli`.
-6. `src/version` has no newline; `test_filesystem.lua` reads it as a line.
+6. `build.zig.zon` is the single source of the project version. `build.zig`
+   parses it with `std.zon.parse` and injects `build_options.version`; changing
+   the manifest re-runs configuration because the read is tracked.
 7. Zig 0.17's `std.Io` API differs from older Zig examples: file operations
    take an `io` parameter and `main` receives `std.process.Init`. Match the
    surrounding code.

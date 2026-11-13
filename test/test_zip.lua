@@ -26,7 +26,7 @@ function Test_zip.Test_create_list_and_read()
     remove("./test/temp/extracted2.txt")
 
     local z = zip.create(archive)
-    z:add_file("src/version", "version.txt")
+    z:add_file(".zigversion", "zigversion.txt")
     z:add_file("src/main.lua", "sub/main.lua")
     z:close_zip("test comment")
 
@@ -36,35 +36,35 @@ function Test_zip.Test_create_list_and_read()
     local files = u:list()
     lu.assertEquals(2, #files)
 
-    local version_file = u:read_all("version.txt")
+    local zigversion_file = u:read_all("zigversion.txt")
 
-    lu.assertEquals(io.read_file("src/version"), version_file)
+    lu.assertEquals(io.read_file(".zigversion"), zigversion_file)
 
     local by_name = {}
     for _, file in ipairs(files) do
         by_name[file.full_path] = file
     end
 
-    lu.assertEquals(io.read_file("src/version"), by_name["version.txt"]:read_all())
+    lu.assertEquals(io.read_file(".zigversion"), by_name["zigversion.txt"]:read_all())
 
-    local fh = by_name["version.txt"]:open()
+    local fh = by_name["zigversion.txt"]:open()
     lu.assertEquals(2, fh:seek("set", 2))
-    lu.assertEquals(io.read_file("src/version"):sub(3), fh:read("a"))
+    lu.assertEquals(io.read_file(".zigversion"):sub(3), fh:read("a"))
     fh:close()
 
     local entry_lines = {}
-    for line in by_name["version.txt"]:lines() do
+    for line in by_name["zigversion.txt"]:lines() do
         entry_lines[#entry_lines + 1] = line
     end
-    lu.assertEquals({ io.read_file("src/version") }, entry_lines)
-    lu.assertTrue(by_name["version.txt"].is_file)
-    lu.assertFalse(by_name["version.txt"].is_directory)
+    lu.assertEquals({ io.read_file(".zigversion") }, entry_lines)
+    lu.assertTrue(by_name["zigversion.txt"].is_file)
+    lu.assertFalse(by_name["zigversion.txt"].is_directory)
 
-    by_name["version.txt"]:extract("./test/temp/extracted.txt")
-    lu.assertEquals(io.read_file("src/version"), io.read_file("./test/temp/extracted.txt"))
+    by_name["zigversion.txt"]:extract("./test/temp/extracted.txt")
+    lu.assertEquals(io.read_file(".zigversion"), io.read_file("./test/temp/extracted.txt"))
 
-    u:extract("version.txt", "./test/temp/extracted2.txt")
-    lu.assertEquals(io.read_file("src/version"), io.read_file("./test/temp/extracted2.txt"))
+    u:extract("zigversion.txt", "./test/temp/extracted2.txt")
+    lu.assertEquals(io.read_file(".zigversion"), io.read_file("./test/temp/extracted2.txt"))
 
     u:close()
 end
@@ -74,19 +74,19 @@ function Test_zip.Test_open_existing_archive_for_append()
     remove(appended)
 
     local z = zip.create(appended)
-    z:add_file("src/version", "version.txt")
+    z:add_file(".zigversion", "zigversion.txt")
     z:close_zip()
 
     z = zip.open(appended)
-    z:add_file("src/version", "version-copy.txt")
+    z:add_file(".zigversion", "zigversion-copy.txt")
     z:close_zip()
 
     local u = unzip.open(appended)
     local files = u:list()
     lu.assertEquals(2, #files)
     lu.assertEquals(
-        io.read_file("src/version"),
-        u:read_all("version-copy.txt"))
+        io.read_file(".zigversion"),
+        u:read_all("zigversion-copy.txt"))
     u:close()
 end
 
@@ -102,7 +102,7 @@ end
 function Test_zip.Test_extract_all()
     local ok, err = unzip.extract(archive, "./test/temp/unzip_out")
     lu.assertIsTrue(ok, tostring(err))
-    lu.assertEquals(io.read_file("src/version"), io.read_file("./test/temp/unzip_out/version.txt"))
+    lu.assertEquals(io.read_file(".zigversion"), io.read_file("./test/temp/unzip_out/zigversion.txt"))
     lu.assertEquals(io.read_file("src/main.lua"), io.read_file("./test/temp/unzip_out/sub/main.lua"))
 end
 
@@ -162,12 +162,12 @@ function Test_zip.Test_crc_mismatch_is_reported()
     remove(path)
 
     local z = zip.create(path)
-    z:add_file("src/version", "version.txt", 0)
+    z:add_file(".zigversion", "zigversion.txt", 0)
     z:close_zip()
 
-    -- flip one digit of the embedded version so the content no longer matches
-    -- the stored CRC, without depending on the current version string
-    local current = io.read_file("./src/version")
+    -- flip one digit of the embedded content so it no longer matches the
+    -- stored CRC, without depending on the current project version string
+    local current = io.read_file("./.zigversion")
     local corrupted = current:gsub("%d", function(digit)
         return tostring((tonumber(digit) + 1) % 10)
     end, 1)
@@ -180,7 +180,7 @@ function Test_zip.Test_crc_mismatch_is_reported()
     io.write_file(path, data)
 
     local u = assert(unzip.open(path))
-    local value, err = u:read_all("version.txt")
+    local value, err = u:read_all("zigversion.txt")
     lu.assertNil(value)
     lu.assertStrContains(tostring(err), "Crc")
     u:close()
@@ -268,11 +268,11 @@ function Test_zip.Test_closed_entry_handle_does_not_read_again()
     local path = "./test/temp/closed_handle.zip"
     remove(path)
     local z = zip.create(path)
-    z:add_file("src/version", "version.txt")
+    z:add_file(".zigversion", "zigversion.txt")
     z:close_zip()
 
     local u = assert(unzip.open(path))
-    local entry = u:dir()["version.txt"]
+    local entry = u:dir()["zigversion.txt"]
     local file = assert(entry:open())
     lu.assertEquals(1, #file:read(1))
     file:close()

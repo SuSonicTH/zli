@@ -79,6 +79,16 @@ function Test_cli.Test_runs_program_from_stdin_after_init()
     lu.assertStrContains(stdout, "init=42")
 end
 
+function Test_cli.Test_version_matches_package_manifest()
+    local manifest = io.read_file("build.zig.zon")
+    local expected = assert(manifest:match('%.version%s*=%s*"([^"]+)"'))
+
+    local stdout, status = support.run({ "--version" }, { home = new_home() })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, expected)
+    lu.assertEquals(expected, ZLI.version)
+end
+
 function Test_cli.Test_version_and_help_come_from_payload()
     local version = support.run({ "--version" })
     lu.assertStrContains(version, "zli - Zig Lua Interpreter")

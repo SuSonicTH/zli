@@ -1665,8 +1665,8 @@ Path objects are accepted anywhere a path string is accepted.
 
 ```lua
 local fs = require "filesystem"
-local p = fs.path("src/version")
-p.full_path        --> "src/version"
+local p = fs.path("build.zig.zon")
+p.full_path        --> "build.zig.zon"
 p:exists()
 p:size()
 ```
@@ -1693,9 +1693,9 @@ Build a path object from a directory part and a final name, without normalizing 
 `path` is stored in the `path` field, `name` in the `name` field, and the joined result in `full_path`. A separator is inserted when `path` does not already end with one. Both arguments must be strings.
 
 ```lua
-local p = require("filesystem").create_path("src", "version")
-print(p.full_path) --> "src/version"
-print(p.name)      --> "version"
+local p = require("filesystem").create_path("src", "main.zig")
+print(p.full_path) --> "src/main.zig"
+print(p.name)      --> "main.zig"
 ```
 
 #### `fs.path(...)`
@@ -1722,8 +1722,8 @@ The function only extracts the value; it does not check existence or normalize t
 
 ```lua
 local fs = require "filesystem"
-local p = fs.path("src/version")
-print(fs.get_path(p)) --> "src/version"
+local p = fs.path("build.zig.zon")
+print(fs.get_path(p)) --> "build.zig.zon"
 ```
 
 #### `fs.absolute(path)`
@@ -1736,7 +1736,7 @@ Returns `nil` when the path cannot be resolved, for example because it is missin
 
 ```lua
 local fs = require "filesystem"
-print(fs.absolute("src/version"))
+print(fs.absolute("build.zig.zon"))
 ```
 
 #### `fs.concat_path(path, file)`
@@ -1916,7 +1916,7 @@ Read an entire file as a string and return it. The file is opened in text mode a
 On failure the function follows the module's error-handling mode and returns `nil, message` by default. The path may be a string or a path object.
 
 ```lua
-local text = require("filesystem").read_all("src/version")
+local text = require("filesystem").read_all("build.zig.zon")
 ```
 
 #### `fs.read_lines(path [, mode])`
@@ -1928,7 +1928,7 @@ Read a file into an array of lines. `mode` is passed to the underlying `file:lin
 On failure the function returns `nil, message` by default, or raises in raise mode.
 
 ```lua
-local lines = require("filesystem").read_lines("src/version")
+local lines = require("filesystem").read_lines("build.zig.zon")
 print(lines[1])
 ```
 
@@ -1942,7 +1942,7 @@ The optional `mode` is passed to `file:read` and defaults to `"l"` (line without
 
 ```lua
 local fs = require "filesystem"
-for i, line in fs.lines("src/version") do
+for i, line in fs.lines("build.zig.zon") do
     print(i, line)
 end
 ```
@@ -1970,7 +1970,7 @@ Return a new path object formed by joining `path` and `name`. No existence check
 
 ```lua
 local fs = require "filesystem"
-print(fs.path("src"):child("version").full_path) --> "src/version"
+print(fs.path("src"):child("main.zig").full_path) --> "src/main.zig"
 ```
 
 #### `fs.sibling(path, name)`
@@ -1983,7 +1983,7 @@ A missing or empty name raises an error. For a path without a separator, the res
 
 ```lua
 local fs = require "filesystem"
-print(fs.path("src/version"):sibling("main.lua").full_path)
+print(fs.path("src/main.zig"):sibling("main.lua").full_path) --> "src/main.lua"
 ```
 
 #### `fs.to_relative(path, base [, include_top])`
@@ -2096,7 +2096,7 @@ Return a table of metadata for the path. The table always contains `is_file`, `i
 When the platform reports an access time, `access_time`, `access_time_ms` and `access_time_stamp` are also present. The `create_time` fields reflect the platform's creation/change timestamp and may have platform-specific semantics. A stat failure follows the module's error-handling mode.
 
 ```lua
-local st = require("filesystem").path("src/version"):stat()
+local st = require("filesystem").path("build.zig.zon"):stat()
 print(st.size, st.mode_flags)
 ```
 
@@ -2197,7 +2197,7 @@ Open the path with `io.open` and return a Lua file handle plus the usual second 
 `mode` defaults to `"r"`. A missing file or permission failure therefore returns `nil, message` exactly as `io.open` does.
 
 ```lua
-local p = require("filesystem").path("src/version")
+local p = require("filesystem").path("build.zig.zon")
 local f = assert(p:open("r"))
 print(f:read("a"))
 f:close()
@@ -2260,7 +2260,7 @@ Iterate the lines of the file named by the path, yielding `index, line`.
 The optional `mode` defaults to `"l"`; use `"L"` to keep line terminators. The underlying file is closed automatically when iteration finishes. Open errors follow the module's error-handling mode.
 
 ```lua
-local p = require("filesystem").path("src/version")
+local p = require("filesystem").path("build.zig.zon")
 for i, line in p:lines() do
     print(i, line)
 end
@@ -4408,7 +4408,7 @@ The archive must already exist and contain a valid central directory. New entrie
 ```lua
 local zip = require "zip"
 local z = zip.open("bundle.zip")
-z:add_file("src/version", "version.txt")
+z:add_file("build.zig.zon", "manifest.txt")
 z:close_zip()
 ```
 
@@ -4468,7 +4468,7 @@ Returns `true` on success. On failure the call returns `nil, message` or raises 
 ```lua
 local zip = require "zip"
 local z = zip.create("out.zip")
-z:add_file("src/version", "version.txt", zip.level.max, "version file")
+z:add_file("build.zig.zon", "manifest.txt", zip.level.max, "manifest file")
 z:close_zip()
 ```
 
@@ -4533,7 +4533,7 @@ The archive remains open so another entry can be opened or added. Closing when n
 local zip = require "zip"
 local z = zip.create("out.zip")
 z:open("a.txt"):write("a"):close()
-z:add_file("src/version", "version.txt")
+z:add_file("build.zig.zon", "manifest.txt")
 z:close_zip()
 ```
 
@@ -8682,8 +8682,9 @@ The ZLI version string.
 
 Version string of the running ZLI build.
 
-The value comes from the version file embedded in the binary, for example
-`"0.2.1"`. It is a string and should be treated as read-only.
+The value comes from the `version` field in `build.zig.zon`, which is the
+single source of the project version. It is a string and should be treated as
+read-only.
 
 ```lua
 print(ZLI.version)

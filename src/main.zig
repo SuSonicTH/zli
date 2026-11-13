@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const build_options = @import("build_options");
 const zlua = @import("zlua");
 const libraries = @import("libraries.zig");
 const Utf8Output = @import("Utf8Output.zig");
@@ -228,7 +229,7 @@ fn printUsage(exe: []const u8) void {
 
 fn createZliTable(lua: *Lua) void {
     lua.newTable();
-    luax.setTableString(lua, -1, "version", @embedFile("version"));
+    luax.setTableString(lua, -1, "version", build_options.version);
     luax.setTableString(lua, -1, "error_handling", "return");
     luax.setTableString(lua, -1, "exe_path", prog_name);
     luax.setTableFunction(lua, -1, "dofile", zlua.wrap(zli_dofile));

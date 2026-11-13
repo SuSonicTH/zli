@@ -8,21 +8,24 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // The package manifest is the single source of the project version.
+    const version = packageVersion(b);
+
     const docs_payload = createDocsPayload(b);
 
     //normal build
-    const exe = compileStep(b, target, optimize, "zli");
+    const exe = compileStep(b, target, optimize, "zli", version);
     const payload_exe = attachPayload(b, exe.getEmittedBin(), exe.out_filename, optimize, docs_payload);
     const install_exe = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
     b.getInstallStep().dependOn(&install_exe.step);
 
     //release
     const release = b.step("release", "Build all cross-compilation targets in release mode");
-    releasebuild(b, release, docs_payload);
+    releasebuild(b, release, docs_payload, version);
 
     //native
     const native = b.step("native", "Build an optimized release binary for the host");
-    native.dependOn(nativebuild(b, docs_payload));
+    native.dependOn(nativebuild(b, docs_payload, version));
 
     //run
     const run_step = b.step("run", "Run the app");
@@ -74,6 +77,29 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_docgen_tests.step);
 }
 
+const PackageManifest = struct {
+    version: []const u8,
+};
+
+/// Read the package version from build.zig.zon so the manifest remains the
+/// single source of the project version.
+fn packageVersion(b: *std.Build) []const u8 {
+    const source = readFile(b, b.path("build.zig.zon"));
+    var diagnostics: std.zon.parse.Diagnostics = undefined;
+
+    const manifest = std.zon.parse.fromSlice(PackageManifest, .{
+        .gpa = b.allocator,
+        .arena = b.graph.arena,
+        .source = b.graph.arena.dupeSentinel(u8, source, 0) catch @panic("OOM"),
+        .diagnostics = &diagnostics,
+        .ignore_unknown_fields = true,
+    }) catch {
+        diagnostics.fatal("build.zig.zon");
+    };
+
+    return manifest.version;
+}
+
 const TargetConfig = struct {
     query: std.Target.Query,
     suffix: []const u8,
@@ -85,7 +111,12 @@ const release_targets = [_]TargetConfig{
     .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows }, .suffix = "x86_64-windows" },
 };
 
-fn releasebuild(b: *std.Build, release: *std.Build.Step, docs_payload: std.Build.LazyPath) void {
+fn releasebuild(
+    b: *std.Build,
+    release: *std.Build.Step,
+    docs_payload: std.Build.LazyPath,
+    version: []const u8,
+) void {
     const zupx = b.dependency("zupx", .{
         .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
@@ -93,8 +124,8 @@ fn releasebuild(b: *std.Build, release: *std.Build.Step, docs_payload: std.Build
 
     for (release_targets) |config| {
         const target = b.resolveTargetQuery(config.query);
-        const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, @embedFile("src/version") });
-        const exe = compileStep(b, target, std.builtin.OptimizeMode.fast, exe_name);
+        const exe_name = b.fmt("zli-{s}-{s}", .{ config.suffix, version });
+        const exe = compileStep(b, target, std.builtin.OptimizeMode.fast, exe_name, version);
         const packed_path = upxPack(b, zupx, exe, exe.out_filename);
         const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast, docs_payload);
         const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
@@ -116,20 +147,30 @@ fn upxPack(
     return packed_path;
 }
 
-fn nativebuild(b: *std.Build, docs_payload: std.Build.LazyPath) *std.Build.Step {
+fn nativebuild(
+    b: *std.Build,
+    docs_payload: std.Build.LazyPath,
+    version: []const u8,
+) *std.Build.Step {
     const zupx = b.dependency("zupx", .{
         .optimize = std.builtin.OptimizeMode.fast,
         .target = b.graph.host,
     });
 
-    const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.fast, "zli");
+    const exe = compileStep(b, b.graph.host, std.builtin.OptimizeMode.fast, "zli", version);
     const packed_path = upxPack(b, zupx, exe, exe.out_filename);
     const payload_exe = attachPayload(b, packed_path, exe.out_filename, std.builtin.OptimizeMode.fast, docs_payload);
     const install_artifact = b.addInstallFileWithDir(payload_exe, .bin, exe.out_filename);
     return &install_artifact.step;
 }
 
-fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, exe_name: []const u8) *std.Build.Step.Compile {
+fn compileStep(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    exe_name: []const u8,
+    version: []const u8,
+) *std.Build.Step.Compile {
     const zlua = b.dependency("zlua", .{
         .target = target,
         .optimize = optimize,
@@ -154,6 +195,10 @@ fn compileStep(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     exe.root_module.addIncludePath(b.path("src/"));
     exe.root_module.addImport("zlua", zlua.module("zlua"));
+
+    const options = b.addOptions();
+    options.addOption([]const u8, "version", version);
+    exe.root_module.addOptions("build_options", options);
 
     //add lualibs (strip for non debug)
     luaLibs(b, optimize, exe.root_module);
