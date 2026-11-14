@@ -1,13 +1,13 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.2.1",
+    .version = "0.2.2",
     .minimum_zig_version = "0.17.0",
     .paths = .{""},
     .dependencies = .{
         .zlua = .{
-            .url = "git+https://github.com/natecraddock/ziglua#ce59a325718d00c4b24364d482f9efa370a9bf09",
-            .hash = "zlua-0.1.0-hGRpCwmZBQDixqie-LjxX4vsguYaVT77Hd17csjHvQ5Y",
+            .url = "git+https://github.com/natecraddock/ziglua#89b445c92113170c4ca2ff16b256cd24f300c743",
+            .hash = "zlua-0.1.0-hGRpC1yrBQD9E43yOh9oeuNDrmg2hQwCD_3GmJdI1bCn",
         },
         .lua55 = .{
             .url = "https://www.lua.org/ftp/lua-5.5.1.tar.gz",
@@ -22,8 +22,8 @@
             .hash = "N-V-__8AANUoAABZy2z8_DNNh7W51acj8f9rGMgkL5VZkk1g",
         },
         .luaunit = .{
-            .url = "https://github.com/bluebird75/luaunit/archive/f268175c64fb568dfa5e1e95c047fa5acaa7d8cc.tar.gz",
-            .hash = "N-V-__8AADivCwAQX-yCr-DXRJij9rrxGYXfXDfoeuBcwdCU",
+            .url = "https://github.com/bluebird75/luaunit/archive/cd1311c20046a37cba76491d26bc7f748590ea17.tar.gz",
+            .hash = "N-V-__8AAA3pCwBWIZJhc2vZPJgaMnvLelBybeTG95rm77OP",
         },
         .serpent = .{
             .url = "https://github.com/pkulchenko/serpent/archive/139fc18263bc5ffecc1729147891f1eb383046bf.tar.gz",
@@ -46,16 +46,16 @@
             .hash = "N-V-__8AACfxAwCvtHcpvfm07uO8haEdr4NR81k5xib8pjbB",
         },
         .lsqlite3 = .{
-            .url = "https://github.com/SuSonicTH/lsqlite3/archive/c19ef2d599a7b349adb8361b7fea3228e0891e4a.tar.gz",
-            .hash = "N-V-__8AANVMfgBrHNqt5laBYX0z9m8cuBrGearI-i6qDej-",
+            .url = "https://github.com/SuSonicTH/lsqlite3/archive/369a3ce59097f7793d394b864c1b1d91515b25a5.tar.gz",
+            .hash = "N-V-__8AACDuoACsI5RS7CBVhMPYhU7igQrp2P_7QFzeNn8T",
         },
         .zupx = .{
             .url = "https://github.com/SuSonicTH/zupx/archive/refs/tags/v0.2.0.tar.gz",
             .hash = "zupx-0.2.0-rouXWVAbAAAFN_K6ds95pGAgwMm0vkUf1VPaMDRRYG3o",
         },
         .md4c = .{
-            .url = "https://github.com/mity/md4c/archive/refs/tags/v0.6.0.tar.gz",
-            .hash = "N-V-__8AAEVDEgAtMuYZhXcl61grSDsy5AEXDjgWT0yKUDNs",
+            .url = "https://github.com/mity/md4c/archive/f9e5eb232b95b737373ae706648cb75bd259ed1a.tar.gz",
+            .hash = "N-V-__8AAN3DEgBavPIZJ2b1Vf9IcH3iCt8pR0iAm2NH5HkH",
         },
         .tinytoml = .{
             .url = "https://github.com/FourierTransformer/tinytoml/archive/5517aa5d398ae0c992799decc460ec253a62552a.tar.gz",
