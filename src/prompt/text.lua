@@ -39,7 +39,7 @@ end
 
 function M.summary_value(theme, value, mask)
     if mask then
-        return string.rep(theme.symbol("mask"), math.min(codepoint_count(value), 12))
+        return string.rep(mask, math.min(codepoint_count(value), 12))
     end
     if value == "" then return '""' end
     return value
@@ -131,6 +131,7 @@ function M.run(options, field)
     end
 
     local function on_event(event)
+        if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
         if event.type == "key" or event.type == "paste" then
             state.error = nil
             local action = editor:feed(event)

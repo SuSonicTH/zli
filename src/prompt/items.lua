@@ -78,6 +78,9 @@ end
 
 function M.default_set(items, default, default_indices)
     local set = {}
+    for _, item in ipairs(items) do
+        if item.checked and not item.disabled then set[item.index] = true end
+    end
     if type(default_indices) == "table" then
         for _, index in ipairs(default_indices) do
             if items[index] and not items[index].disabled then set[index] = true end
@@ -93,6 +96,13 @@ function M.default_set(items, default, default_indices)
         if index and not items[index].disabled then set[index] = true end
     end
     return set
+end
+
+function M.has_checked(items)
+    for _, item in ipairs(items) do
+        if item.checked and not item.disabled then return true end
+    end
+    return false
 end
 
 function M.selected_values(items, set)

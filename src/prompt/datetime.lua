@@ -31,14 +31,6 @@ local function validate(options)
     end
 end
 
-local function eof_result(default)
-    local policy = config.get("eof")
-    if policy == "error" then error("prompt.datetime: end of input", 3) end
-    if policy == "nil" then return nil, "eof" end
-    if default ~= nil then return default end
-    return nil, "eof"
-end
-
 local function fallback_run(options, default, seconds)
     local shown = default and dates.format_datetime(default, seconds) or ""
     io.write("? " .. options.message .. (shown ~= "" and (" [" .. shown .. "]") or "") ..
@@ -47,8 +39,10 @@ local function fallback_run(options, default, seconds)
     while true do
         local line = io.read("l")
         if line == nil then
-            if default then return dates.to_result(default, options, true) end
-            return eof_result(nil)
+            local policy = config.get("eof")
+            if policy == "error" then error("prompt.datetime: end of input", 3) end
+            if policy == "nil" then return nil, "eof" end
+            return dates.to_result(default, options, true)
         end
         line = line:gsub("^%s+", ""):gsub("%s+$", "")
         local value = line == "" and default or dates.parse_datetime(line)
@@ -66,10 +60,10 @@ function M.run(options)
     validate(options)
     local seconds = options.seconds == true
     local theme = theme_mod.build()
-    local selected = dates.from_value(options.default) or dates.today()
-    if not selected.year then error("prompt.datetime: default must be a date and time", 3) end
     local min_day = dates.bounds(options.min, false)
     local max_day = dates.bounds(options.max, false)
+    local selected = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
+    if not selected.year then error("prompt.datetime: default must be a date and time", 3) end
 
     local state = {
         hour = selected.hour or 0, min = selected.min or 0, sec = selected.sec or 0,
@@ -350,7 +344,9 @@ return function(options)
     options = options or {}
     validate(options)
     if not config.is_interactive() then
-        local default = dates.from_value(options.default) or dates.today()
+        local min_day = dates.bounds(options.min, false)
+        local max_day = dates.bounds(options.max, false)
+        local default = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
         return fallback_run(options, default, options.seconds == true)
     end
     return M.run(options)

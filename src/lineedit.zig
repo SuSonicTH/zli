@@ -603,6 +603,7 @@ pub const Editor = struct {
     }
 
     fn insertByte(self: *Editor, byte: u8) !void {
+        if (self.atMaxLength()) return;
         try self.buffer.replaceRange(self.allocator, self.cursor, 0, &.{byte});
         self.cursor += 1;
         self.goal = null;

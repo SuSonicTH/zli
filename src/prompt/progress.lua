@@ -235,7 +235,7 @@ function M.each(items, options)
     if progress_options.label == nil then progress_options.label = "Working" end
     local progress = Progress:new(progress_options)
     local index = 0
-    return function()
+    local function iterator()
         index = index + 1
         if index > #items then
             progress:finish()
@@ -244,6 +244,7 @@ function M.each(items, options)
         progress:update(index - 1)
         return index, items[index]
     end
+    return iterator, nil, nil, progress
 end
 
 return setmetatable({ each = M.each }, { __call = function(_, options) return M.progress(options) end })

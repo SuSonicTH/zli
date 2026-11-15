@@ -38,10 +38,19 @@ local function summary_text(value)
     return first .. " … +" .. lines .. " lines"
 end
 
+local function codepoint_count(text)
+    local count = 0
+    for _ in utf8.codes(text) do count = count + 1 end
+    return count
+end
+
 local function check_value(options, value)
     if options.trim then value = value:gsub("^%s+", ""):gsub("%s+$", "") end
     if options.required and value == "" then
         return nil, "An answer is required."
+    end
+    if options.max_length and codepoint_count(value) > options.max_length then
+        return nil, "Use at most " .. options.max_length .. " characters."
     end
     if options.validate then
         local ok, message = options.validate(value)
@@ -119,6 +128,7 @@ function M.run(options)
     end
 
     local function on_event(event)
+        if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
         if event.type == "key" or event.type == "paste" then
             state.error = nil
             local action = editor:feed(event)

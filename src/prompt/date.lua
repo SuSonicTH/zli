@@ -35,14 +35,6 @@ local function term_size()
     return size
 end
 
-local function eof_result(default)
-    local policy = config.get("eof")
-    if policy == "error" then error("prompt.date: end of input", 3) end
-    if policy == "nil" then return nil, "eof" end
-    if default ~= nil then return default end
-    return nil, "eof"
-end
-
 local function fallback_run(options, default, min_day, max_day)
     local shown = default and dates.format_date(default) or ""
     io.write("? " .. options.message .. (shown ~= "" and (" [" .. shown .. "]") or "") .. " (YYYY-MM-DD): ")
@@ -50,8 +42,10 @@ local function fallback_run(options, default, min_day, max_day)
     while true do
         local line = io.read("l")
         if line == nil then
-            if default then return dates.to_result(default, options, false) end
-            return eof_result(nil)
+            local policy = config.get("eof")
+            if policy == "error" then error("prompt.date: end of input", 3) end
+            if policy == "nil" then return nil, "eof" end
+            return dates.to_result(default, options, false)
         end
         line = line:gsub("^%s+", ""):gsub("%s+$", "")
         local value = line == "" and default or dates.parse_date(line)
@@ -75,7 +69,7 @@ function M.run(options)
     local max_day = dates.bounds(options.max, false)
     local theme = theme_mod.build()
 
-    local selected = dates.from_value(options.default) or dates.today()
+    local selected = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
     if not selected.year then error("prompt.date: default must be a date", 3) end
     local state = { error = nil, width = 0, focus = false }
     local entry = editor_mod.new(20, 1, {
@@ -302,8 +296,10 @@ return function(options)
     options = options or {}
     validate(options)
     if not config.is_interactive() then
-        local default = dates.from_value(options.default) or dates.today()
-        return fallback_run(options, default, dates.bounds(options.min, false), dates.bounds(options.max, false))
+        local min_day = dates.bounds(options.min, false)
+        local max_day = dates.bounds(options.max, false)
+        local default = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
+        return fallback_run(options, default, min_day, max_day)
     end
     return M.run(options)
 end

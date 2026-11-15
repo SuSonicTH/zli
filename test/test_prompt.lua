@@ -12,6 +12,7 @@ function Test_prompt.Test_width_helpers()
     lu.assertEquals(3, prompt.width("abc"))
     lu.assertEquals(4, prompt.width("a界b"))
     lu.assertEquals(3, prompt.width("\27[31mabc\27[0m"))
+    lu.assertEquals(9, prompt.width("a\tb"))
 
     lu.assertEquals("a...", prompt.truncate("abcdef", 4))
     lu.assertEquals("abc…", prompt.truncate("abcdef", 4, "…"))
@@ -414,6 +415,113 @@ print(prompt.select { message = "Pick", items = { "a", "b" }, return_index = tru
     })
     lu.assertEquals(0, status, stdout)
     lu.assertStrContains(stdout, "2")
+end
+
+
+function Test_prompt.Test_esc_cancels_text_fields()
+    local result = drive({ key("esc") }, function()
+        return prompt.text { message = "Name" }
+    end)
+    lu.assertEquals("cancelled", result[2])
+
+    result = drive({ key("esc") }, function()
+        return prompt.multiline { message = "Body" }
+    end)
+    lu.assertEquals("cancelled", result[2])
+end
+
+function Test_prompt.Test_checked_items_are_initial_defaults()
+    local result = drive({ key("enter") }, function()
+        return prompt.multiselect {
+            message = "Pick",
+            items = { { label = "a", checked = true }, "b" },
+        }
+    end)
+    lu.assertEquals({ "a" }, result[1])
+end
+
+function Test_prompt.Test_multiline_max_length_blocks_newline()
+    local result = drive({
+        char("a"), key("enter", { alt = true }), key("enter"),
+    }, function()
+        return prompt.multiline { message = "Body", max_length = 1 }
+    end)
+    lu.assertEquals("a", result[1])
+end
+
+function Test_prompt.Test_password_summary_uses_mask()
+    local _, frames = drive({ char("a"), char("b"), key("enter") }, function()
+        return prompt.password { message = "P", mask = "X" }
+    end)
+    local summary = frames.commits[1].summary
+    lu.assertStrContains(render.plain(summary), "XX")
+end
+
+function Test_prompt.Test_filter_accepts_paste_and_space()
+    local result = drive({
+        { type = "paste", text = "bet" }, key("enter"),
+    }, function()
+        return prompt.select { message = "Pick", items = { "alpha", "beta" }, filter = true }
+    end)
+    lu.assertEquals("beta", result[1])
+
+    result = drive({ char("a"), char(" "), char("b"), key("enter") }, function()
+        return prompt.select { message = "Pick", items = { "a b", "zzz" }, filter = true }
+    end)
+    lu.assertEquals("a b", result[1])
+end
+
+function Test_prompt.Test_multiselect_alt_shortcuts_while_filtering()
+    local result = drive({
+        key("char", { char = "a", alt = true }), key("enter"),
+    }, function()
+        return prompt.multiselect { message = "Pick", items = { "a", "b" }, filter = true }
+    end)
+    lu.assertEquals({ "a", "b" }, result[1])
+end
+
+function Test_prompt.Test_date_default_is_clamped_to_bounds()
+    local result = drive({ key("enter") }, function()
+        return prompt.date {
+            message = "Date",
+            default = "2026-01-01",
+            min = "2026-06-01",
+            max = "2026-12-31",
+            as = "string",
+        }
+    end)
+    lu.assertEquals("2026-06-01", result[1])
+end
+
+function Test_prompt.Test_progress_each_returns_closing_value()
+    live.capture = {}
+    local iterator, state, initial, closing = prompt.progress.each({ "a" }, { min_interval = 0 })
+    lu.assertNotNil(closing)
+    local ok = pcall(function()
+        for _ in iterator, state, initial, closing do error("boom") end
+    end)
+    lu.assertFalse(ok)
+    lu.assertTrue(closing.finished)
+    live.capture = nil
+end
+
+function Test_prompt.Test_fallback_eof_policy()
+    local support = require "test/support"
+    local script = support.temp_file("prompt_eof", [[
+local prompt = require "prompt"
+prompt.configure { eof = "nil" }
+print("select=" .. tostring(prompt.select { message = "S", items = { "a" }, default = "a" }))
+print("confirm=" .. tostring(prompt.confirm { message = "C", default = true }))
+print("date=" .. tostring(prompt.date { message = "D", as = "string" }))
+]])
+    local stdout, status = support.run({ script }, {
+        home = support.temp_dir("prompt_home"),
+        stdin = "",
+    })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "select=nil")
+    lu.assertStrContains(stdout, "confirm=nil")
+    lu.assertStrContains(stdout, "date=nil")
 end
 
 if not RUN_ALL then

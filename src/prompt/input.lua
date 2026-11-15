@@ -40,15 +40,25 @@ function M.open()
     depth = depth + 1
 
     local session = {}
+    local last_size = term.size()
     function session:read()
         while true do
-            local event, message = term.read_event()
-            if event == nil then return { type = "eof", message = message } end
-            if event.type == "key" and event.kind == "release" then
+            local event, message = term.read_event(100)
+            if event == nil then
+                if message == "eof" then return { type = "eof" } end
+                local size = term.size()
+                if size and (last_size == nil
+                    or size.columns ~= last_size.columns
+                    or size.rows ~= last_size.rows) then
+                    last_size = size
+                    return { type = "resize", columns = size.columns, rows = size.rows }
+                end
+            elseif event.type == "key" and event.kind == "release" then
                 -- Ignore key releases; they are noise for every component.
             elseif event.type == "mouse" then
                 -- Mouse support is intentionally out of scope in v1.
             else
+                if event.type == "resize" then last_size = event end
                 return event
             end
         end
@@ -66,6 +76,10 @@ end
 
 function M.ctrl(ev, char)
     return ev and ev.type == "key" and ev.control and ev.code == "char" and ev.char == char
+end
+
+function M.alt_char(ev, char)
+    return ev and ev.type == "key" and ev.alt and ev.code == "char" and ev.char == char
 end
 
 function M.enter(ev)

@@ -12,7 +12,7 @@ Live.__index = Live
 
 function Live:new(screen)
     return setmetatable({
-        screen = screen or "inline",
+        screen = screen or require("prompt.config").get("screen"),
         theme = theme_mod.build(),
         active = false,
         alternate = false,
@@ -47,6 +47,7 @@ function Live:update(spans)
         term.move_to(1, 1)
         term.clear("line")
         self:write_line(spans)
+        term.show_cursor()
         term.flush()
         self.active = true
         return
@@ -56,6 +57,7 @@ function Live:update(spans)
     term.write("\r")
     term.clear("line")
     self:write_line(spans)
+    term.show_cursor()
     term.flush()
     self.active = true
 end

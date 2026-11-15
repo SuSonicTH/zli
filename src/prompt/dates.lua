@@ -182,6 +182,19 @@ function M.to_result(value, options, with_time)
     error("prompt: as must be 'table', 'string' or 'time'", 3)
 end
 
+function M.clamp(value, min_day, max_day)
+    local day = M.days_from_civil(value.year, value.month, value.day)
+    local target = day
+    if min_day and target < min_day then target = min_day end
+    if max_day and target > max_day then target = max_day end
+    if target == day then return value end
+    local year, month, date = M.civil_from_days(target)
+    local result = {}
+    for key, item in pairs(value) do result[key] = item end
+    result.year, result.month, result.day = year, month, date
+    return result
+end
+
 function M.bounds(value, is_time)
     if value == nil then return nil end
     local parsed = M.from_value(value)

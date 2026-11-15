@@ -61,7 +61,7 @@ function M.select(options, items, selected)
         if line == nil then
             local item = selected and items[selected]
             if item and item.disabled then item = first_enabled(items) end
-            if item then return answer(options, item) end
+            if item then return eof_result(answer(options, item)) end
             return eof_result(nil)
         end
         line = trim(line)
@@ -110,7 +110,7 @@ function M.multiselect(options, items, selected)
     while true do
         local line = read_line()
         if line == nil then
-            if options.has_default then return default_values(items, selected) end
+            if options.has_default then return eof_result(default_values(items, selected)) end
             return eof_result(nil)
         end
         line = trim(line):lower()
@@ -210,10 +210,7 @@ function M.confirm(options)
     out("? " .. options.message .. hint .. ": ")
     while true do
         local line = read_line()
-        if line == nil then
-            if default ~= nil then return default end
-            return eof_result(nil)
-        end
+        if line == nil then return eof_result(default) end
         line = trim(line):lower()
         if line == "" and default ~= nil then return default end
         if line == "y" or line == "yes" then return true end

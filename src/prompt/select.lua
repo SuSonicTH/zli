@@ -150,8 +150,11 @@ local function build(theme, options, state, multi)
 
     local help
     if multi then
-        help = "space toggle  a all  i invert  enter done  esc cancel"
-        if state.filter_enabled then help = help .. "  type to filter" end
+        if state.filter_enabled then
+            help = "space type  alt+a all  alt+i invert  enter done  esc cancel"
+        else
+            help = "space toggle  a all  i invert  enter done  esc cancel"
+        end
     else
         help = "arrows move  enter select  esc cancel"
         if state.filter_enabled then help = help .. "  type to filter" end
@@ -205,6 +208,12 @@ local function make_runner(options, multi)
     end
 
     local function on_event(event)
+        if event.type == "paste" and state.filter_enabled then
+            state.query = state.query .. event.text:gsub("[\r\n]+", " ")
+            state.top = 1
+            update_selection()
+            return "continue"
+        end
         if event.type == "key" then
             if input.cancel(event) then
                 if input.key(event, "esc") and state.query ~= "" then
@@ -295,9 +304,11 @@ local function make_runner(options, multi)
             end
 
             if multi then
-                local all = input.ctrl(event, "a") or (not state.filter_enabled and input.key(event, "char") and event.char == "a")
-                local invert = input.ctrl(event, "i") or (not state.filter_enabled and input.key(event, "char") and event.char == "i")
-                if input.key(event, "char") and event.char == " " then
+                local all = input.ctrl(event, "a") or input.alt_char(event, "a")
+                    or (not state.filter_enabled and input.key(event, "char") and event.char == "a")
+                local invert = input.alt_char(event, "i")
+                    or (not state.filter_enabled and input.key(event, "char") and event.char == "i")
+                if not state.filter_enabled and input.key(event, "char") and event.char == " " then
                     local item
                     for _, candidate in ipairs(state.items) do
                         if candidate.index == state.selected then item = candidate break end
@@ -383,7 +394,7 @@ function M.multiselect(options)
         validate(options)
         local items = items_mod.normalize(options.items)
         local checked = items_mod.default_set(items, options.default, options.default_indices)
-        options.has_default = options.default ~= nil or options.default_indices ~= nil
+        options.has_default = options.default ~= nil or options.default_indices ~= nil or items_mod.has_checked(items)
         return fallback.multiselect(options, items, checked)
     end
     return run()

@@ -258,6 +258,7 @@ fn lua_truncate(lua: *Lua) i32 {
 fn lua_wrap(lua: *Lua) i32 {
     const text = std.mem.sliceTo(lua.checkString(1), 0);
     const columns = columnArgument(lua, 2);
+    if (columns == 0) lua.argError(2, "expecting a positive column count");
 
     const result = width.wrap(text, columns, allocator) catch |err|
         return luaerror.ret(lua, "could not wrap the text: {s}", .{@errorName(err)});

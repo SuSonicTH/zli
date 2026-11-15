@@ -490,7 +490,11 @@ pub fn visibleWidth(s: []const u8) usize {
         }
         const decoded = decode(s, i);
         if (decoded.len == 0) break;
-        width += codepointWidth(decoded.codepoint);
+        if (decoded.codepoint == '\t') {
+            width += 8 - (width % 8);
+        } else {
+            width += codepointWidth(decoded.codepoint);
+        }
         i += decoded.len;
     }
     return width;
@@ -520,12 +524,50 @@ pub fn byteAtColumn(s: []const u8, start: usize, end: usize, columns: usize) usi
 
 /// Truncate `s` to at most `columns` display cells, appending `ellipsis` when
 /// content was removed. ANSI escape sequences are copied through unchanged.
+fn expandTabs(s: []const u8, allocator: std.mem.Allocator) ![]u8 {
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
+    var column: usize = 0;
+    var index: usize = 0;
+    while (index < s.len) {
+        if (s[index] == '\n') {
+            try out.append(allocator, '\n');
+            column = 0;
+            index += 1;
+            continue;
+        }
+        const skip = ansiSequenceLength(s, index);
+        if (skip != 0) {
+            try out.appendSlice(allocator, s[index .. index + skip]);
+            index += skip;
+            continue;
+        }
+        const decoded = decode(s, index);
+        if (decoded.len == 0) break;
+        if (decoded.codepoint == '\t') {
+            const advance = 8 - (column % 8);
+            try out.appendNTimes(allocator, ' ', advance);
+            column += advance;
+        } else {
+            try out.appendSlice(allocator, s[index .. index + decoded.len]);
+            column += codepointWidth(decoded.codepoint);
+        }
+        index += decoded.len;
+    }
+    return out.toOwnedSlice(allocator);
+}
+
 pub fn truncate(
     s: []const u8,
     columns: usize,
     ellipsis: []const u8,
     allocator: std.mem.Allocator,
 ) ![]u8 {
+    if (std.mem.indexOfScalar(u8, s, '\t') != null) {
+        const expanded = try expandTabs(s, allocator);
+        defer allocator.free(expanded);
+        return truncate(expanded, columns, ellipsis, allocator);
+    }
     if (visibleWidth(s) <= columns) return allocator.dupe(u8, s);
 
     const ellipsis_width = visibleWidth(ellipsis);
@@ -537,9 +579,11 @@ pub fn truncate(
 
     var i: usize = 0;
     var used: usize = 0;
+    var had_ansi = false;
     while (i < s.len) {
         const skip = ansiSequenceLength(s, i);
         if (skip != 0) {
+            had_ansi = true;
             try out.appendSlice(allocator, s[i .. i + skip]);
             i += skip;
             continue;
@@ -554,6 +598,7 @@ pub fn truncate(
     }
 
     if (add_ellipsis) try out.appendSlice(allocator, ellipsis);
+    if (had_ansi) try out.appendSlice(allocator, "\x1b[0m");
     return out.toOwnedSlice(allocator);
 }
 
@@ -654,6 +699,11 @@ test "ascii and ansi width" {
     try std.testing.expectEqual(@as(usize, 0), visibleWidth("\x1b[38;5;12m"));
 }
 
+test "tabs advance to eight column stops" {
+    try std.testing.expectEqual(@as(usize, 9), visibleWidth("a\tb"));
+    try std.testing.expectEqual(@as(usize, 8), visibleWidth("\t"));
+}
+
 test "wide and combining characters" {
     try std.testing.expectEqual(@as(usize, 2), visibleWidth("界"));
     try std.testing.expectEqual(@as(usize, 0), visibleWidth("\u{0301}"));
@@ -705,7 +755,7 @@ test "truncate respects display columns and ellipsis" {
 
     const ansi = try truncate("\x1b[31mabcdef\x1b[0m", 5, "...", allocator);
     defer allocator.free(ansi);
-    try std.testing.expectEqualStrings("\x1b[31mab...", ansi);
+    try std.testing.expectEqualStrings("\x1b[31mab...\x1b[0m", ansi);
 }
 
 test "wrap breaks on display columns" {

@@ -1644,8 +1644,13 @@ List items are strings or tables:
 | `disabled` | Item cannot be selected or toggled. |
 | `checked` | Initial state in a multiselect. |
 
-Common options are `message`, `screen`, `commit`, `default`, `default_index`,
-`default_indices`, `required`, `validate`, `min`, `max` and `page_size`.
+Every component accepts `message` and `screen`.  Components that show a
+transient frame also accept `commit`.  List components add `items`, `default`,
+`default_index`, `default_indices`, `filter` and `page_size`; multiselect adds
+`min`, `max` and `required`; text fields add `default`, `placeholder`,
+`max_length`, `required`, `trim` and `validate`.  Unsupported options are
+ignored, so consult the entry for each component.
+
 `commit` is one of:
 
 | value | result after the component finishes |
@@ -1661,8 +1666,9 @@ List keys:
 | Up/Down, k/j | Move the selection when filtering is disabled. |
 | Home/End, Page Up/Page Down | Jump to the first/last item or move a page. |
 | Enter | Accept the selection or finish the multiselect. |
-| Space | Toggle the current multiselect item. |
-| a, i | Select all or invert visible multiselect items when filtering is off (use Ctrl+A/Ctrl+I while filtering). |
+| Space | Toggle the current multiselect item when filtering is off; while filtering it is part of the query. |
+| a, i | Select all or invert visible multiselect items when filtering is off. |
+| Alt+A, Alt+I | Select all or invert visible items while filtering. |
 | Esc | Clear a filter first, then cancel. |
 | Printable characters | Filter the list when `filter` is enabled. |
 
@@ -1716,9 +1722,10 @@ Call `fn` with the default screen mode temporarily set to `mode`, then restore
 the previous mode even when `fn` raises.  `mode` is `"inline"` or
 `"alternate"`.
 
-Alternate mode enters the alternate screen once and leaves it after `fn`
-returns.  The return values of `fn` are returned unchanged.  This is useful for
-a sequence of prompts or a form that should share one full-screen presentation.
+Each component still manages its own alternate screen; this helper only changes
+the default used by components inside `fn`, so callers do not have to repeat
+`screen = "alternate"` on every prompt.  The return values of `fn` are returned
+unchanged.
 
 #### `prompt.is_interactive()`
 
@@ -1740,8 +1747,7 @@ index instead.
 `default` is a value and `default_index` is an index; the default is skipped
 when the item is disabled.  `filter` accepts `true`, `false` or `"auto"`;
 `"auto"` enables type-to-filter when there are more items than `page_size`.
-`format` is reserved for custom item rendering.  Disabled items are shown but
-cannot be selected.
+Disabled items are shown but cannot be selected.
 
 #### `prompt.multiselect(options)`
 
@@ -1749,7 +1755,7 @@ Choose zero or more items from a list.
 
 Return an array of selected values in item order.  Use Space to toggle the
 current item, `a` to select everything visible, `i` to invert the visible
-items (Ctrl+A and Ctrl+I while filtering) and Enter to finish.  `default` is an array of values and
+items (Alt+A and Alt+I while filtering) and Enter to finish.  `default` is an array of values and
 `default_indices` is an array of indices; both may be combined.
 
 `min` and `max` constrain the number of selected items.  `required = true`
@@ -1787,7 +1793,8 @@ Read a masked secret.
 
 Read text with every character replaced by a mask glyph.  `mask` overrides
 the default `•` (or `*` in ASCII mode).  `confirm = true` asks for the value a
-second time and repeats both prompts until they match.
+second time and repeats both prompts until they match.  `confirm_message`
+replaces the default confirmation question.
 
 The value is returned as entered; only the display and the summary are masked.
 The plain-text fallback cannot disable terminal echo, so masking requires a
@@ -1814,8 +1821,9 @@ controlled by `as`: `"table"` (the default) returns `{ year, month, day }`,
 A custom `format` is passed to `os.date` when `as = "string"`.
 
 `default`, `min` and `max` accept a table, an ISO string or an `os.time`
-number.  Dates outside the bounds are dimmed and cannot be selected.
-`week_start` is `"monday"` (the default) or `"sunday"`.
+number.  Dates outside the bounds are dimmed and cannot be selected; a default
+outside the range is clamped to the nearest bound.  `week_start` is `"monday"`
+(the default) or `"sunday"`.
 
 #### `prompt.time(options)`
 
@@ -1835,12 +1843,13 @@ returns `os.time` for today's date at the chosen time.
 Pick a date and a time together.
 
 Show the calendar and time segments in one frame.  Tab switches between the
-date and time sections; the date and time keys documented for `prompt.date`
-and `prompt.time` apply to the active section.
+date and time sections; the calendar keys and the time segment keys documented
+for `prompt.date` and `prompt.time` apply to the active section.  The time is
+always shown in 24-hour form; `hour24` is not supported here.
 
 The result format follows `prompt.date` and includes `hour`, `min` and `sec`
 when `as = "table"`.  `seconds` controls the time precision and `min`/`max`
-bound the date portion.  The typed entry accepts
+bound the date portion; a default outside the date bounds is clamped.  The typed entry accepts
 `YYYY-MM-DD HH:MM[:SS]`.
 
 #### `prompt.progress(options)`
@@ -1855,8 +1864,9 @@ indeterminate animated bar.  `items` may supply the total from an array.
 `bar_width` sets the bar width.  `template` replaces the default layout and
 supports `{label}`, `{bar}`, `{percent}`, `{count}`, `{total}`, `{items}`,
 `{elapsed}`, `{rate}` and `{eta}`.  Unknown fields raise an error.
-`min_interval` throttles redraws; `screen = "alternate"` draws the bar in the
-alternate screen and prints the final status after leaving it.
+`min_interval` throttles redraws; `screen = "alternate"` (or the global
+`screen` default) draws the bar in the alternate screen and prints the final
+status after leaving it.
 
 #### `prompt.progress.each(items [, options])`
 
@@ -1873,8 +1883,9 @@ for index, item in prompt.progress.each(files, { label = "Copying" }) do
 end
 ```
 
-If the loop body raises, wrap it in `pcall` or keep a progress object so the
-caller can call `fail` explicitly.
+The iterator returns a to-be-closed progress object, so an error in the loop
+body clears the live line automatically.  To report a failure in the transcript,
+use an explicit progress object and call `fail` instead.
 
 #### `prompt.spinner(options)`
 
@@ -1883,7 +1894,8 @@ Create a time-throttled spinner.
 Return a spinner object.  `text` is the message beside the animation and
 `frames` overrides the Unicode dot or ASCII frame set.  `interval` is the
 minimum time between frames and defaults to 0.08 seconds.
-`show_elapsed = true` appends the elapsed time.
+`show_elapsed = true` appends the elapsed time.  `screen = "alternate"` (or the
+global default) uses the alternate screen.
 
 Call `step()` from the working loop.  A spinner cannot animate during a
 blocking C call, so code that never calls `step` shows no movement.
@@ -1893,24 +1905,27 @@ blocking C call, so code that never calls `step` shows no movement.
 Measure terminal display width.
 
 Return the number of display cells used by `text`.  Wide CJK characters and
-emoji count as two cells, combining marks count as zero and ANSI escape
-sequences are ignored.  This is the same measurement used by the renderer.
+emoji count as two cells, combining marks count as zero, tabs advance to the
+next eight-column stop and ANSI escape sequences are ignored.  This is the same
+measurement used by the renderer.
 
 #### `prompt.truncate(text, columns [, ellipsis])`
 
 Truncate text to display columns.
 
 Return `text` limited to `columns` display cells.  When the text is longer,
-`ellipsis` (default `"..."`) is appended inside the budget.  ANSI escape
-sequences are copied so styled input does not leak broken escape codes.
+`ellipsis` (default `"..."`) is appended inside the budget.  Tabs expand to
+eight-column stops.  ANSI escape sequences are copied and a reset is appended
+when styled text is cut, so colour cannot leak into later output.
 
 #### `prompt.wrap(text, columns)`
 
 Wrap text at display columns.
 
 Return `text` with newlines inserted so each display row is at most `columns`
-cells wide.  Existing newlines are preserved, tabs expand to eight-column stops
-and ANSI escape sequences do not count towards the width.
+cells wide.  `columns` must be at least 1.  Existing newlines are preserved,
+tabs expand to eight-column stops and ANSI escape sequences do not count
+towards the width.
 
 #### `progress:update(value)`
 
@@ -7964,19 +7979,19 @@ Return a table `{ columns = , rows = }` with the current terminal dimensions.  R
 
 Measure the display width of text.
 
-Return the number of terminal cells used by `text`. Wide characters count as two cells, combining marks as zero and ANSI escape sequences are ignored. This works without a terminal and is safe in pipes.
+Return the number of terminal cells used by `text`. Wide characters count as two cells, combining marks as zero, tabs advance to the next eight-column stop and ANSI escape sequences are ignored. This works without a terminal and is safe in pipes.
 
 #### `term.truncate(text, columns [, ellipsis])`
 
 Truncate text to a display width.
 
-Return `text` limited to `columns` terminal cells, appending `ellipsis` (default `"..."`) when content was removed. ANSI escape sequences are preserved and do not count towards the width.
+Return `text` limited to `columns` terminal cells, appending `ellipsis` (default `"..."`) when content was removed. Tabs expand to eight-column stops and ANSI escape sequences do not count towards the width. When styled input is cut, a reset sequence is appended so colour cannot leak.
 
 #### `term.wrap(text, columns)`
 
 Wrap text at a display width.
 
-Return `text` with newlines inserted so each display row is at most `columns` cells wide. Existing newlines are kept, tabs expand to eight-column stops and ANSI escape sequences are copied unchanged.
+Return `text` with newlines inserted so each display row is at most `columns` cells wide. `columns` must be at least 1. Existing newlines are kept, tabs expand to eight-column stops and ANSI escape sequences are copied unchanged.
 
 #### `term.clear([what])`
 
