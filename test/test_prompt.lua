@@ -568,6 +568,61 @@ function Test_prompt.Test_date_rejects_date_less_bounds_and_tables()
     end)
 end
 
+
+function Test_prompt.Test_progress_and_spinner_use_monotonic_seconds()
+    local real_nanotime = os.nanotime
+    local now = 100
+    os.nanotime = function() return now end
+
+    live.capture = {}
+    local progress = prompt.progress { total = 10, label = "P", min_interval = 1 }
+    progress:update(1)
+    progress:update(2)
+    now = 100.5
+    progress:update(3)
+    now = 101.1
+    progress:update(4)
+    local updates = 0
+    for _, entry in ipairs(live.capture) do
+        if entry.kind == "update" then updates = updates + 1 end
+    end
+    progress:finish()
+
+    now = 100
+    live.capture = {}
+    local spinner = prompt.spinner { text = "S", interval = 1 }
+    spinner:step(nil, true)
+    spinner:step()
+    now = 100.5
+    spinner:step()
+    now = 101.1
+    spinner:step()
+    local spins = 0
+    for _, entry in ipairs(live.capture) do
+        if entry.kind == "update" then spins = spins + 1 end
+    end
+    spinner:finish()
+
+    live.capture = nil
+    os.nanotime = real_nanotime
+    lu.assertEquals(2, updates)
+    lu.assertEquals(2, spins)
+end
+
+function Test_prompt.Test_password_default_confirms_in_fallback()
+    local support = require "test/support"
+    local script = support.temp_file("prompt_password_default", [[
+local prompt = require "prompt"
+print(prompt.password { message = "P", default = "secret", confirm = true })
+]])
+    local stdout, status = support.run({ script }, {
+        home = support.temp_dir("prompt_home"),
+        stdin = "\n\n",
+    })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "secret")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

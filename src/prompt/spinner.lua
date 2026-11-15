@@ -62,7 +62,7 @@ function Spinner:line()
         render.span(" " .. self.text, "message"),
     }
     if self.options.show_elapsed then
-        local elapsed = (os.nanotime() - self.started) / 1e9
+        local elapsed = os.nanotime() - self.started
         spans[#spans + 1] = render.span(" " .. duration(elapsed), "muted")
     end
     return spans
@@ -73,7 +73,7 @@ function Spinner:step(text, force)
     if text ~= nil then self.text = tostring(text) end
     local now = os.nanotime()
     if not self.rendered then force = true end
-    if not force and (now - self.last_render) / 1e9 < self.interval then return self end
+    if not force and (now - self.last_render) < self.interval then return self end
     self.last_render = now
     self.rendered = true
     self.index = self.index + 1

@@ -34,6 +34,7 @@ function M.run(options)
         local confirmation = options.confirm_message or (options.message .. " (confirm)")
         local second, second_err = text.run({
             message = confirmation,
+            default = options.default,
             max_length = options.max_length,
             screen = options.screen,
             commit = options.commit,
@@ -55,7 +56,10 @@ return function(options)
             local first, err = fallback.password(options)
             if first == nil then return first, err end
             if not options.confirm then return first end
-            local second = fallback.password { message = options.message .. " (confirm)" }
+            local second = fallback.password {
+                message = options.message .. " (confirm)",
+                default = options.default,
+            }
             if second == nil then return nil, "eof" end
             if first == second then return first end
             io.write("Passwords do not match.\n")

@@ -182,7 +182,7 @@ function M.text(options, default)
 end
 
 function M.password(options)
-    return prompt_text(options, nil, true)
+    return prompt_text(options, options.default, true)
 end
 
 function M.multiline(options, default)

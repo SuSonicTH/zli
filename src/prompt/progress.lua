@@ -94,7 +94,7 @@ function Progress:bar(width)
         local fill = math.floor(ratio * width)
         for index = 1, width do parts[index] = index <= fill and full or empty end
     else
-        local elapsed = (os.nanotime() - self.started) / 1e9
+        local elapsed = os.nanotime() - self.started
         local block = math.max(3, math.floor(width / 5))
         local position = math.floor(elapsed * 8) % (width + block)
         for index = 1, width do
@@ -117,7 +117,7 @@ function Progress:value(name, width)
     end
     if name == "total" then return self.total and tostring(self.total) or "" end
     if name == "items" then return self.options.items and tostring(#self.options.items) or "" end
-    local elapsed = math.max(0, (os.nanotime() - self.started) / 1e9)
+    local elapsed = math.max(0, os.nanotime() - self.started)
     if name == "elapsed" then return duration(elapsed) end
     if name == "rate" then
         if elapsed <= 0 then return "0/s" end
@@ -166,7 +166,7 @@ function Progress:draw(force)
     if self.finished then return self end
     local now = os.nanotime()
     if not self.rendered then force = true end
-    if not force and (now - self.last_render) / 1e9 < self.interval then return self end
+    if not force and (now - self.last_render) < self.interval then return self end
     self.last_render = now
     self.rendered = true
     self.live:update(self:line())

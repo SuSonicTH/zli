@@ -1711,6 +1711,7 @@ Merge `options` into the process-wide prompt configuration and return the
 `"unicode"` or `"ascii"`.  `commit` accepts `"summary"`, `"frame"` or `"none"`.
 `screen` accepts `"inline"` or `"alternate"`.  `eof` accepts `"default"`,
 `"nil"` or `"error"` and controls the plain fallback when input ends.
+`spinner_interval` and `progress_interval` are redraw intervals in seconds.
 
 Invalid keys or values raise an error instead of being ignored.
 
@@ -1865,7 +1866,7 @@ indeterminate animated bar.  `items` may supply the total from an array.
 `bar_width` sets the bar width.  `template` replaces the default layout and
 supports `{label}`, `{bar}`, `{percent}`, `{count}`, `{total}`, `{items}`,
 `{elapsed}`, `{rate}` and `{eta}`.  Unknown fields raise an error.
-`min_interval` throttles redraws; `screen = "alternate"` (or the global
+`min_interval` throttles redraws in seconds; `screen = "alternate"` (or the global
 `screen` default) draws the bar in the alternate screen and prints the final
 status after leaving it.
 
