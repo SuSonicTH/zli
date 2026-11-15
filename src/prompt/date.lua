@@ -23,6 +23,9 @@ local function validate(options)
     if options.week_start ~= nil and options.week_start ~= "monday" and options.week_start ~= "sunday" then
         error("prompt.date: week_start must be 'monday' or 'sunday'", 3)
     end
+    if options.format ~= nil and type(options.format) ~= "string" then
+        error("prompt.date: format must be a string", 3)
+    end
 end
 
 local function term_size()
@@ -215,6 +218,7 @@ function M.run(options)
 
         if state.focus then
             if event.type == "key" or event.type == "paste" then
+                state.error = nil
                 local action = entry:feed(event)
                 if action == "submit" then
                     apply_entry()
@@ -264,9 +268,13 @@ function M.run(options)
             sync_entry()
             return "continue"
         elseif input.key(event, "home") then
-            moved = -(dates.weekday(selected.year, selected.month, selected.day) - 1)
+            local weekday = dates.weekday(selected.year, selected.month, selected.day)
+            local offset = options.week_start == "sunday" and (weekday % 7) or (weekday - 1)
+            moved = -offset
         elseif input.key(event, "end") then
-            moved = 7 - dates.weekday(selected.year, selected.month, selected.day)
+            local weekday = dates.weekday(selected.year, selected.month, selected.day)
+            local offset = options.week_start == "sunday" and (weekday % 7) or (weekday - 1)
+            moved = 6 - offset
         elseif char == "t" then
             local today = dates.today()
             set_days(dates.days_from_civil(today.year, today.month, today.day))

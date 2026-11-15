@@ -223,6 +223,7 @@ pub const Editor = struct {
     /// touching the terminal.
     pub fn begin(self: *Editor, size: Size) !void {
         try self.appendSanitised(self.options.initial);
+        self.applyInitialLimit();
         self.cursor = self.buffer.items.len;
         self.history_index = if (self.options.history) |h| h.count() else 0;
         self.size = size;
@@ -261,7 +262,19 @@ pub const Editor = struct {
         self.goal = null;
         self.top = 0;
         try self.appendSanitised(text);
+        self.applyInitialLimit();
         self.cursor = self.buffer.items.len;
+    }
+
+    fn applyInitialLimit(self: *Editor) void {
+        const limit = self.options.max_length orelse return;
+        var index: usize = 0;
+        var count: usize = 0;
+        while (index < self.buffer.items.len and count < limit) {
+            index = width.nextBoundary(self.buffer.items, index);
+            count += 1;
+        }
+        if (index < self.buffer.items.len) self.buffer.shrinkRetainingCapacity(index);
     }
 
     pub fn run(self: *Editor) !Result {

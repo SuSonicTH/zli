@@ -86,7 +86,9 @@ local function key(code, extra)
 end
 
 local function char(value, extra)
-    return key("char", { char = value, [1] = extra })
+    local event = { type = "key", code = "char", char = value }
+    for name, item in pairs(extra or {}) do event[name] = item end
+    return event
 end
 
 function Test_prompt.Test_select_navigation_and_default()
@@ -373,6 +375,45 @@ s:finish("Fetched")
     lu.assertStrContains(stdout, "Copied")
     lu.assertStrContains(stdout, "Fetched")
     lu.assertNotStrContains(stdout, "[")
+end
+
+
+function Test_prompt.Test_date_week_starts()
+    local result = drive({ key("home"), key("enter") }, function()
+        return prompt.date {
+            message = "Date",
+            default = "2026-11-15",
+            week_start = "sunday",
+            as = "string",
+        }
+    end)
+    lu.assertEquals("2026-11-15", result[1])
+
+    result = drive({ key("home"), key("enter") }, function()
+        return prompt.date { message = "Date", default = "2026-11-15", as = "string" }
+    end)
+    lu.assertEquals("2026-11-09", result[1])
+end
+
+function Test_prompt.Test_text_max_length_applies_to_default()
+    local result = drive({ key("enter") }, function()
+        return prompt.text { message = "Name", default = "abcdef", max_length = 3 }
+    end)
+    lu.assertEquals("abc", result[1])
+end
+
+function Test_prompt.Test_fallback_select_return_index()
+    local support = require "test/support"
+    local script = support.temp_file("prompt_index", [[
+local prompt = require "prompt"
+print(prompt.select { message = "Pick", items = { "a", "b" }, return_index = true })
+]])
+    local stdout, status = support.run({ script }, {
+        home = support.temp_dir("prompt_home"),
+        stdin = "2\n",
+    })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "2")
 end
 
 if not RUN_ALL then

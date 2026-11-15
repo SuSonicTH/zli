@@ -31,7 +31,8 @@ function M.open()
     end
 
     if depth == 0 then
-        term.enableRawMode()
+        local _, message = term.raw(true)
+        if message then error("prompt: " .. message, 0) end
         term.bracketed_paste(true)
         term.keyboard_enhancements(true, term.enhancements.disambiguate)
         term.hide_cursor()
@@ -103,12 +104,19 @@ function M.run(options)
 
     local screen = options.screen or config.get("screen")
     local commit = options.commit or config.get("commit")
+    if screen ~= "inline" and screen ~= "alternate" then
+        error("prompt: screen must be 'inline' or 'alternate'", 2)
+    end
+    if commit ~= "summary" and commit ~= "frame" and commit ~= "none" then
+        error("prompt: commit must be 'summary', 'frame' or 'none'", 2)
+    end
     local presenter = render.new(screen)
-    local session = M.open()
+    local session
     local packed
     local failure
 
     local ok, message = xpcall(function()
+        session = M.open()
         while true do
             presenter:draw(options.frame())
             local event = session:read()
@@ -148,7 +156,7 @@ function M.run(options)
     if not ok then
         failure = message
     end
-    session:close()
+    if session then session:close() end
     presenter:close()
 
     if failure then error(failure, 0) end

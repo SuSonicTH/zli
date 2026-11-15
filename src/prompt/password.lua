@@ -16,6 +16,9 @@ local function validate(options)
     if type(options.message) ~= "string" or options.message == "" then
         error("prompt.password: message must be a non-empty string", 3)
     end
+    if options.confirm ~= nil and type(options.confirm) ~= "boolean" then
+        error("prompt.password: confirm must be a boolean", 3)
+    end
 end
 
 function M.run(options)

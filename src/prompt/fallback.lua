@@ -34,6 +34,18 @@ local function invalid(message)
     if message then out(message .. "\n") end
 end
 
+local function answer(options, item)
+    if options.return_index then return item.index end
+    return item.value
+end
+
+local function first_enabled(items)
+    for _, item in ipairs(items) do
+        if not item.disabled then return item end
+    end
+    return nil
+end
+
 function M.select(options, items, selected)
     out("? " .. options.message .. "\n")
     for _, item in ipairs(items) do
@@ -46,10 +58,17 @@ function M.select(options, items, selected)
 
     while true do
         local line = read_line()
-        if line == nil then return eof_result(selected and items[selected].value or nil) end
+        if line == nil then
+            local item = selected and items[selected]
+            if item and item.disabled then item = first_enabled(items) end
+            if item then return answer(options, item) end
+            return eof_result(nil)
+        end
         line = trim(line)
         if line == "" then
-            if selected then return items[selected].value end
+            local item = selected and items[selected]
+            if item and item.disabled then item = first_enabled(items) end
+            if item then return answer(options, item) end
             invalid("Please choose one of the listed numbers.")
         else
             local number = tonumber(line)
@@ -65,10 +84,8 @@ function M.select(options, items, selected)
                 invalid("Unknown choice '" .. line .. "'.")
             elseif item.disabled then
                 invalid("That choice is disabled.")
-            elseif options.return_index then
-                return item.index
             else
-                return item.value
+                return answer(options, item)
             end
         end
         out("choice: ")
@@ -98,7 +115,7 @@ function M.multiselect(options, items, selected)
         end
         line = trim(line):lower()
         if line == "" then
-            return default_values(items, selected)
+            -- Keep the current defaults and validate them below.
         elseif line == "a" then
             for _, item in ipairs(items) do
                 if not item.disabled then selected[item.index] = true end

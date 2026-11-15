@@ -62,6 +62,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | luastrip     | Lua source stripping/compacting library that removes comments and unnecessary whitespace                    |
 | memoize      | Function result memoization/caching                                                                         |
 | pager        | Terminal pager with page-by-page output                                                                     |
+| prompt       | Procedural terminal UI: lists, text fields, pickers, progress bars and spinners                             |
 | readline     | Line editor with history, multiline input and completion                                                    |
 | stream       | Stream library inspired by Java streams for functional-style Lua                                            |
 | tar          | Read/write tar files (optional gzip compression) and read `.xz`/`.zstd` compressed tar files                |

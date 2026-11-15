@@ -23,6 +23,9 @@ local function validate_options(options)
     if options.rows ~= nil and (type(options.rows) ~= "number" or options.rows < 1) then
         error("prompt.multiline: rows must be a positive number", 3)
     end
+    if options.max_length ~= nil and (type(options.max_length) ~= "number" or options.max_length < 1) then
+        error("prompt.multiline: max_length must be a positive number", 3)
+    end
     if options.validate ~= nil and type(options.validate) ~= "function" then
         error("prompt.multiline: validate must be a function", 3)
     end
@@ -117,6 +120,7 @@ function M.run(options)
 
     local function on_event(event)
         if event.type == "key" or event.type == "paste" then
+            state.error = nil
             local action = editor:feed(event)
             if action == "submit" then
                 local value = accept(editor:value())

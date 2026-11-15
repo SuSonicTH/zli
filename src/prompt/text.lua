@@ -132,6 +132,7 @@ function M.run(options, field)
 
     local function on_event(event)
         if event.type == "key" or event.type == "paste" then
+            state.error = nil
             local action = editor:feed(event)
             if action == "submit" then
                 local value = accept(editor:value())

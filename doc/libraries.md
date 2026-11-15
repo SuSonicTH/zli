@@ -1606,6 +1606,408 @@ Change the defaults used by later `pager.print` calls.
 `options.prompt` replaces the default `"-- more --"` prompt.  Options passed
 directly to `pager.print` take precedence over these defaults.
 
+### prompt
+
+Procedural terminal UI components for prompts, pickers, progress and spinners.
+
+`prompt` provides small blocking components that are easy to use from a
+procedural script.  It draws inline in the normal terminal buffer by default,
+redraws only its own region, then leaves one summary line in the scrollback:
+
+```lua
+local prompt = require "prompt"
+
+local env = prompt.select {
+    message = "Environment",
+    items = { "development", "staging", "production" },
+    default = "staging",
+}
+```
+
+Set `screen = "alternate"` globally, per call, or with `prompt.screen` for a
+full-screen presentation that restores the terminal on exit.  Standard input
+and output must both be terminals; otherwise components fall back to numbered
+or prompted plain-text input so scripts and pipes keep working.
+
+All components return their value on success.  Esc and Ctrl+C restore the
+terminal and return `nil, "cancelled"`.  End of input in the plain fallback
+returns the default when one exists and `nil, "eof"` otherwise.  A `validate`
+or `required` failure keeps the component open and shows the message.
+
+List items are strings or tables:
+
+| field | meaning |
+| --- | --- |
+| `label` | Text shown in the list. |
+| `value` | Value returned by the component; defaults to `label`. |
+| `description` | Muted secondary text. |
+| `disabled` | Item cannot be selected or toggled. |
+| `checked` | Initial state in a multiselect. |
+
+Common options are `message`, `screen`, `commit`, `default`, `default_index`,
+`default_indices`, `required`, `validate`, `min`, `max` and `page_size`.
+`commit` is one of:
+
+| value | result after the component finishes |
+| --- | --- |
+| `"summary"` | Replace the live region with one result line. The default. |
+| `"frame"` | Leave the final frame in the scrollback. |
+| `"none"` | Erase the live region without printing a summary. |
+
+List keys:
+
+| key | action |
+| --- | --- |
+| Up/Down, k/j | Move the selection when filtering is disabled. |
+| Home/End, Page Up/Page Down | Jump to the first/last item or move a page. |
+| Enter | Accept the selection or finish the multiselect. |
+| Space | Toggle the current multiselect item. |
+| a, i | Select all or invert visible multiselect items when filtering is off (use Ctrl+A/Ctrl+I while filtering). |
+| Esc | Clear a filter first, then cancel. |
+| Printable characters | Filter the list when `filter` is enabled. |
+
+Text fields use the same editing keys as `readline`: arrows, Home/End,
+Backspace/Delete, Ctrl+A/E/B/F/K/U/W/Y, Alt+B/F/D and Ctrl+X for direct
+multiline mode.  Enter submits a single-line field.  Multiline fields submit on
+Enter and insert a newline on Alt+Enter (or Ctrl+Enter).  Esc cancels.
+
+Date and time keys:
+
+| key | action |
+| --- | --- |
+| Left/Right, Up/Down | Move one day or one week in the calendar. |
+| Home/End | Start or end of the current week. |
+| Page Up/Page Down | Previous or next month. |
+| t | Select today when it is inside the allowed range. |
+| / or a digit | Focus the typed date/time entry. |
+| Tab | Switch between the date and time sections. |
+| Left/Right | Switch time segment in `time` and `datetime`. |
+| Up/Down, Page Up/Page Down | Adjust the time segment by one or five. |
+| a, p | Toggle AM/PM when `hour24 = false`. |
+
+The theme uses semantic tokens instead of element-specific colours:
+`message`, `title`, `muted`, `accent`, `selected`, `selected_muted`, `success`,
+`danger`, `warning`, `border` and `error`.  Each token is a `term.style` table.
+Colour is disabled automatically when the output is not a terminal, `NO_COLOR`
+is set or `TERM=dumb`; `color = "always"` forces it on.  Symbols use Unicode
+when the locale supports it and fall back to ASCII; `symbols = "ascii"` forces
+the fallback.  `ZLI_TUI_SYMBOLS=ascii|unicode` overrides detection.
+
+#### `prompt.configure(options)`
+
+Change global prompt defaults.
+
+Merge `options` into the process-wide prompt configuration and return the
+`prompt` table.  Recognised keys are `theme`, `color`, `symbols`, `commit`,
+`screen`, `eof`, `page_size`, `spinner_interval` and `progress_interval`.
+
+`color` accepts `"auto"`, `"always"` or `"never"`.  `symbols` accepts `"auto"`,
+`"unicode"` or `"ascii"`.  `commit` accepts `"summary"`, `"frame"` or `"none"`.
+`screen` accepts `"inline"` or `"alternate"`.  `eof` accepts `"default"`,
+`"nil"` or `"error"` and controls the plain fallback when input ends.
+
+Invalid keys or values raise an error instead of being ignored.
+
+#### `prompt.screen(mode, fn)`
+
+Run several prompts in one screen mode.
+
+Call `fn` with the default screen mode temporarily set to `mode`, then restore
+the previous mode even when `fn` raises.  `mode` is `"inline"` or
+`"alternate"`.
+
+Alternate mode enters the alternate screen once and leaves it after `fn`
+returns.  The return values of `fn` are returned unchanged.  This is useful for
+a sequence of prompts or a form that should share one full-screen presentation.
+
+#### `prompt.is_interactive()`
+
+Report whether prompts can use the terminal UI.
+
+Return true when both standard input and standard output are terminals and
+`TERM` is not `dumb`.  This is the same test used internally to choose between
+the live components and the plain-text fallback.  Tests and embedding tools can
+override the result with `prompt.configure { force_interactive = true|false }`.
+
+#### `prompt.select(options)`
+
+Choose one item from a list.
+
+Show a scrollable list and return the selected item's `value` (or `label` for
+a plain string item).  Set `return_index = true` to return the 1-based item
+index instead.
+
+`default` is a value and `default_index` is an index; the default is skipped
+when the item is disabled.  `filter` accepts `true`, `false` or `"auto"`;
+`"auto"` enables type-to-filter when there are more items than `page_size`.
+`format` is reserved for custom item rendering.  Disabled items are shown but
+cannot be selected.
+
+#### `prompt.multiselect(options)`
+
+Choose zero or more items from a list.
+
+Return an array of selected values in item order.  Use Space to toggle the
+current item, `a` to select everything visible, `i` to invert the visible
+items (Ctrl+A and Ctrl+I while filtering) and Enter to finish.  `default` is an array of values and
+`default_indices` is an array of indices; both may be combined.
+
+`min` and `max` constrain the number of selected items.  `required = true`
+implies a minimum of one.  A violated constraint keeps the component open and
+shows the message instead of returning.  Disabled items are never selected.
+
+#### `prompt.text(options)`
+
+Read a single line of text.
+
+Return the edited string.  `default` is inserted before editing and the
+cursor starts at its end.  `placeholder` is shown in a muted style while the
+field is empty.  `max_length` counts Unicode codepoints.
+
+`required` rejects an empty result.  `trim` removes leading and trailing
+whitespace before validation and before returning.  `validate` receives the
+cleaned value and may return `false, message` or `nil, message` to reject it;
+the message is shown below the field and editing continues.
+
+#### `prompt.multiline(options)`
+
+Read multiple lines of text.
+
+Return the edited block as one string with `\n` separators.  Enter submits and
+Alt+Enter (or Ctrl+Enter) inserts a newline.  `rows` sets the visible editor
+height and defaults to five; longer text scrolls inside the field.
+
+`default`, `placeholder`, `max_length`, `required`, `trim` and `validate` work
+as in `prompt.text`.  The summary line shows the first line plus a count when
+the value contains more lines.
+
+#### `prompt.password(options)`
+
+Read a masked secret.
+
+Read text with every character replaced by a mask glyph.  `mask` overrides
+the default `•` (or `*` in ASCII mode).  `confirm = true` asks for the value a
+second time and repeats both prompts until they match.
+
+The value is returned as entered; only the display and the summary are masked.
+The plain-text fallback cannot disable terminal echo, so masking requires a
+real terminal.
+
+#### `prompt.confirm(options)`
+
+Ask a yes/no question.
+
+Return `true` or `false`.  `y` and `n` answer immediately, Left/Right choose
+a button and Enter accepts the current choice.  `default` is a boolean; when it
+is omitted Enter does nothing until the user chooses.
+
+`required` and `validate` do not apply to confirmations.  The summary line
+shows `yes` or `no`.
+
+#### `prompt.date(options)`
+
+Pick a calendar date.
+
+Show a month calendar with a typed ISO entry line.  The result format is
+controlled by `as`: `"table"` (the default) returns `{ year, month, day }`,
+`"string"` returns `YYYY-MM-DD` and `"time"` returns `os.time()` seconds.
+A custom `format` is passed to `os.date` when `as = "string"`.
+
+`default`, `min` and `max` accept a table, an ISO string or an `os.time`
+number.  Dates outside the bounds are dimmed and cannot be selected.
+`week_start` is `"monday"` (the default) or `"sunday"`.
+
+#### `prompt.time(options)`
+
+Pick a time of day.
+
+Show `HH:MM` or `HH:MM:SS` segments.  Digits type a value, Up/Down adjust
+the current segment, and Left/Right switch segments.  `seconds = true` adds
+the seconds segment; `hour24 = false` switches to a 12-hour display with `a`
+and `p` toggling AM/PM.
+
+`as` accepts `"table"`, `"string"` or `"time"`.  A table result contains
+`hour`, `min` and `sec`; a string uses `HH:MM[:SS]` or `format`; `"time"`
+returns `os.time` for today's date at the chosen time.
+
+#### `prompt.datetime(options)`
+
+Pick a date and a time together.
+
+Show the calendar and time segments in one frame.  Tab switches between the
+date and time sections; the date and time keys documented for `prompt.date`
+and `prompt.time` apply to the active section.
+
+The result format follows `prompt.date` and includes `hour`, `min` and `sec`
+when `as = "table"`.  `seconds` controls the time precision and `min`/`max`
+bound the date portion.  The typed entry accepts
+`YYYY-MM-DD HH:MM[:SS]`.
+
+#### `prompt.progress(options)`
+
+Create a progress bar.
+
+Return a progress object.  `total` is a non-negative count; omit it for an
+indeterminate animated bar.  `items` may supply the total from an array.
+`label` is printed before the bar.  `show` accepts `"bar"`, `"percent"`,
+`"count"` or `"both"` and defaults to `"both"` when `total` is known.
+
+`bar_width` sets the bar width.  `template` replaces the default layout and
+supports `{label}`, `{bar}`, `{percent}`, `{count}`, `{total}`, `{items}`,
+`{elapsed}`, `{rate}` and `{eta}`.  Unknown fields raise an error.
+`min_interval` throttles redraws; `screen = "alternate"` draws the bar in the
+alternate screen and prints the final status after leaving it.
+
+#### `prompt.progress.each(items [, options])`
+
+Iterate items while advancing a progress bar.
+
+Return a generic-for iterator over `items`.  The bar is created with
+`options` plus a total equal to `#items`; `label` defaults to `"Working"`.
+Each iteration updates the bar, then `finish()` is called when the iterator is
+exhausted.
+
+```lua
+for index, item in prompt.progress.each(files, { label = "Copying" }) do
+    copy(item)
+end
+```
+
+If the loop body raises, wrap it in `pcall` or keep a progress object so the
+caller can call `fail` explicitly.
+
+#### `prompt.spinner(options)`
+
+Create a time-throttled spinner.
+
+Return a spinner object.  `text` is the message beside the animation and
+`frames` overrides the Unicode dot or ASCII frame set.  `interval` is the
+minimum time between frames and defaults to 0.08 seconds.
+`show_elapsed = true` appends the elapsed time.
+
+Call `step()` from the working loop.  A spinner cannot animate during a
+blocking C call, so code that never calls `step` shows no movement.
+
+#### `prompt.width(text)`
+
+Measure terminal display width.
+
+Return the number of display cells used by `text`.  Wide CJK characters and
+emoji count as two cells, combining marks count as zero and ANSI escape
+sequences are ignored.  This is the same measurement used by the renderer.
+
+#### `prompt.truncate(text, columns [, ellipsis])`
+
+Truncate text to display columns.
+
+Return `text` limited to `columns` display cells.  When the text is longer,
+`ellipsis` (default `"..."`) is appended inside the budget.  ANSI escape
+sequences are copied so styled input does not leak broken escape codes.
+
+#### `prompt.wrap(text, columns)`
+
+Wrap text at display columns.
+
+Return `text` with newlines inserted so each display row is at most `columns`
+cells wide.  Existing newlines are preserved, tabs expand to eight-column stops
+and ANSI escape sequences do not count towards the width.
+
+#### `progress:update(value)`
+
+Set the completed count.
+
+Set the current count to `value`, clamped to zero and to `total` when a total
+is known.  The bar redraws at most once per `min_interval`; the first update
+and `finish` always draw.  The method returns the progress object for chaining.
+
+#### `progress:advance([amount])`
+
+Add to the completed count.
+
+Increase the current count by `amount` (default one) and redraw using the
+same throttling rules as `progress:update`.  The method returns the progress
+object so calls can be chained.
+
+#### `progress:set_total(total)`
+
+Change the total after creation.
+
+Replace the total, clamp the current count and redraw immediately.  This is
+useful when the exact size becomes known after the object was created.  The
+method returns the progress object.
+
+#### `progress:set_label(label)`
+
+Change the progress label.
+
+Replace the label shown before the bar and redraw immediately.  Passing
+`nil` or an empty string removes the label.  The method returns the progress
+object.
+
+#### `progress:finish([text])`
+
+Finish with a success line.
+
+Complete the bar, replace the live line with a success summary and print a
+newline.  `text` defaults to the label and then to `"done"`.  Calling
+`finish` more than once is harmless.  The method returns the progress object.
+
+#### `progress:fail([text])`
+
+Finish with a failure line.
+
+Stop the bar and leave a danger-coloured failure summary.  `text` defaults to
+the label and then to `"failed"`.  Calling `fail` after `finish` does nothing.
+The method returns the progress object.
+
+#### `progress:close()`
+
+Clear an unfinished progress line.
+
+Remove the live progress line and restore the cursor without printing a
+success or failure summary.  This is also the `__close` metamethod, so a
+to-be-closed variable cleans up automatically when its scope exits.
+
+#### `spinner:step([text [, force]])`
+
+Advance the spinner and optionally change its text.
+
+Update the message when `text` is given, then advance one frame when the
+frame interval has elapsed.  `force = true` redraws even inside the interval
+and is primarily useful for deterministic tests.  The method returns the
+spinner object.
+
+#### `spinner:set_text(text)`
+
+Replace the spinner text.
+
+Set the message shown beside the animation and redraw immediately.  The method
+returns the spinner object so calls can be chained.
+
+#### `spinner:finish([text])`
+
+Finish with a success line.
+
+Replace the live spinner with a success summary and print a newline.
+`text` defaults to the current message and then to `"done"`.  Calling
+`finish` more than once is harmless.  The method returns the spinner object.
+
+#### `spinner:fail([text])`
+
+Finish with a failure line.
+
+Replace the live spinner with a danger-coloured failure summary.  `text`
+defaults to the current message and then to `"failed"`.  Calling `fail` after
+`finish` does nothing.  The method returns the spinner object.
+
+#### `spinner:close()`
+
+Clear an unfinished spinner.
+
+Remove the live spinner and restore the cursor without printing a summary.
+This is also the `__close` metamethod, so a to-be-closed variable cleans up
+automatically when its scope exits.
+
 ### filesystem
 
 Filesystem and path manipulation.
@@ -7557,6 +7959,24 @@ Return true when both standard input and standard output are terminals and the `
 Return the terminal size.
 
 Return a table `{ columns = , rows = }` with the current terminal dimensions.  Returns `nil, message` when the size cannot be read, for example when output is redirected.
+
+#### `term.width(text)`
+
+Measure the display width of text.
+
+Return the number of terminal cells used by `text`. Wide characters count as two cells, combining marks as zero and ANSI escape sequences are ignored. This works without a terminal and is safe in pipes.
+
+#### `term.truncate(text, columns [, ellipsis])`
+
+Truncate text to a display width.
+
+Return `text` limited to `columns` terminal cells, appending `ellipsis` (default `"..."`) when content was removed. ANSI escape sequences are preserved and do not count towards the width.
+
+#### `term.wrap(text, columns)`
+
+Wrap text at a display width.
+
+Return `text` with newlines inserted so each display row is at most `columns` cells wide. Existing newlines are kept, tabs expand to eight-column stops and ANSI escape sequences are copied unchanged.
 
 #### `term.clear([what])`
 

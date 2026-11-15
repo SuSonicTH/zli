@@ -175,6 +175,17 @@ end
 
 local function make_runner(options, multi)
     validate(options)
+    if multi then
+        if options.min ~= nil and (type(options.min) ~= "number" or options.min < 0) then
+            error("prompt.multiselect: min must be a non-negative number", 3)
+        end
+        if options.max ~= nil and (type(options.max) ~= "number" or options.max < 1) then
+            error("prompt.multiselect: max must be a positive number", 3)
+        end
+        if options.min and options.max and options.min > options.max then
+            error("prompt.multiselect: min must not exceed max", 3)
+        end
+    end
     local items = items_mod.normalize(options.items)
     local state = {
         items = items,

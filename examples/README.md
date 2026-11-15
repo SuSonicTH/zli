@@ -25,3 +25,4 @@ can be shortened when you are already inside this directory (`cd examples`).
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`calc.lua`](calc.lua)           | Basic calculator in the browser: digits, four operations, `%`, `√`, `1/x`, clear keys and memory, evaluated server side. [Details](calc.md)     |
 | [`graphcalc.lua`](graphcalc.lua) | Graphical calculator with a browser UI built on `webui`. Plots several `f(x)` curves, supports zooming and exports SVG. [Details](graphcalc.md) |
+| [`prompt_demo.lua`](prompt_demo.lua) | Terminal prompts, pickers, progress and spinners built with `prompt`. [Details](prompt_demo.md) |

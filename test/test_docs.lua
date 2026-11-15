@@ -785,6 +785,7 @@ local completed_doc_modules = {
     term = true,
     readline = true,
     pager = true,
+    prompt = true,
     zip = true,
     unzip = true,
     httpclient = true,

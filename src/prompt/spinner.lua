@@ -35,6 +35,9 @@ function Spinner:new(options)
         error("prompt.spinner: interval must be a positive number", 3)
     end
 
+    if options.screen ~= nil and options.screen ~= "inline" and options.screen ~= "alternate" then
+        error("prompt.spinner: screen must be 'inline' or 'alternate'", 3)
+    end
     local spinner = setmetatable({
         options = options,
         text = options.text or "",

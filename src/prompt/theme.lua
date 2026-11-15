@@ -75,9 +75,9 @@ local function color_enabled()
     if mode == "always" then return true end
     if mode == "never" then return false end
     if not term.is_tty() then return false end
-    local no_color = env("NO_COLOR")
-    if no_color ~= nil then return false end
-    if env("TERM") == "dumb" then return false end
+    if os.getenv("NO_COLOR") ~= nil then return false end
+    local term_name = env("TERM")
+    if term_name and term_name:lower() == "dumb" then return false end
     return true
 end
 

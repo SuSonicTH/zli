@@ -242,6 +242,7 @@ function Inline:commit(kind, summary, frame)
             term.write("\n")
         end
     end
+    term.show_cursor()
     term.flush()
 end
 

@@ -30,6 +30,15 @@ Progress.__index = Progress
 
 function Progress:new(options)
     options = options or {}
+    if options.items ~= nil and type(options.items) ~= "table" then
+        error("prompt.progress: items must be a table", 3)
+    end
+    if options.bar_width ~= nil and (type(options.bar_width) ~= "number" or options.bar_width < 1) then
+        error("prompt.progress: bar_width must be a positive number", 3)
+    end
+    if options.min_interval ~= nil and (type(options.min_interval) ~= "number" or options.min_interval < 0) then
+        error("prompt.progress: min_interval must be zero or positive", 3)
+    end
     local total = options.total
     if total == nil and options.items then total = #options.items end
     if total ~= nil and (type(total) ~= "number" or total < 0) then
@@ -53,6 +62,9 @@ function Progress:new(options)
         error("prompt.progress: label must be a string", 3)
     end
 
+    if options.screen ~= nil and options.screen ~= "inline" and options.screen ~= "alternate" then
+        error("prompt.progress: screen must be 'inline' or 'alternate'", 3)
+    end
     local progress = setmetatable({
         options = options,
         total = total,

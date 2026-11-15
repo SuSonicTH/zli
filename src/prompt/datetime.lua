@@ -20,6 +20,15 @@ local function validate(options)
     if options.as ~= nil and options.as ~= "table" and options.as ~= "string" and options.as ~= "time" then
         error("prompt.datetime: as must be 'table', 'string' or 'time'", 3)
     end
+    if options.seconds ~= nil and type(options.seconds) ~= "boolean" then
+        error("prompt.datetime: seconds must be a boolean", 3)
+    end
+    if options.week_start ~= nil and options.week_start ~= "monday" and options.week_start ~= "sunday" then
+        error("prompt.datetime: week_start must be 'monday' or 'sunday'", 3)
+    end
+    if options.format ~= nil and type(options.format) ~= "string" then
+        error("prompt.datetime: format must be a string", 3)
+    end
 end
 
 local function eof_result(default)
@@ -110,7 +119,7 @@ function M.run(options)
     local function frame()
         local term = require "term"
         local size = term.size() or { columns = 80, rows = 24 }
-        local entry_width = math.max(1, size.columns - 2)
+        local entry_width = math.max(1, size.columns - 8)
         if entry_width ~= state.width then
             state.width = entry_width
             entry:resize(entry_width, 1)
@@ -232,6 +241,7 @@ function M.run(options)
         end
 
         if state.focus == "entry" then
+            state.error = nil
             local action = entry:feed(event)
             if action == "submit" then apply_entry() return "continue" end
             if action == "abort" then return "cancel" end
@@ -252,7 +262,6 @@ function M.run(options)
                 state.digits = ""
                 return "continue"
             end
-            local max = state.segment == 1 and 23 or 59
             if input.key(event, "up") then
                 if state.segment == 1 then state.hour = (state.hour + 1) % 24
                 elseif state.segment == 2 then state.min = (state.min + 1) % 60
@@ -305,9 +314,13 @@ function M.run(options)
             sync_entry()
             return "continue"
         elseif input.key(event, "home") then
-            moved = -(dates.weekday(selected.year, selected.month, selected.day) - 1)
+            local weekday = dates.weekday(selected.year, selected.month, selected.day)
+            local offset = options.week_start == "sunday" and (weekday % 7) or (weekday - 1)
+            moved = -offset
         elseif input.key(event, "end") then
-            moved = 7 - dates.weekday(selected.year, selected.month, selected.day)
+            local weekday = dates.weekday(selected.year, selected.month, selected.day)
+            local offset = options.week_start == "sunday" and (weekday % 7) or (weekday - 1)
+            moved = 6 - offset
         elseif char == "t" then
             local today = dates.today()
             apply_days(dates.days_from_civil(today.year, today.month, today.day))

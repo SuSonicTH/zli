@@ -18,6 +18,12 @@ local function validate(options)
     if options.as ~= nil and options.as ~= "table" and options.as ~= "string" and options.as ~= "time" then
         error("prompt.time: as must be 'table', 'string' or 'time'", 3)
     end
+    if options.seconds ~= nil and type(options.seconds) ~= "boolean" then
+        error("prompt.time: seconds must be a boolean", 3)
+    end
+    if options.hour24 ~= nil and type(options.hour24) ~= "boolean" then
+        error("prompt.time: hour24 must be a boolean", 3)
+    end
 end
 
 local function from_time(value)
@@ -205,17 +211,39 @@ function M.run(options)
         if input.key(event, "left") then move_segment(-1) return "continue" end
         if input.key(event, "right") then move_segment(1) return "continue" end
         if input.key(event, "up") then
-            local max = limits(options, state.segment)
-            set_segment((current_value() + 1) % (max + 1))
+            if state.segment == 1 then
+                state.hour = (state.hour + 1) % 24
+            elseif state.segment == 2 then
+                state.min = (state.min + 1) % 60
+            else
+                state.sec = (state.sec + 1) % 60
+            end
+            state.error = nil
             return "continue"
         end
         if input.key(event, "down") then
-            local max = limits(options, state.segment)
-            set_segment((current_value() - 1) % (max + 1))
+            if state.segment == 1 then
+                state.hour = (state.hour - 1) % 24
+            elseif state.segment == 2 then
+                state.min = (state.min - 1) % 60
+            else
+                state.sec = (state.sec - 1) % 60
+            end
+            state.error = nil
             return "continue"
         end
-        if input.key(event, "page_up") then set_segment(math.min(current_value() + 5, limits(options, state.segment))) return "continue" end
-        if input.key(event, "page_down") then set_segment(math.max(current_value() - 5, 0)) return "continue" end
+        if input.key(event, "page_up") then
+            if state.segment == 1 then state.hour = (state.hour + 5) % 24
+            elseif state.segment == 2 then state.min = (state.min + 5) % 60
+            else state.sec = (state.sec + 5) % 60 end
+            return "continue"
+        end
+        if input.key(event, "page_down") then
+            if state.segment == 1 then state.hour = (state.hour - 5) % 24
+            elseif state.segment == 2 then state.min = (state.min - 5) % 60
+            else state.sec = (state.sec - 5) % 60 end
+            return "continue"
+        end
         if input.key(event, "backspace") then
             state.digits = state.digits:sub(1, -2)
             return "continue"
