@@ -672,7 +672,6 @@ fn pollInput(timeout_ms: i32) !PollResult {
 
 fn lua_read_event(lua: *Lua) i32 {
     const input = inputPtr();
-    var pending_hangup = false;
     if (lua.typeOf(1) == .number) {
         const milliseconds = lua.checkInteger(1);
         if (milliseconds >= 0 and !hasBufferedInput(input)) {
@@ -688,7 +687,6 @@ fn lua_read_event(lua: *Lua) i32 {
                 }
                 return 2;
             }
-            pending_hangup = status.hangup;
         }
     }
 
@@ -703,7 +701,10 @@ fn lua_read_event(lua: *Lua) i32 {
             _ = lua.pushString("invalid");
             return 2;
         }
-        if (err == error.FailedToReadEvent and pending_hangup) {
+        // termy reports both a genuine read failure and clean end of input
+        // from a file/pipe as FailedToReadEvent.  For terminal events the
+        // useful distinction is "no more input", so report EOF.
+        if (err == error.FailedToReadEvent) {
             lua.pushNil();
             _ = lua.pushString("eof");
             return 2;

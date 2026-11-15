@@ -89,6 +89,30 @@ print("second=" .. tostring(event2 and event2.char) .. " " .. tostring(message2)
     lu.assertStrContains(stdout, "second=nil eof")
 end
 
+
+function Test_term.Test_blocking_read_reports_eof()
+    local script = support.temp_file("term_block", [[
+local term = require "term"
+local chars = {}
+while true do
+    local event, message = term.read_event()
+    if event == nil then
+        print("end=" .. tostring(message))
+        break
+    end
+    chars[#chars + 1] = event.char
+end
+print("chars=" .. table.concat(chars))
+]])
+    local stdout, status = support.run({ script }, {
+        home = support.temp_dir("term_home"),
+        stdin = "abc",
+    })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "end=eof")
+    lu.assertStrContains(stdout, "chars=abc")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
