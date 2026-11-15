@@ -1,22 +1,44 @@
-local cl = require "crossline"
+local term = require "term"
+local readline = require "readline"
+local pager = require "pager"
 local sqlite = require "sqlite3"
 local json = require "cjson"
 
 --[[ Init history ]]
 local history_file = os.home .. "/.config/zli/sqlite_history"
-cl.history.load(history_file)
+local history = readline.history.new({ max = 2000 })
+
+local function try_rename(old, new)
+    local called, first, second = pcall(require("filesystem").rename, old, new)
+    if not called then return false end
+    return first ~= nil or second == nil
+end
+
+local function load_history()
+    local ok, message = history:load(history_file)
+    if ok then return true end
+
+    local backup = history_file .. ".bak"
+    local renamed = try_rename(history_file, backup)
+    if renamed then
+        io.stderr:write(string.format("warning: could not read %s: %s (moved to %s)\n", history_file, tostring(message), backup))
+        return true
+    end
+    io.stderr:write(string.format("warning: could not read %s: %s\n", history_file, tostring(message)))
+    return false
+end
+
+local history_writable
 
 --[[ Init screen ]]
-cl.screen.clear()
-local dim = cl.screen.dimensions()
+term.clear("all")
+local dim = term.size() or { columns = 80, rows = 24 }
 local header = "ZLI - SQLite"
 
-cl.set_color(cl.color.fg.blue)
-cl.cursor.set(math.floor((dim.x - #header) / 2), 2)
-cl.set_prompt_color(cl.color.fg.blue)
+term.style({ fg = "blue" })
+term.move_to(math.max(1, math.floor((dim.columns - #header) / 2) + 1), 2)
 print(header)
 
-cl.set_color(cl.color.fg.default)
 print([[
 
 
@@ -25,32 +47,24 @@ print([[
     the results will be printed and you can enter the next command
 
     To exit enter "quit;" on a new line
-    Hit F1 to see help on editing commands
-]])
---cl.cursor.set(0, dim.y - 1)
 
+    Ctrl+Shift+X or Alt+X toggles multiline mode, Ctrl+Enter or Alt+Enter submits
+    Ctrl+R searches history, Ctrl+C and Ctrl+D exit
+]])
+term.reset_style()
+history_writable = load_history()
 
 local db = sqlite.open_memory()
 
 local function get_command()
-    local command = cl.readline("> ")
-    if command == nil then
-        return nil;
-    end
-
-    while (not (string.find(command, ";", 1, true))) do
-        local line = cl.readline(">>")
-        if line == nil then
-            return nil;
-        end
-
-        if (command:sub(-1) == " ") then
-            command = command .. line
-        else
-            command = command .. " " .. line
-        end
-    end
-    return command
+    return readline.read({
+        prompt = "> ",
+        continuation = ">> ",
+        history = history,
+        multiline = function(buffer)
+            return buffer:find(";", 1, true) ~= nil
+        end,
+    })
 end
 
 local function collect_result(result, columns, values, column_names)
@@ -86,16 +100,13 @@ local function to_strings(values)
 end
 
 local function print_result_csv(result, columns, values, column_names)
+    result.csv_lines = result.csv_lines or {}
     if not result.header then
-        cl.paging.start()
-        cl.paging.print(table.concat(to_strings(column_names), ","))
+        result.csv_lines[#result.csv_lines + 1] = table.concat(to_strings(column_names), ",")
         result.header = true
     end
-    if cl.paging.print(table.concat(to_strings(values), ",")) then
-        return 0;
-    else
-        return 1;
-    end
+    result.csv_lines[#result.csv_lines + 1] = table.concat(to_strings(values), ",")
+    return 0
 end
 
 local function print_result_table_get_line(widths, spaces, values)
@@ -137,8 +148,7 @@ local function print_result_table(result)
     end
     output[#output + 1] = ("-"):rep(line_with)
 
-    cl.paging.start()
-    cl.paging.print(output)
+    pager.print(output)
 end
 
 local print_mode = "table"
@@ -150,21 +160,21 @@ local print_collector = {
 }
 
 local function status_ok()
-    cl.set_color(cl.color.fg.green)
+    term.style({ fg = "green" })
     io.write("OK\n")
-    cl.set_color(cl.color.fg.default)
+    term.reset_style()
 end
 
 local function status_error(message)
-    cl.set_color(cl.color.fg.red)
+    term.style({ fg = "red" })
     io.write("Error: ", message, "\n")
-    cl.set_color(cl.color.fg.default)
+    term.reset_style()
 end
 
 local function status_last_error()
-    cl.set_color(cl.color.fg.red)
+    term.style({ fg = "red" })
     io.write("Error: ")
-    cl.set_color(cl.color.fg.default)
+    term.reset_style()
     io.write(db:error_message(), "\n")
 end
 
@@ -216,10 +226,11 @@ local function execute_command(command)
     else
         local result = {}
         local status = db:exec(command, print_collector[print_mode], result)
-        if #result > 0 then
+        if result.csv_lines then
+            pager.print(table.concat(result.csv_lines, "\n"))
+        elseif #result > 0 then
             if print_mode == "lua" then
-                cl.paging.start()
-                cl.paging.print { table.tostring(result, "result"):split("\n") }
+                pager.print(table.tostring(result, "result"))
             elseif print_mode == "json" then
                 print(json.encode(result))
             elseif print_mode == "table" then
@@ -235,9 +246,9 @@ execute_file = function(file)
     local command = ""
     local prompt = "> "
     for line in file:lines() do
-        cl.set_color(cl.color.fg.blue)
+        term.style({ fg = "blue" })
         io.write(prompt)
-        cl.set_color(cl.color.fg.default)
+        term.reset_style()
         io.write(line, "\n")
         command = command .. line .. " "
         if string.find(command, ";", 1, true) then
@@ -254,10 +265,11 @@ local function execute()
     while (true) do
         local command = get_command()
         if command == nil then
+            if history_writable then history:save(history_file) end
             return
         end
         if not execute_command(command) then
-            cl.history.save(history_file)
+            if history_writable then history:save(history_file) end
             return
         end
     end

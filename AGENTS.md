@@ -20,7 +20,7 @@ Use this file as the map. User-facing documentation lives in:
 | Host language        | Zig 0.17.0, using the modern `std.Io` APIs                 |
 | Lua                  | Lua 5.5.1, via the `zlua` (ziglua) dependency              |
 | Package name/version | `zli`, version in `build.zig.zon`                          |
-| Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, Crossline, lyaml fork + libyaml |
+| Native deps          | lsqlite3 + SQLite amalgamation, LPeg, lua-cjson, termy fork (patched), lyaml fork + libyaml |
 | Lua deps             | argparse, f-strings, ftcsv, luaunit, Serpent               |
 | Output               | one executable with an appended zip payload                |
 | Release platforms    | x86_64 Linux, aarch64 Linux, x86_64 Windows                |
@@ -35,7 +35,7 @@ Run from the repository root:
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `zig build`                                        | Debug build in `zig-out/bin/zli` (with payload).                                                                         |
 | `zig build run -- <args>`                          | Build and run `zli` with arguments.                                                                                      |
-| `zig build test`                                   | Build the debug binary, run `test/test.lua` through it, then run Zig unit tests in `src/strip.zig` and `src/docgen.zig`. |
+| `zig build test`                                   | Build the debug binary, run `test/test.lua` through it, then run Zig unit tests in `src/strip.zig`, `src/docgen.zig`, `src/term_width.zig`, `src/history.zig` and `src/lineedit.zig`. |
 | `zig build docs`                                   | Regenerate `doc/libraries.md` from `doc/libraries.lua`. Commit the result.                                               |
 | `zig build native`                                 | Optimized host build, UPX-compressed.                                                                                    |
 | `zig build release`                                | All three release targets, UPX-compressed, with version suffix.                                                          |
@@ -108,7 +108,7 @@ Libraries come in three flavors:
    `src/httpserver.zig`, ...). `src/libraries.zig` imports each module and adds
    `luaopen_*`-style functions to `package.preload`. Modules that perform I/O
    expose `setIo(io)` and are wired in `openlibs`.
-2. **C libraries** (`lsqlite3`, `lpeg`, `lua-cjson`, `crossline`, `lyaml` + `libyaml`). They are
+2. **C libraries** (`lsqlite3`, `lpeg`, `lua-cjson`, `lyaml` + `libyaml`). They are
    linked statically by functions in `build.zig` and registered in
    `src/libraries.zig` via `extern luaopen_*` declarations.
 3. **Embedded Lua modules**. Pure-Lua library modules are listed in
@@ -169,8 +169,9 @@ pub fn register(lua: *Lua) !i32 {
 - `createDocsPayload` runs the host-side `docgen.zig` on the `lua55`
   dependency's `doc/manual.html` + `src/lua.h` and emits `docs_manual.lua`.
 - `compileStep` compiles `src/main.zig` with `zlua`, Lua headers from `lua55`,
-  and the static C libraries. Crossline headers are translated with
-  `@cImport`-style `addTranslateC`.
+  and the static C libraries. Terminal control comes from the patched termy
+  fork, imported as the Zig module `termy`; no C header translation is used for
+  it.
 - `luaLibs` embeds Lua files as anonymous imports. In non-debug modes library
   Lua and payload scripts pass through `src/strip.zig` (comments and
   unnecessary whitespace are removed); only entries whose name ends in `.lua`
@@ -208,7 +209,10 @@ pub fn register(lua: *Lua) !i32 {
 | `src/zip.{zig,lua}`, `src/unzip.{zig,lua}`                                           | Lua-facing zip modules and high-level helpers.                                                                                                         |
 | `src/gzip.zig`, `src/tar.zig`, `src/tar.lua`                                         | Compression and tar support.                                                                                                                           |
 | `src/httpclient.{zig,lua}`, `src/httpserver.{zig,lua}`                               | HTTP client/server bindings.                                                                                                                           |
-| `src/uuid.zig`, `src/luastrip.zig`, `src/crossline.zig`, `src/xlsxmlwriter.lua`, ... | Individual libraries; see `doc/libraries.md`.                                                                                                          |
+| `src/term.zig`, `src/term.lua`                                                      | Low level terminal binding over the termy fork: raw mode, cursor, colours, events.                                                                    |
+| `src/readline.zig`, `src/readline.lua`, `src/lineedit.zig`                          | Line editor, history userdata and the terminal backend; `lineedit.zig` is terminal independent.                                                       |
+| `src/pager.zig`, `src/pager.lua`, `src/term_width.zig`, `src/history.zig`            | Pager, UTF-8 display width/wrapping and JSON history storage.                                                                                          |
+| `src/uuid.zig`, `src/luastrip.zig`, `src/xlsxmlwriter.lua`, ...                     | Individual libraries; see `doc/libraries.md`.                                                                                                          |
 | `src/collection/*.lua`                                                               | Pure-Lua collection submodules.                                                                                                                        |
 | `doc/libraries.lua`                                                                  | Authored structured documentation, source of truth for all bundled-library docs.                                                                       |
 | `doc/libraries.md`                                                                   | Generated Markdown mirror; never edit by hand.                                                                                                         |
@@ -284,8 +288,10 @@ entry(name, signature, kind, summary, markdown, aliases)
   change behavior.
 - Tests intentionally cover externally created zip/gzip files, malformed
   archives, payload shadowing, symlink selection, and command-line tools.
-- Zig unit tests live next to the code (`src/strip.zig`, `src/docgen.zig`) and
-  are attached to `zig build test`.
+- Zig unit tests live next to the code (`src/strip.zig`, `src/docgen.zig`,
+  `src/term_width.zig`, `src/history.zig`, `src/lineedit.zig`) and are attached to
+  `zig build test`. The line editor tests use a virtual screen backend, so they
+  need no pseudo terminal.
 
 ## Change playbooks
 
@@ -429,6 +435,14 @@ The documentation tests are strict by design.
     0.2.5 has no generated `config.h`.  `lyaml.dump` takes a **list** of
     documents; wrap a single table.  `lyaml.load` and `lyaml.dump` raise
     errors; the low-level `yaml.emitter` returns `false, message`.
+14. Terminal input control comes from the `SuSonicTH/termy-zig` fork pinned in
+    `build.zig.zon`.  It adds bracketed paste events and end-of-input handling;
+    do not point the dependency back at upstream without re-applying those
+    patches.
+15. `readline.read` only uses the Zig editor when stdin and stdout are both
+    terminals.  Piped input falls back to `io.read` in `src/readline.lua` and
+    must keep driving the `multiline` callback, otherwise the REPL and SQLite
+    CLI cannot read multi-line scripts in tests.
 
 ## Maintaining this guide
 

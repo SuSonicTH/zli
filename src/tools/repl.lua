@@ -1,4 +1,6 @@
-local cl = require "crossline"
+local term = require "term"
+local readline = require "readline"
+local pager = require "pager"
 local fs = require "filesystem"
 
 local config = os.home .. "/.config"
@@ -26,7 +28,6 @@ the ~/.config/zli/init.lua gets executed before this script is executed
 
 argparse = require "argparse"
 benchmark = require "benchmark"
-cl = require "crossline"
 collection = require "collection"
 csv = require "csv"
 F = require "F"
@@ -42,11 +43,14 @@ lu = require "luaunit"
 luastrip = require "luastrip"
 markdown = require "markdown"
 memoize = require "memoize"
+pager = require "pager"
 re = require "re"
+readline = require "readline"
 serpent = require "serpent"
 sqlite3 = require "sqlite3"
 stream = require "stream"
 tar = require "tar"
+term = require "term"
 timer = require "timer"
 unzip = require "unzip"
 uuid = require "uuid"
@@ -59,21 +63,45 @@ end
 dofile(init)
 
 --[[ Init history ]]
-local history_file = os.home .. "/.config/zli/repl_history"
-cl.history.load(history_file)
+local history_path = os.home .. "/.config/zli/repl_history.json"
+local legacy_history = os.home .. "/.config/zli/repl_history"
+if not fs.exists(history_path) and fs.exists(legacy_history) then
+    pcall(fs.rename, legacy_history, history_path)
+end
+local history = readline.history.new({ max = 2000 })
+
+local function try_rename(old, new)
+    local called, first, second = pcall(fs.rename, old, new)
+    if not called then return false end
+    return first ~= nil or second == nil
+end
+
+local function load_history()
+    local ok, message = history:load(history_path)
+    if ok then return true end
+
+    local backup = history_path .. ".bak"
+    local renamed = try_rename(history_path, backup)
+    if renamed then
+        io.stderr:write(string.format("warning: could not read %s: %s (moved to %s)\n", history_path, tostring(message), backup))
+        return true
+    end
+    io.stderr:write(string.format("warning: could not read %s: %s\n", history_path, tostring(message)))
+    return false
+end
+
+local history_writable
 
 --[[ Init screen ]]
 
-cl.screen.clear()
-local dim = cl.screen.dimensions()
+term.clear("all")
+local dim = term.size() or { columns = 80, rows = 24 }
 local header = "ZIL - REPL"
 
-cl.set_color(cl.color.fg.blue)
-cl.cursor.set(math.floor((dim.x - #header) / 2), 2)
-cl.set_prompt_color(cl.color.fg.blue)
+term.style({ fg = "blue" })
+term.move_to(math.max(1, math.floor((dim.columns - #header) / 2) + 1), 2)
 print(header)
 
-cl.set_color(cl.color.fg.default)
 print([[
 
     A Zig Lua Interpreter - Read Print Eval Loop
@@ -82,27 +110,30 @@ print([[
 
     To exit the loop enter quit on a new line
     Type :help for the documentation index or :help <name> for an entry
-    Hit F1 to see help on editing commands
+
+    Ctrl+Shift+X or Alt+X toggles multiline mode, Ctrl+Enter or Alt+Enter submits
+    Ctrl+R searches history, Ctrl+C and Ctrl+D exit
 ]])
-cl.cursor.set(0, dim.y - 1)
+term.reset_style()
+history_writable = load_history()
 
 -- [[ utility functions ]]
 
-local function printError(type, message)
-    cl.set_color(cl.color.fg.red)
-    local space = (type and type ~= "") and " " or ""
-    io.write(type, space, "error: ")
-    cl.set_color(cl.color.fg.default)
+local function printError(kind, message)
+    term.style({ fg = "red" })
+    local space = (kind and kind ~= "") and " " or ""
+    io.write(kind, space, "error: ")
+    term.reset_style()
     io.write(message, "\n")
 end
 
 function Pretty_print(name, value)
     if type(value) == 'table' then
-        cl.print_paged(table.tostring(value, name))
+        pager.print(table.tostring(value, name))
     elseif type(value) == 'string' then
-        cl.print_paged(name .. " = \"" .. value .. "\"")
+        pager.print(name .. " = \"" .. value .. "\"")
     else
-        cl.print_paged(name .. " = " .. tostring(value))
+        pager.print(name .. " = " .. tostring(value))
     end
 end
 
@@ -162,46 +193,58 @@ end
 
 -- [[ REPL loop ]]
 local function exit_repl()
-    cl.screen.clear()
-    cl.history.save(history_file)
+    term.restore()
+    term.clear("all")
+    if history_writable then
+        history:save(history_path)
+    end
     os.exit(0)
 end
 
-local function quit_if_requested(line)
-    if line == nil then
-        -- Ctrl-D / end of input
-        exit_repl()
-    end
-    local lower_line = line:trim():lower()
-    if (lower_line == "quit" or lower_line == "exit") then
-        exit_repl()
-    end
+local function last_line(text)
+    return (text:match("([^\n]*)$") or ""):trim():lower()
 end
 
-local function get_multi_line(block)
-    local result, error
-    repeat
-        local line = cl.readline(">>")
-        quit_if_requested(line)
-        block = block .. "\n" .. line
-        result, error = load(block, "repl")
-    until (result ~= nil or error:sub(-5) ~= "<eof>")
-    return result, error
+local function is_complete(buffer)
+    local lower = buffer:trim():lower()
+    if lower:match("^:help") then
+        return true
+    end
+    local tail = last_line(buffer)
+    if tail == "quit" or tail == "exit" then
+        return true
+    end
+    local _, err = load(buffer, "repl")
+    return err == nil or tostring(err):sub(-5) ~= "<eof>"
 end
 
 local function execute()
     while (true) do
-        local line = cl.readline("> ")
-        quit_if_requested(line)
-        local lower_line = line:lower()
+        local line = readline.read({
+            prompt = "> ",
+            continuation = ">> ",
+            history = history,
+            multiline = is_complete,
+        })
+
+        if line == nil then
+            -- Ctrl-D, Ctrl-C or end of input
+            exit_repl()
+        end
+
+        local trimmed = line:trim()
+        local lower_line = trimmed:lower()
         local help_query = nil
-        if lower_line:match("^:help%s*$") then
+        if last_line(line) == "quit" or last_line(line) == "exit" then
+            exit_repl()
+        elseif lower_line:match("^:help%s*$") then
             help_query = ""
         elseif lower_line:match("^:help%s+") then
-            help_query = line:sub(6):gsub("^%s+", "")
+            help_query = trimmed:sub(6):gsub("^%s+", "")
         end
+
         if help_query ~= nil then
-            cl.print_paged(help_text(help_query))
+            pager.print(help_text(help_query))
         else
             if (line:sub(1, 1) == '?') then
                 line = "Pretty_print('" .. line:sub(2) .. "', " .. line:sub(2) .. ")"
@@ -210,9 +253,6 @@ local function execute()
             local result, error = load("return " .. line, "repl")
             if result == nil then
                 result, error = load(line, "repl")
-                if result == nil and error:sub(-5) == "<eof>" then
-                    result, error = get_multi_line(line)
-                end
             end
 
             if (result) then

@@ -42,7 +42,7 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 
 | library     | link                                  | licence | description                                           |
 | ----------- | ------------------------------------- | ------- | ----------------------------------------------------- |
-| Crossline   | https://github.com/jcwangxp/Crossline | MIT     | Small, self-contained readline/libedit replacement    |
+| termy       | https://github.com/SuSonicTH/termy-zig | MIT    | Terminal control: raw mode, input events, cursor, colours |
 | libyaml     | https://github.com/yaml/libyaml       | MIT     | YAML 1.1 parser and emitter used by the lyaml binding |
 | markdown    | https://github.com/mity/md4c          | MIT     | Markdown parser and HTML renderer based on md4c       |
 
@@ -61,6 +61,8 @@ There are many libraries included in the ZLI binary: third-party Lua libraries, 
 | logger       | Very simple logging library                                                                                 |
 | luastrip     | Lua source stripping/compacting library that removes comments and unnecessary whitespace                    |
 | memoize      | Function result memoization/caching                                                                         |
+| pager        | Terminal pager with page-by-page output                                                                     |
+| readline     | Line editor with history, multiline input and completion                                                    |
 | stream       | Stream library inspired by Java streams for functional-style Lua                                            |
 | tar          | Read/write tar files (optional gzip compression) and read `.xz`/`.zstd` compressed tar files                |
 | timer        | Nanosecond timer, also available as `os.nanotime`                                                           |

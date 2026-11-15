@@ -1,7 +1,9 @@
 const zlua = @import("zlua");
 const Lua = zlua.Lua;
 
-const crossline = @import("crossline.zig");
+const term = @import("term.zig");
+const readline = @import("readline.zig");
+const pager = @import("pager.zig");
 const auxiliary = @import("auxiliary.zig");
 const filesystem = @import("filesystem.zig");
 const unzip = @import("unzip.zig");
@@ -48,8 +50,16 @@ const preload: []const zlua.FnReg = &.{
         .func = zlua.wrap(luaopen_luascript),
     },
     .{
-        .name = "crossline",
-        .func = zlua.wrap(crossline.register),
+        .name = "term",
+        .func = zlua.wrap(term.register),
+    },
+    .{
+        .name = "readline",
+        .func = zlua.wrap(readline.register),
+    },
+    .{
+        .name = "pager",
+        .func = zlua.wrap(pager.register),
     },
     .{
         .name = "filesystem",
@@ -139,7 +149,7 @@ const luascripts: []const luascript = &.{
 
 pub fn openlibs(io: std.Io, lua: *Lua) i32 {
     filesystem.setIo(io);
-    crossline.setIo(io);
+    term.setIo(io);
     httpclient.setIo(io);
     httpserver.setIo(io);
     webserver.setIo(io);

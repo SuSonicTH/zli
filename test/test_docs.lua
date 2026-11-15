@@ -113,6 +113,7 @@ local readme_require_names = {
     ["ftcsv"] = { "csv" },
     ["lua-cjson"] = { "cjson" },
     ["luasqlite3"] = { "sqlite3" },
+    ["termy"] = { "term" },
     ["logger"] = { "log" },
     ["lyaml / yaml"] = { "lyaml", "yaml" },
     ["unzip / zip"] = { "unzip", "zip" },
@@ -453,7 +454,7 @@ function Test_docs.Test_manual_html_has_upstream_license_and_attribution()
         { "argparse",  "https://github.com/luarocks/argparse" },
         { "lpeg",      "https://www.inf.puc-rio.br/~roberto/lpeg/" },
         { "sqlite3",   "http://lua.sqlite.org/" },
-        { "crossline", "https://github.com/jcwangxp/Crossline" },
+        { "term",      "https://github.com/SuSonicTH/termy-zig" },
         { "libyaml",   "https://github.com/yaml/libyaml" },
     }
     for _, item in ipairs(expected) do
@@ -781,7 +782,9 @@ local completed_doc_modules = {
     gzip = true,
     tar = true,
     log = true,
-    crossline = true,
+    term = true,
+    readline = true,
+    pager = true,
     zip = true,
     unzip = true,
     httpclient = true,

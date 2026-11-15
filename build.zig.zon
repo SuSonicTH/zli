@@ -1,7 +1,7 @@
 .{
     .name = .zli,
     .fingerprint = 0x5b01c9c323f5e672,
-    .version = "0.2.2",
+    .version = "0.3.0",
     .minimum_zig_version = "0.17.0",
     .paths = .{""},
     .dependencies = .{
@@ -33,9 +33,9 @@
             .url = "https://github.com/FourierTransformer/ftcsv/archive/db8e27f7db213f458ef91aaebbb784a6bbb88050.tar.gz",
             .hash = "N-V-__8AAK68AQD3MYM77UTOFcsS_6MaFIgQx2GcAZwhBHSp",
         },
-        .crossline = .{
-            .url = "https://github.com/jcwangxp/Crossline/archive/60b4bb5b2adb4eb9f83654dc983a191048250b2e.tar.gz",
-            .hash = "N-V-__8AAL3wAgDYGd4yVnS8P67B6igVxx3vVTlKWZjiIvZ8",
+        .termy = .{
+            .url = "git+https://github.com/SuSonicTH/termy-zig#ccece104f67dd6ed1e6cdf9dab26bf3c06472151",
+            .hash = "termy-1.0.0--x1xy_vmAQDvDKcLeuBnOgHPQsC5XbmReK5SvwJYk0u_",
         },
         .cjson = .{
             .url = "https://github.com/openresty/lua-cjson/archive/5f53e878d0441e1555f53060178c61d161079e06.tar.gz",

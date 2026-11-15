@@ -44,16 +44,17 @@ quit
 
     -- the repl creates its init file and saves history on exit
     lu.assertTrue(fs.exists(home .. "/.config/zli/repl_init.lua"))
-    lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history"))
+    lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history.json"))
 end
 
 function Test_repl.Test_default_init_preloads_all_libraries()
     local home = new_home()
     local stdout, status = run_repl([[
 names = {
-    "argparse", "benchmark", "cl", "collection", "csv", "F", "fs", "grid",
+    "argparse", "benchmark", "collection", "csv", "F", "fs", "grid",
     "gzip", "httpclient", "httpserver", "json", "log", "lpeg", "lu",
-    "luastrip", "markdown", "memoize", "re", "serpent", "sqlite3", "stream",
+    "luastrip", "markdown", "memoize", "pager", "re", "readline", "serpent",
+    "sqlite3", "stream", "term",
     "tar", "timer", "unzip", "uuid", "xlsxmlwriter", "xml2lua", "zip",
 }
 missing = {}
@@ -108,7 +109,7 @@ function Test_repl.Test_end_of_input_exits_cleanly()
 
     lu.assertEquals(0, status, stdout)
     lu.assertStrContains(stdout, "before eof")
-    lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history"))
+    lu.assertTrue(fs.exists(home .. "/.config/zli/repl_history.json"))
 end
 
 function Test_repl.Test_no_arguments_starts_repl()
@@ -196,6 +197,51 @@ quit
     lu.assertStrContains(stdout, "label ok")
 end
 
+function Test_repl.Test_history_is_saved_as_json()
+    local home = new_home()
+    local stdout, status = run_repl("history_value = 42\nquit\n", home)
+
+    lu.assertEquals(0, status, stdout)
+    local text = io.read_file(home .. "/.config/zli/repl_history.json")
+    local entries = require("cjson").decode(text)
+    lu.assertIsTable(entries)
+    local found = false
+    for _, entry in ipairs(entries) do
+        if entry == "history_value = 42" then
+            found = true
+        end
+    end
+    lu.assertTrue(found, text)
+end
+
+function Test_repl.Test_legacy_history_is_renamed()
+    local home = new_home()
+    local config = home .. "/.config/zli"
+    fs.create_tree(config)
+    io.write_file(config .. "/repl_history", '["old entry"]')
+
+    local stdout, status = run_repl("quit\n", home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertFalse(fs.exists(config .. "/repl_history"))
+    local entries = require("cjson").decode(io.read_file(config .. "/repl_history.json"))
+    lu.assertIsTable(entries)
+    lu.assertEquals("old entry", entries[1])
+end
+
+function Test_repl.Test_corrupt_history_is_backed_up()
+    local home = new_home()
+    local config = home .. "/.config/zli"
+    fs.create_tree(config)
+    io.write_file(config .. "/repl_history.json", "not json")
+
+    local stdout, status = run_repl("quit\n", home)
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertEquals("not json", io.read_file(config .. "/repl_history.json.bak"))
+    local entries = require("cjson").decode(io.read_file(config .. "/repl_history.json"))
+    lu.assertIsTable(entries)
+end
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

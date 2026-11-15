@@ -1254,262 +1254,210 @@ This is equivalent to `set:size() == 0`.
 ]]),
                 }),
 
-                module("crossline", "crossline", "Readline, screen, cursor, history and paging helpers.", [==[
-`crossline` is a small self-contained readline replacement.  The module exposes
-the low-level screen and cursor helpers plus history and paging functions used by
-the REPL.
-]==], {
-                    entry("crossline.readline", "crossline.readline([prompt [, initial]])", "function",
-                        "Read a line with editing and history.",
-                        [[
-Read one line from the terminal with editing and history.
-
-`prompt` defaults to `"> "`. `initial` pre-fills the edit buffer and may be modified interactively; it is limited to 4095 bytes. History navigation, incremental search and completion keys are handled by the editor.
-
-Returns the entered line as a string, or `nil` when standard input reaches end-of-file. The returned line does not include the newline.
+                module("readline", "readline", "Interactive line editor with history and multiline input.", [==[
+`readline` reads an edited line from the terminal.  Editing, history navigation,
+multiline input and completion cycling are implemented in Zig on top of `term`.
+The single-line prompt is blue; a multiline block uses the yellow continuation
+prompt by default.
 
 ```lua
-local cl = require "crossline"
-local line = cl.readline("name> ")
+local readline = require "readline"
+local line = readline.read("> ")
 if line then print("hello " .. line) end
 ```
-]]),
-                    entry("crossline.set_prompt_color", "crossline.set_prompt_color(fg [, bg])", "function",
-                        "Set the prompt colour.",
-                        [[
-Set the foreground and background colours used for the readline prompt.
 
-`fg` and `bg` are numeric colour values, normally selected from `crossline.color.fg` and `crossline.color.bg`; the two values are combined into one terminal colour code. Omitting either value disables that component. The setting affects subsequently printed prompts and returns nothing.
+`readline.read` accepts a prompt string or an options table:
+
+| option | description |
+| --- | --- |
+| `prompt` | Prompt used while the buffer is a single line. Defaults to `"> "`. It may contain ANSI escape sequences; their display width is ignored when wrapping. |
+| `continuation` | Prompt used for every line once the buffer becomes multiline, including the first line and recalled multiline history entries. Defaults to `">> "`. |
+| `initial` | Text pre-filled in the edit buffer, with the cursor at the end. |
+| `history` | A history object created with `readline.history.new`. Omitted means the module default history. |
+| `multiline` | Callback called when Enter is pressed in normal mode. It receives the whole buffer and returns true to submit the line or false to insert a newline and keep editing. |
+| `complete` | Tab completion callback. It receives the buffer and the byte cursor position and returns `start, end, { candidates }`, where `start` and `end` are 1-based byte positions like `string.sub`. |
+| `multiline_color` | Colour every prompt while the buffer is multiline (automatic continuation, direct mode or a recalled multiline entry). Defaults to true. |
+
+While editing a multiline block every line uses the continuation prompt and the
+prompt is coloured, so a submitted block looks the same as a recalled
+multiline history entry.  When the block reaches the bottom of the screen the
+editor scrolls up to keep the whole block visible.  The editor starts at the current cursor row, column 0.  If the terminal does not
+answer the cursor-position query within the timeout, editing starts on the last
+row and scrolls upward as the block grows, so earlier output is not overwritten.  On
+success the edited text is returned without a trailing newline.  On end of input the function returns
+`nil, "eof"`; on Ctrl+C or Ctrl+G it returns `nil, "abort"`.  Piped input is
+read with `io.read` and still honours the `multiline` callback, but prompts,
+completion and direct multiline mode are unavailable.
+
+Keys:
+
+| key | action |
+| --- | --- |
+| Enter | Call the multiline callback, or submit when it is absent. In direct multiline mode it always inserts a newline. |
+| Ctrl+Enter, Alt+Enter | Submit the buffer immediately. |
+| Ctrl+Shift+X, Alt+X | Toggle direct multiline mode. The prompt changes colour while it is active. |
+| Left, Right, Ctrl+B, Ctrl+F | Move by one character. |
+| Ctrl+Left, Ctrl+Right, Alt+B, Alt+F | Move by one word. |
+| Up, Down | Move between visual lines; at the first or last line, navigate history. A long wrapped line counts as several visual lines. |
+| Ctrl+Up, Ctrl+Down | Move between visual lines only. |
+| Home, End, Ctrl+A, Ctrl+E | Move to the start or end of the logical line. |
+| Backspace, Ctrl+H | Delete the character before the cursor. |
+| Delete | Delete the character under the cursor. |
+| Ctrl+D | Delete under the cursor, or return `nil, "eof"` when the buffer is empty. |
+| Ctrl+K, Ctrl+U | Cut from the cursor to the end or start of the logical line. |
+| Ctrl+W, Alt+Backspace | Cut the word before the cursor. |
+| Alt+D | Cut the word after the cursor. |
+| Ctrl+Y | Paste the last cut text. |
+| Ctrl+L | Clear the screen and redraw the edit buffer. |
+| Ctrl+R | Reverse incremental history search. |
+| Tab | Invoke the completion callback, or insert four spaces when no callback is configured. |
+| Ctrl+C, Ctrl+G | Abort the edit and return `nil, "abort"`. |
+
+Bracketed paste is enabled while editing, so pasted newlines become real lines
+in the buffer. A pasted block is inserted after normalising CRLF, expanding tabs
+to four spaces and dropping other control characters.
+]==], {
+                    entry("readline.read", "readline.read([prompt]) / readline.read(options)", "function",
+                        "Read one edited line or block from the terminal.",
+                        [[
+Read an edited line from the terminal and return it as a string without the
+final newline.
+
+The argument may be a prompt string or an options table; see the module
+description for the accepted options and key bindings.  `readline.read` returns
+`nil, "eof"` on end of input and `nil, "abort"` when the user cancels with
+Ctrl+C or Ctrl+G.
+
+When standard input or output is not a terminal the function falls back to
+plain line reads, never prints a prompt, and still drives the `multiline`
+callback.  This keeps scripts, pipes and tests working without escape
+sequences.
 
 ```lua
-local cl = require "crossline"
-cl.set_prompt_color(cl.color.fg.green, cl.color.bg.default)
-local line = cl.readline("> ")
+local readline = require "readline"
+local text = readline.read {
+    prompt = "name> ",
+    multiline = function(buffer) return #buffer > 0 end,
+}
 ```
 ]]),
-                    entry("crossline.set_color", "crossline.set_color(fg [, bg])", "function",
-                        "Set the current output colour.",
+                    entry("readline.history.new", "readline.history.new([options])", "function",
+                        "Create a history object.",
                         [[
-Set the foreground and background colours used for subsequent terminal output.
+Create a new, empty history object.
 
-`fg` and `bg` are numeric values from `crossline.color.fg` and `crossline.color.bg`; omitting a component leaves it at the default colour. The call returns nothing and does not change the prompt colour.
+`options.max` limits the number of stored entries and defaults to 1000; the
+oldest entry is discarded when the limit is reached.  Consecutive duplicates
+and empty entries are ignored.
+
+Each object is independent, so several tools can keep separate histories.  The
+module also exposes `readline.history.default`, which is used by `readline.read`
+when no `history` option is given.
+]]),
+                    entry("readline.history.default", "readline.history.default", "field",
+                        "Default history object used by `readline.read`.",
+                        "A ready to use history object. Load and save it explicitly to persist entries between runs."),
+                    entry("readline.history:add", "history:add(text)", "method",
+                        "Append an entry to the history.",
+                        [[
+Append `text` to the history.
+
+Empty strings are ignored, as is an entry equal to the most recent one.  When
+the configured maximum size is reached the oldest entry is removed.  Invalid
+UTF-8 bytes are replaced with `?` so the JSON history always loads again.
+Returns nothing; memory allocation failures return `nil, message`.
+]]),
+                    entry("readline.history:load", "history:load(path)", "method",
+                        "Load history entries from a JSON file.",
+                        [[
+Replace the current entries with the contents of `path`, a JSON array of
+strings.
+
+The file is read from the current directory.  A missing file leaves the history
+unchanged.  A corrupt or non-array file returns `nil, message` and leaves both
+the history and the file untouched.  The REPL and SQLite tools move such a file
+to `<path>.bak` before writing a fresh history.
 
 ```lua
-local cl = require "crossline"
-cl.set_color(cl.color.fg.yellow)
-print("warning")
-cl.set_color(cl.color.fg.default)
+local readline = require "readline"
+local history = readline.history.new()
+history:load(os.home .. "/.config/zli/repl_history.json")
 ```
 ]]),
-                    entry("crossline.print_paged", "crossline.print_paged(text)", "function",
-                        "Print long text through the pager.",
+                    entry("readline.history:save", "history:save(path)", "method",
+                        "Save history entries as JSON.",
                         [[
-Print a string or an array of lines through the pager.
+Write the entries as a pretty-printed JSON array of strings to `path`.  Each
+entry is on its own line and the brackets stand alone, so the file is easy to
+inspect and edit.
 
-Paging is temporarily enabled for the duration of the call. A string is split on newline characters; a table is printed one element per line. When the terminal reaches the bottom, the user may continue with Space or Enter or abort with another key.
+The file is written to a temporary sibling and renamed over the destination, so
+an interrupted save never leaves a truncated history.  Returns true on success
+and `nil, message` when the file cannot be written.  Existing files in the old
+line-based format are replaced; they are not imported.
+]]),
+                    entry("readline.history:clear", "history:clear()", "method",
+                        "Remove every history entry.",
+                        "Drop all entries from memory.  The file on disk is untouched until `save` is called.  Returns nothing."),
+                    entry("readline.history:show", "history:show()", "method",
+                        "Print the history with entry numbers.",
+                        "Write every entry to standard output, prefixed with a right aligned one-based number.  Multiline entries are printed as several lines.  Available on terminals and pipes."),
+                    entry("readline.history:entries", "history:entries()", "method",
+                        "Return a copy of the history entries.",
+                        "Return a new array table containing the entries in oldest-first order.  Modifying the returned table does not change the history."),
+                    entry("readline.history:size", "history:size()", "method",
+                        "Return the number of history entries.",
+                        "Return the current entry count as an integer.  This is the number of entries that would be written by `save`."),
+                    entry("readline.history:set_max", "history:set_max(max)", "method",
+                        "Change the maximum number of entries.",
+                        "Set the entry limit to `max`, which must be positive, and immediately discard the oldest entries when the history is larger than the new limit."),
+                }),
 
-Returns `true` when all output was printed and `false` when the user stopped early. Paging is disabled again before returning.
+                module("pager", "pager", "Page long terminal output.", [==[
+`pager` prints text in terminal-sized pages.  When a page is full it shows a
+prompt and waits for a key.
 
 ```lua
-local cl = require "crossline"
-cl.print_paged({ "line one", "line two", "line three" })
+local pager = require "pager"
+pager.print(table.concat(lines, "\n"))
 ```
-]]),
-                    entry("crossline.screen.dimensions", "crossline.screen.dimensions()", "function",
-                        "Return the terminal width and height.",
+
+Keys at the prompt:
+
+| key | action |
+| --- | --- |
+| Space, Enter, Page Down | Continue with the next page. |
+| q, Esc, Ctrl+C | Stop paging. |
+
+`pager.print` returns `true` when everything was shown and `false` when the user
+stopped early, so a caller can abort a long loop.  When standard output is not
+a terminal the text is printed directly and `true` is returned.
+]==], {
+                    entry("pager.print", "pager.print(text [, options])", "function",
+                        "Print text one page at a time.",
                         [[
-Return the current terminal size as a table.
+Print `text`, which may be a string or an array of strings, one terminal page
+at a time.
 
-The `x` field is the number of columns and `y` is the number of rows. The result is a fresh table and may change when the terminal is resized.
+The page height defaults to one less than the number of terminal rows, leaving
+room for the prompt.  Lines that wrap count as several rows.  `options.height`
+overrides the height and `options.prompt` replaces the prompt text for this
+call.
 
-```lua
-local cl = require "crossline"
-local size = cl.screen.dimensions()
-print(size.x, size.y)
-```
+Returns `true` when all text was printed and `false` when the user pressed q,
+Esc or Ctrl+C at the prompt.  Without a terminal the text is written directly
+and no prompt is shown.
 ]]),
-                    entry("crossline.screen.clear", "crossline.screen.clear()", "function",
-                        "Clear the terminal screen.",
+                    entry("pager.configure", "pager.configure(options)", "function",
+                        "Set default pager options.",
                         [[
-Clear the terminal screen and leave the cursor at the home position.
+Change the defaults used by later `pager.print` calls.
 
-The function emits the terminal control sequence directly and works on ANSI-compatible terminals. It returns nothing and does not alter history or paging state.
-
-```lua
-local cl = require "crossline"
-cl.screen.clear()
-```
+`options.height` sets the page height and must be a positive number.
+`options.prompt` replaces the default `"-- more --"` prompt.  Options passed
+directly to `pager.print` take precedence over these defaults.
 ]]),
-                    entry("crossline.cursor.get", "crossline.cursor.get()", "function",
-                        "Return the current cursor position (`x`, `y`).",
-                        [[
-Return the current cursor position as a table.
-
-The result has numeric `x` (column) and `y` (row) fields using the terminal's coordinate system. The call does not move the cursor or change terminal state.
-
-```lua
-local cl = require "crossline"
-local pos = cl.cursor.get()
-print(pos.x, pos.y)
-```
-]]),
-                    entry("crossline.cursor.set", "crossline.cursor.set(x, y)", "function",
-                        "Move the cursor to a position.",
-                        [[
-Move the cursor to an absolute position.
-
-Coordinates may be passed as two numbers (`x`, `y`) or as a table with `x` and `y` fields. The position uses the same coordinate system as `cursor.get`. The function returns nothing.
-
-```lua
-local cl = require "crossline"
-cl.cursor.set(1, 1)
-cl.cursor.set({ x = 10, y = 5 })
-```
-]]),
-                    entry("crossline.cursor.move", "crossline.cursor.move(x, y)", "function",
-                        "Move the cursor relative to its current position.",
-                        [[
-Move the cursor relative to its current position.
-
-Positive `x` moves right, positive `y` moves down; negative values move left and up. As with `cursor.set`, the arguments may be two numbers or a table with `x` and `y` fields. No value is returned.
-
-```lua
-local cl = require "crossline"
-cl.cursor.move(2, 0)
-cl.cursor.move({ x = -1, y = 1 })
-```
-]]),
-                    entry("crossline.cursor.hide", "crossline.cursor.hide()", "function",
-                        "Hide the cursor.",
-                        [[
-Hide the terminal cursor.
-
-This is useful while redrawing a prompt or progress display. It returns nothing; call `cursor.show()` to restore the cursor. Showing an already hidden cursor is harmless.
-
-```lua
-local cl = require "crossline"
-cl.cursor.hide()
--- draw something
-cl.cursor.show()
-```
-]]),
-                    entry("crossline.cursor.show", "crossline.cursor.show()", "function",
-                        "Show the cursor.",
-                        [[
-Show the terminal cursor after it was hidden.
-
-The call emits the terminal control sequence and returns nothing. It does not move the cursor or restore a previous position.
-
-```lua
-local cl = require "crossline"
-cl.cursor.hide()
-cl.cursor.show()
-```
-]]),
-                    entry("crossline.history.save", "crossline.history.save(filename)", "function",
-                        "Save the command history.",
-                        [[
-Write the in-memory command history to a file.
-
-The file is opened for writing and overwritten; each history entry is written on its own line without numeric prefixes. If the file cannot be opened the failure is silently ignored. The function returns nothing.
-
-```lua
-local cl = require "crossline"
-cl.history.save(os.home .. "/.config/zli/repl_history")
-```
-]]),
-                    entry("crossline.history.load", "crossline.history.load(filename)", "function",
-                        "Load the command history.",
-                        [[
-Load command history from a file.
-
-Non-empty lines are appended to the in-memory history with trailing CR/LF removed. A missing or unreadable file is silently ignored, making this safe to call during startup. The function returns nothing.
-
-```lua
-local cl = require "crossline"
-cl.history.load(os.home .. "/.config/zli/repl_history")
-```
-]]),
-                    entry("crossline.history.show", "crossline.history.show()", "function",
-                        "Print the command history.",
-                        [[
-Print the current history with sequence numbers.
-
-Output goes to standard output and may be paged when standard input and output are terminals. The history itself is not modified. The function returns nothing.
-
-```lua
-local cl = require "crossline"
-cl.history.show()
-```
-]]),
-                    entry("crossline.history.clear", "crossline.history.clear()", "function",
-                        "Clear the command history.",
-                        [[
-Erase all in-memory history entries.
-
-The history file on disk is not touched; use `history.save` afterwards if the cleared state should persist. The function returns nothing.
-
-```lua
-local cl = require "crossline"
-cl.history.clear()
-```
-]]),
-                    entry("crossline.paging.start", "crossline.paging.start()", "function",
-                        "Start paging output.",
-                        [[
-Enable paging for subsequent output.
-
-While paging is active, `paging.print` and `paging.check` count printed lines and prompt the user when the screen is full. The function returns nothing. Calling it when paging is already active just resets the line counter.
-
-```lua
-local cl = require "crossline"
-cl.paging.start()
-cl.paging.print("first line")
-cl.paging.stop()
-```
-]]),
-                    entry("crossline.paging.stop", "crossline.paging.stop()", "function",
-                        "Stop paging output.",
-                        [[
-Disable paging.
-
-Subsequent `paging.print` calls still print their text but do not pause for the user. The function returns nothing and is safe to call when paging is already off.
-
-```lua
-local cl = require "crossline"
-cl.paging.stop()
-```
-]]),
-                    entry("crossline.paging.check", "crossline.paging.check()", "function",
-                        "Check whether paging is active.",
-                        [[
-Advance the pager by a line length and report whether output may continue.
-
-`line_len` is the number of characters about to be displayed and is required. When paging is disabled, or input/output is not a terminal, the function immediately returns `true`. On a full screen it waits for Space or Enter and returns `true` to continue, or `false` when the user pressed another key to stop.
-
-```lua
-local cl = require "crossline"
-cl.paging.start()
-local keep_going = cl.paging.check(#"some output")
-cl.paging.stop()
-```
-]]),
-                    entry("crossline.paging.print", "crossline.paging.print(text)", "function",
-                        "Print text through the pager.",
-                        [[
-Print text through the pager.
-
-The argument may be a string, which is split on newlines, or an array of strings. Each line is written to standard output and checked against the terminal height. The function returns `true` when every line was printed, or `false` when the user stopped paging early.
-
-```lua
-local cl = require "crossline"
-cl.paging.start()
-local complete = cl.paging.print({ "row 1", "row 2", "row 3" })
-cl.paging.stop()
-print(complete)
-```
-]]),
-                }, { upstream = "https://github.com/jcwangxp/Crossline", license = "MIT" }),
+                }),
 
                 module("filesystem", "filesystem", "Filesystem and path manipulation.", [==[
 `filesystem` provides module-level functions and path objects.  A path object is
@@ -6797,6 +6745,166 @@ SOFTWARE.
 ```
 ]==], {}, { upstream = "https://github.com/yaml/libyaml", license = "MIT" }),
 
+                module("term", "term", "Low level terminal control for the REPL and line editor.", [==[
+`term` is a thin binding over the bundled termy library.  It exposes raw mode,
+screen and cursor control, colours, terminal modes and keyboard, mouse, resize,
+focus and paste events.
+
+Terminal control functions are no-ops when standard input or output is not a
+terminal, so scripts and pipes never receive escape sequences.  `term.write`
+and `term.flush` still write to standard output.  Every output call flushes the
+terminal writer before returning.
+
+Clear types accepted by `term.clear`:
+
+| value | description |
+| --- | --- |
+| `"all"`, `"screen"` | Clear the whole screen. |
+| `"history"`, `"purge"` | Clear the screen and the scrollback. |
+| `"down"` | Clear from the cursor to the end of the screen. |
+| `"up"` | Clear from the start of the screen to the cursor. |
+| `"line"` | Clear the current row. |
+| `"to_end"` | Clear from the cursor to the end of the row. |
+
+Cursor shapes accepted by `term.cursor_shape`:
+
+| value | description |
+| --- | --- |
+| `"default"` | Restore the terminal's default shape. |
+| `"block"`, `"blinking_block"` | Block cursor. |
+| `"underline"`, `"blinking_underline"` | Underline cursor. |
+| `"bar"`, `"blinking_bar"` | Bar cursor. |
+
+`term.style` accepts a table with `fg`, `bg` and `underline_color` colours plus
+boolean attributes `bold`, `dim`, `italic`, `underline`, `reverse`, `blink` and
+`strikethrough`.  A colour is one of the names in `term.color.fg`/`term.color.bg`,
+an ANSI number from 0 to 255, or a table `{ r = , g = , b = }`.
+
+`term.read_event` returns a table whose `type` is one of:
+
+| type | fields |
+| --- | --- |
+| `"key"` | `code`, optional `char`, `shift`, `control`, `alt`, `super`, `hyper`, `meta`, `kind` (`"press"`, `"repeat"` or `"release"`), optional `repeat`, `caps_lock`, `num_lock`, `keypad`. |
+| `"mouse"` | `action`, optional `button`, `column`, `row` and the modifier flags. |
+| `"resize"` | `columns` and `rows`. |
+| `"focus"` | `gained`. |
+| `"paste"` | `text`. |
+
+Keyboard `code` values are `"char"` (with `char`), `"enter"`, `"backspace"`,
+`"delete"`, `"left"`, `"right"`, `"up"`, `"down"`, `"home"`, `"end"`, `"page_up"`,
+`"page_down"`, `"tab"`, `"insert"`, `"esc"`, `"null"`, `"f1"` to `"f24"`, the
+media keys, `"keypad_begin"` and the individual modifier keys.
+]==], {
+                    entry("term.is_tty", "term.is_tty()", "function",
+                        "Return true when the process is attached to a terminal.",
+                        "Return true when both standard input and standard output are terminals and the `TERM` environment variable is not `dumb`.  Terminal control helpers are no-ops and `term.size` returns nil when this is false; `term.write` and `term.flush` still write to standard output."),
+                    entry("term.size", "term.size()", "function",
+                        "Return the terminal size.",
+                        "Return a table `{ columns = , rows = }` with the current terminal dimensions.  Returns `nil, message` when the size cannot be read, for example when output is redirected."),
+                    entry("term.clear", "term.clear([what])", "function",
+                        "Clear the screen or part of it.",
+                        "Clear according to `what`, which defaults to `\"all\"`; see the clear type table in the module description.  Returns nothing and does nothing without a terminal."),
+                    entry("term.write", "term.write(text)", "function",
+                        "Write raw text to the terminal.",
+                        "Write `text` to standard output through the terminal writer and flush it.  No escape processing or wrapping is performed."),
+                    entry("term.flush", "term.flush()", "function",
+                        "Flush buffered terminal output.",
+                        "Flush the shared terminal writer.  Most output functions flush already, so this is only needed after writing directly through `term.write`."),
+                    entry("term.move_to", "term.move_to(column, row)", "function",
+                        "Move the cursor to an absolute position.",
+                        "Move the cursor to `column` and `row`, both one based.  Returns nothing and does nothing without a terminal."),
+                    entry("term.move_by", "term.move_by(dx, dy)", "function",
+                        "Move the cursor by a relative offset.",
+                        "Move the cursor by `dx` columns and `dy` rows.  Negative values move left or up, positive values right or down.  Both arguments are required."),
+                    entry("term.move_to_column", "term.move_to_column(column)", "function",
+                        "Move the cursor to a column on the current row.",
+                        "Move the cursor to the one based `column` on the current row, leaving the vertical position unchanged.  Returns nothing and is a no-op without a terminal."),
+                    entry("term.move_to_row", "term.move_to_row(row)", "function",
+                        "Move the cursor to a row on the current column.",
+                        "Move the cursor to the one based `row` without changing the column.  Returns nothing and is a no-op when standard output is not a terminal."),
+                    entry("term.save_cursor", "term.save_cursor()", "function",
+                        "Save the cursor position.",
+                        "Save the current cursor position for a later `term.restore_cursor`.  The saved position is also handled through the Windows console API when VT output is unavailable."),
+                    entry("term.restore_cursor", "term.restore_cursor()", "function",
+                        "Restore the saved cursor position.",
+                        "Move the cursor back to the position stored by `term.save_cursor`.  Returns nothing and has no effect when the terminal cannot restore a saved position."),
+                    entry("term.hide_cursor", "term.hide_cursor()", "function",
+                        "Hide the cursor.",
+                        "Hide the terminal cursor.  The line editor hides it while redrawing and shows it again before returning."),
+                    entry("term.show_cursor", "term.show_cursor()", "function",
+                        "Show the cursor.",
+                        "Show the terminal cursor after `term.hide_cursor`.  It is safe to call this more than once and it does nothing when output is not a terminal."),
+                    entry("term.cursor_shape", "term.cursor_shape(shape)", "function",
+                        "Change the cursor shape.",
+                        "Set the cursor shape to one of the names listed in the module description, such as `\"bar\"` or `\"blinking_underline\"`.  Unsupported shapes are ignored by terminals that do not implement them."),
+                    entry("term.style", "term.style(options)", "function",
+                        "Apply colours and text attributes.",
+                        [[
+Apply a style described by `options`.
+
+`fg`, `bg` and `underline_color` accept a colour name, an ANSI number from 0 to
+255, or a table with `r`, `g` and `b` fields.  The attributes `bold`, `dim`,
+`italic`, `underline`, `reverse`, `blink` and `strikethrough` are booleans; a
+false value resets that attribute.
+
+```lua
+local term = require "term"
+term.style { fg = "bright_cyan", bold = true }
+print("important")
+term.reset_style()
+```
+]]),
+                    entry("term.reset_style", "term.reset_style()", "function",
+                        "Reset colours and text attributes.",
+                        "Select the default foreground, background and underline colours and turn off bold, italic, underline, blink, reverse and strikethrough."),
+                    entry("term.raw", "term.raw(enabled)", "function",
+                        "Enable or disable raw input mode.",
+                        "Enable raw mode when `enabled` is true, so keys arrive without line editing or signal processing, and restore the previous terminal state otherwise.  The line editor manages raw mode automatically."),
+                    entry("term.alternate_screen", "term.alternate_screen(enabled)", "function",
+                        "Enter or leave the alternate screen.",
+                        "Switch to the alternate screen when `enabled` is true and back to the normal screen with its previous contents otherwise."),
+                    entry("term.mouse_capture", "term.mouse_capture(enabled)", "function",
+                        "Enable or disable mouse reporting.",
+                        "Enable mouse and scroll reporting when `enabled` is true.  Events are delivered by `term.read_event` with `type = \"mouse\"`."),
+                    entry("term.focus_events", "term.focus_events(enabled)", "function",
+                        "Enable or disable focus reporting.",
+                        "Enable focus gained and lost events when `enabled` is true.  Terminals without focus reporting simply ignore the request."),
+                    entry("term.keyboard_enhancements", "term.keyboard_enhancements([enabled [, mask]])", "function",
+                        "Enable or disable keyboard protocol enhancements.",
+                        "Enable the Kitty keyboard protocol when `enabled` is true or omitted; `mask` defaults to `term.enhancements.disambiguate`, which makes modified keys such as Ctrl+Enter distinguishable.  Pass false to disable the enhancements again."),
+                    entry("term.bracketed_paste", "term.bracketed_paste(enabled)", "function",
+                        "Enable or disable bracketed paste.",
+                        "Enable bracketed paste when `enabled` is true, so pasted text arrives as a single `paste` event instead of a stream of key presses.  The line editor enables this while reading."),
+                    entry("term.title", "term.title(text)", "function",
+                        "Set the terminal window title.",
+                        "Set the window title to `text`.  The Windows console fallback limits the title to 512 bytes."),
+                    entry("term.line_wrap", "term.line_wrap(enabled)", "function",
+                        "Enable or disable automatic line wrapping.",
+                        "Allow the terminal to wrap long lines when `enabled` is true and disable wrapping otherwise.  The line editor wraps text itself and leaves this setting unchanged."),
+                    entry("term.poll", "term.poll([milliseconds])", "function",
+                        "Wait for terminal input.",
+                        "Wait up to `milliseconds` for input and return true when an event is ready.  A negative timeout blocks indefinitely.  Returns `nil, message` when polling fails."),
+                    entry("term.read_event", "term.read_event([milliseconds])", "function",
+                        "Read one terminal event.",
+                        [[
+Read one terminal event.
+
+Without an argument the call blocks.  With a non-negative `milliseconds` it
+returns `nil, "timeout"` when no event arrives in time.  At end of input it
+returns `nil, "eof"`, and on failure `nil, message`.  Otherwise it returns an
+event table as described in the module documentation.
+]]),
+                    entry("term.query_cursor", "term.query_cursor([milliseconds])", "function",
+                        "Query the cursor position.",
+                        "Ask the terminal for the cursor position and return `{ x = , y = }` with one based coordinates.  Returns `nil, \"timeout\"` when the terminal does not answer within the timeout, which defaults to 100 milliseconds, and `nil, \"not a terminal\"` when standard input or output is not a terminal."),
+                    entry("term.restore", "term.restore()", "function",
+                        "Restore every terminal mode changed by the module.",
+                        "Show the cursor, reset the style and disable keyboard enhancements, bracketed paste, focus reporting, mouse reporting and raw mode.  This is the clean-up path used when the REPL exits; it is a no-op without a terminal."),
+                    entry("term.color", "term.color", "field",
+                        "Colour name constants and constructors.",
+                        "A table with `fg` and `bg` subtables mapping colour names such as `\"bright_cyan\"` to the strings accepted by `term.style`.  `term.color.ansi(number)` builds an ANSI 256 colour and `term.color.rgb(r, g, b)` builds a true colour."),
+                }, { upstream = "https://github.com/SuSonicTH/termy-zig", license = "MIT" }),
+
                 module("markdown", "markdown (md4c)", "Markdown parsing and HTML rendering based on md4c.", [==[
 `require "markdown"` exposes md4c directly.  The module has two parts: an
 event-based parser and the md4c-html renderer.
@@ -7693,19 +7801,21 @@ Start the interactive Read-Eval-Print Loop.
 
 The REPL runs `~/.config/zli/init.lua`, then `~/.config/zli/repl_init.lua`,
 before showing the prompt. The generated `repl_init.lua` preloads every bundled
-library: `argparse`, `benchmark`, `crossline`, `collection`, `csv`, `F`,
-`filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`, `log`,
-`lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
-`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter`,
+library: `argparse`, `benchmark`, `collection`, `csv`, `F`, `filesystem`,
+`grid`, `gzip`, `httpclient`, `httpserver`, `cjson`, `log`, `lpeg`, `luaunit`,
+`luastrip`, `markdown`, `memoize`, `pager`, `re`, `readline`, `serpent`,
+`sqlite3`, `stream`, `tar`, `term`, `timer`, `unzip`, `uuid`, `xlsxmlwriter`,
 `xml2lua` and `zip`;
 edit that file to change the defaults. History is kept in
-`~/.config/zli/repl_history`.
+`~/.config/zli/repl_history.json`. An existing `repl_history` file from an older release is renamed to the new name once at startup.
 
 Enter `quit` or `exit`, or press Ctrl-D, to leave. `?expression` pretty-prints
 tables and strings, `:help` shows the index, and `:help <name>` or
 `:help --search <term>` looks up documentation. Incomplete statements continue
-on the next line, and F1 shows the editing help. Running `zli` with no arguments
-also starts the REPL.
+on the next line. `Ctrl+Shift+X` or `Alt+X` toggles direct multiline mode,
+`Ctrl+Enter` or `Alt+Enter` submits, `Ctrl+R` searches history, and
+`Ctrl+C` or `Ctrl+D` exits. Running `zli` with no arguments also starts the
+REPL.
 
 ```bash
 zli @repl
@@ -7930,11 +8040,11 @@ REPL-only init script.
 
 The file lives at `~/.config/zli/repl_init.lua` and is executed by `@repl`
 after the global `init.lua`. If missing, the REPL creates it with assignments
-for every bundled library: `argparse`, `benchmark`, `crossline`, `collection`,
-`csv`, `F`, `filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`,
-`log`, `lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `re`, `serpent`,
-`sqlite3`, `stream`, `tar`, `timer`, `unzip`, `uuid`, `xlsxmlwriter`,
-`xml2lua` and `zip`.
+for every bundled library: `argparse`, `benchmark`, `collection`, `csv`, `F`,
+`filesystem`, `grid`, `gzip`, `httpclient`, `httpserver`, `cjson`, `log`,
+`lpeg`, `luaunit`, `luastrip`, `markdown`, `memoize`, `pager`, `re`,
+`readline`, `serpent`, `sqlite3`, `stream`, `tar`, `term`, `timer`, `unzip`,
+`uuid`, `xlsxmlwriter`, `xml2lua` and `zip`.
 Use it for prompt helpers and other state that should exist only in interactive
 sessions; errors abort the REPL.
 

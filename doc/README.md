@@ -53,8 +53,16 @@ zli                 # no arguments also starts the REPL
 - `?expression` pretty-prints tables and strings.
 - `:help` shows the documentation index; `:help <name>` looks up an entry and
   `:help --search <term>` searches all documentation.
-- Incomplete statements continue on the next line.
-- `F1` shows the crossline editing help.
+- Incomplete statements continue on the next line; the editor asks the REPL
+  whether a block is complete before submitting.
+- `Ctrl+Shift+X` or `Alt+X` toggles direct multiline mode (the prompt changes
+  colour), `Ctrl+Enter` or `Alt+Enter` submits, `Ctrl+R` searches history, and
+  `Ctrl+C`/`Ctrl+D` exit.
+- Long output from expressions and `:help` is shown through the pager: space,
+  Enter or Page Down advances, `q`, Esc or `Ctrl+C` stops.
+- History is stored in `~/.config/zli/repl_history.json` as a pretty-printed
+  JSON array of strings.  An older `repl_history` file is renamed once; an
+  unreadable file is moved to `<path>.bak` and replaced with a fresh history.
 
 ## SQLite CLI
 

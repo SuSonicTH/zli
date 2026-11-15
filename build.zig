@@ -75,6 +75,33 @@ pub fn build(b: *std.Build) void {
     });
     const run_docgen_tests = b.addRunArtifact(docgen_tests);
     test_step.dependOn(&run_docgen_tests.step);
+
+    const termy_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/termy_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "termy", .module = b.dependency("termy", .{}).module("termy") }},
+        }),
+    });
+    const run_termy_tests = b.addRunArtifact(termy_tests);
+    test_step.dependOn(&run_termy_tests.step);
+
+    for ([_][]const u8{
+        "src/term_width.zig",
+        "src/history.zig",
+        "src/lineedit.zig",
+    }) |path| {
+        const unit_tests = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(path),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        const run_unit_tests = b.addRunArtifact(unit_tests);
+        test_step.dependOn(&run_unit_tests.step);
+    }
 }
 
 const PackageManifest = struct {
@@ -203,15 +230,9 @@ fn compileStep(
     //add lualibs (strip for non debug)
     luaLibs(b, optimize, exe.root_module);
 
-    //translate the C headers used by the Zig sources
-    const crossline_dep = b.dependency("crossline", .{});
-    const translate_c = b.addTranslateC(.{
-        .root_source_file = crossline_dep.path("crossline.h"),
-        .target = target,
-        .optimize = optimize,
-    });
-    translate_c.addIncludePath(crossline_dep.path(""));
-    exe.root_module.addImport("c", translate_c.createModule());
+    //terminal manipulation used by the line editor, pager and REPL tools
+    const termy_dep = b.dependency("termy", .{});
+    exe.root_module.addImport("termy", termy_dep.module("termy"));
 
     const md4c_dep = b.dependency("md4c", .{});
     const translate_md4c = b.addTranslateC(.{
@@ -228,7 +249,6 @@ fn compileStep(
     exe.root_module.linkLibrary(luaCJson(b, target, optimize, luaPath));
     exe.root_module.linkLibrary(md4c(b, target, optimize));
     exe.root_module.linkLibrary(lyaml(b, target, optimize, luaPath));
-    exe.root_module.linkLibrary(crossline(b, target, optimize, exe));
 
     return exe;
 }
@@ -378,7 +398,9 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/collection/list.lua", .name = "collection.list.lua" },
     .{ .input = "src/collection/map.lua", .name = "collection.map.lua" },
     .{ .input = "src/collection/set.lua", .name = "collection.set.lua" },
-    .{ .input = "src/crossline.lua", .name = "crossline.lua" },
+    .{ .input = "src/term.lua", .name = "term.lua" },
+    .{ .input = "src/readline.lua", .name = "readline.lua" },
+    .{ .input = "src/pager.lua", .name = "pager.lua" },
     .{ .input = "src/filesystem.lua", .name = "filesystem.lua" },
     .{ .input = "src/grid.lua", .name = "grid.lua" },
     .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },
@@ -594,23 +616,6 @@ fn lyaml(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.
         },
     });
 
-    lib.root_module.link_libc = true;
-    return lib;
-}
-
-fn crossline(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, exe: *std.Build.Step.Compile) *std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = "crossline",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .static,
-    });
-    const dependency = b.dependency("crossline", .{});
-    lib.root_module.addIncludePath(dependency.path(""));
-    exe.root_module.addIncludePath(dependency.path(""));
-    lib.root_module.addCSourceFile(.{ .file = dependency.path("crossline.c"), .flags = flags_c99 });
     lib.root_module.link_libc = true;
     return lib;
 }
