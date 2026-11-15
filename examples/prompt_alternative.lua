@@ -43,14 +43,14 @@ local ok, manifest = pcall(prompt.screen, "alternate", function()
         },
         default = "espresso",
         filter = "auto",
-    }, "cancelled")
+    })
 
     local modules = need(prompt.multiselect {
         message = "Install made-up modules",
         items = { "gravity", "crumpet", "radio", "mirrors", "tea" },
         default = { "gravity", "radio" },
         min = 1,
-    }, "cancelled")
+    })
 
     local callsign = need(prompt.text {
         message = "Crew call sign",
@@ -61,45 +61,45 @@ local ok, manifest = pcall(prompt.screen, "alternate", function()
             if value:find("%s") then return nil, "spaces are not allowed" end
             return true
         end,
-    }, "cancelled")
+    })
 
     local motto = need(prompt.multiline {
         message = "Mission motto",
         default = "We came. We brewed. We left a tidy orbit.",
         rows = 3,
         max_length = 160,
-    }, "cancelled")
+    })
 
     local secret = need(prompt.password {
         message = "Launch code",
         default = "correct-horse",
         confirm = true,
         confirm_message = "Launch code (one more time)",
-    }, "cancelled")
+    })
 
     local launch_date = need(prompt.date {
         message = "Launch date",
         default = os.date("*t"),
         min = os.date("%Y-%m-%d"),
         as = "string",
-    }, "cancelled")
+    })
 
     local launch_time = need(prompt.time {
         message = "Launch time",
         default = { hour = 9, min = 30 },
         as = "string",
-    }, "cancelled")
+    })
 
     local briefing = need(prompt.datetime {
         message = "Crew briefing",
         default = os.date("*t"),
         as = "string",
-    }, "cancelled")
+    })
 
     local go = need(prompt.confirm {
         message = "Authorise the simulated launch?",
         default = true,
-    }, "cancelled")
+    })
     if not go then cancel("launch aborted") end
 
     local calibration = prompt.progress {

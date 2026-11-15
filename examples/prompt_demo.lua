@@ -12,7 +12,15 @@ local function pause(milliseconds)
     while os.nanotime() < deadline do end
 end
 
-local environment = prompt.select {
+local function need(value, message)
+    if value == nil then
+        print("cancelled: " .. tostring(message or "cancelled"))
+        os.exit(0)
+    end
+    return value
+end
+
+local environment = need(prompt.select {
     message = "Target environment",
     items = {
         { label = "development", value = "dev", description = "local machine" },
@@ -20,20 +28,16 @@ local environment = prompt.select {
         { label = "production", value = "prod", description = "live users" },
     },
     default = "stage",
-}
-if environment == nil then
-    print("cancelled")
-    os.exit(0)
-end
+})
 
-local features = prompt.multiselect {
+local features = need(prompt.multiselect {
     message = "Enable features",
     items = { "cache", "metrics", "tracing", "backups" },
     default = { "cache", "metrics" },
     min = 1,
-}
+})
 
-local name = prompt.text {
+local name = need(prompt.text {
     message = "Project name",
     default = "demo",
     placeholder = "lowercase, no spaces",
@@ -41,15 +45,16 @@ local name = prompt.text {
         if value:find("%s") then return nil, "spaces are not allowed" end
         return true
     end,
-}
+})
 
-local release = prompt.date {
+local release = need(prompt.date {
     message = "Release date",
     default = os.date("*t"),
     as = "string",
-}
+})
 
-if not prompt.confirm { message = "Write the configuration?", default = true } then
+local write = need(prompt.confirm { message = "Write the configuration?", default = true })
+if not write then
     print("nothing written")
     os.exit(0)
 end

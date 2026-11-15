@@ -1,9 +1,10 @@
 # Prompt alternate-screen showcase
 
-`prompt_alternative.lua` is a guided tour of the `prompt` library that runs
-entirely in the alternate screen. It asks for a fictional mission, crew details,
-a launch date and time, then runs a few simulated progress bars and a spinner.
-Nothing is created, saved or contacted — every step is made up.
+`prompt_alternative.lua` is a guided tour of the `prompt` library whose
+interactive prompts and progress output all run in the alternate screen. It asks
+for a fictional mission, crew details, a launch date and time, then runs a few
+simulated progress bars and a spinner. Nothing is created, saved or contacted —
+every step is made up.
 
 ```bash
 zig build
@@ -19,7 +20,7 @@ zig build
 | `prompt.multiselect` | A set of imaginary modules, with defaults and a minimum selection. |
 | `prompt.text` | A crew call sign with a placeholder, length limit and validation. |
 | `prompt.multiline` | A multi-line mission motto. Enter submits; Alt+Enter inserts a newline. |
-| `prompt.password` | A launch code with a confirmation prompt and masked summary. |
+| `prompt.password` | A launch code with masked input and a confirmation prompt. |
 | `prompt.date` | A launch date from the calendar, constrained to today or later. |
 | `prompt.time` | A launch time using the segmented picker. |
 | `prompt.datetime` | A combined crew briefing date and time. |
@@ -39,8 +40,9 @@ after the alternate screen is closed.
   return to the normal screen.
 - Change a value and watch validation keep the field open (the call sign
   rejects spaces, and the multiselect requires at least one module).
-- In the list, use arrows or `j`/`k` to move and Enter to accept. Missions that
-  have many entries switch to type-to-filter automatically.
+- In the list, use arrows or `j`/`k` to move and Enter to accept. The library
+  enables type-to-filter when a list has more entries than the page size; this
+  example's four-mission list is short enough to show in full.
 - The progress and spinner start at their initial state as soon as they are
   created, then advance while the script pauses between steps.
 

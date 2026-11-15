@@ -45,4 +45,5 @@ exists.
 - `progress:advance()` and `spinner:step()` are called from the normal working
   loop. No background thread is involved, so the spinner only animates when
   the loop reaches the next `step`.
-- Pressing Esc or Ctrl+C returns `nil, "cancelled"` and restores the terminal.
+- Pressing Esc or Ctrl+C cancels and restores the terminal; this script exits
+  cleanly instead of carrying a `nil` value into the later steps.
