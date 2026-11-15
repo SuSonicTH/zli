@@ -100,6 +100,7 @@ function M.build()
     local theme = {
         styles = styles,
         symbols = symbols,
+        unicode = use_unicode,
         color = color_enabled(),
     }
 

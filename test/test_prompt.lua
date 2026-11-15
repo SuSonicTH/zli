@@ -294,6 +294,87 @@ function Test_prompt.Test_datetime_tab_and_time_adjust()
     lu.assertEquals(31, result[1].min)
 end
 
+
+local live = require "prompt.live"
+
+function Test_prompt.Test_progress_display_and_finish()
+    live.capture = {}
+    local progress = prompt.progress { total = 10, label = "Copy", min_interval = 0 }
+    progress:update(5)
+    progress:set_label("Copying")
+    progress:finish("Copied")
+    local texts = {}
+    for _, entry in ipairs(live.capture) do texts[#texts + 1] = entry.text or entry.status end
+    live.capture = nil
+    lu.assertStrContains(table.concat(texts, "\n"), "Copying")
+    lu.assertStrContains(table.concat(texts, "\n"), "50%")
+    lu.assertStrContains(table.concat(texts, "\n"), "5/10")
+    lu.assertStrContains(table.concat(texts, "\n"), "Copied")
+end
+
+function Test_prompt.Test_progress_template_and_validation()
+    live.capture = {}
+    local progress = prompt.progress {
+        total = 4,
+        template = "{label} {percent}% {count}/{total}",
+        label = "Items",
+        min_interval = 0,
+    }
+    progress:update(2)
+    progress:finish()
+    live.capture = nil
+    lu.assertError(function() prompt.progress { template = "{nope}" } end)
+end
+
+function Test_prompt.Test_progress_iterator_and_indeterminate()
+    live.capture = {}
+    local seen = {}
+    for index, item in prompt.progress.each({ "a", "b" }, { label = "Work", min_interval = 0 }) do
+        seen[#seen + 1] = index .. item
+    end
+    lu.assertEquals({ "1a", "2b" }, seen)
+    lu.assertTrue(#live.capture >= 1)
+
+    live.capture = {}
+    local progress = prompt.progress { label = "Wait", min_interval = 0 }
+    progress:update(3)
+    progress:finish()
+    live.capture = nil
+end
+
+function Test_prompt.Test_spinner_frames_and_finish()
+    live.capture = {}
+    local spinner = prompt.spinner { text = "Fetch", interval = 0.001 }
+    spinner:step(nil, true)
+    spinner:step("Fetching", true)
+    spinner:finish("Fetched")
+    local texts = {}
+    for _, entry in ipairs(live.capture) do texts[#texts + 1] = entry.text or entry.status end
+    live.capture = nil
+    lu.assertStrContains(texts[1], "Fetch")
+    lu.assertStrContains(texts[2], "Fetching")
+    lu.assertStrContains(texts[3], "Fetched")
+    lu.assertNotEquals(texts[1], texts[2])
+end
+
+function Test_prompt.Test_live_non_interactive_finish()
+    local support = require "test/support"
+    local script = support.temp_file("prompt_live", [[
+local prompt = require "prompt"
+local p = prompt.progress { total = 2, label = "Copy" }
+p:update(1)
+p:finish("Copied")
+local s = prompt.spinner { text = "Fetch" }
+s:step("Fetching", true)
+s:finish("Fetched")
+]])
+    local stdout, status = support.run({ script }, { home = support.temp_dir("prompt_home"), stdin = "" })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "Copied")
+    lu.assertStrContains(stdout, "Fetched")
+    lu.assertNotStrContains(stdout, "[")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

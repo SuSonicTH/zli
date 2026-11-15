@@ -56,7 +56,7 @@ M.confirm = component("confirm")
 M.date = component("date")
 M.time = component("time")
 M.datetime = component("datetime")
-M.progress = component("progress")
+M.progress = require("prompt.progress")
 M.spinner = component("spinner")
 
 M.width = term.width
