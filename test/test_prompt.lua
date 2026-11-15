@@ -210,6 +210,9 @@ print("select=" .. prompt.select { message = "Pick", items = { "a", "b" }, defau
 print("multi=" .. table.concat(prompt.multiselect { message = "Pick", items = { "a", "b" }, default = { "a" } }, ","))
 print("text=" .. prompt.text { message = "Name", default = "Ada" })
 print("confirm=" .. tostring(prompt.confirm { message = "Sure?", default = true }))
+print("date=" .. prompt.date { message = "Date", as = "string" })
+print("time=" .. prompt.time { message = "Time", as = "string" })
+print("datetime=" .. prompt.datetime { message = "When", as = "string" })
 ]])
     local stdout, status = support.run({ script }, {
         home = support.temp_dir("prompt_home"),
@@ -220,6 +223,12 @@ print("confirm=" .. tostring(prompt.confirm { message = "Sure?", default = true 
     lu.assertStrContains(stdout, "multi=a")
     lu.assertStrContains(stdout, "text=Ada")
     lu.assertStrContains(stdout, "confirm=true")
+    lu.assertNotStrContains(stdout, "choice [2]: select=b")
+    lu.assertNotStrContains(stdout, "[Ada]: text=Ada")
+    lu.assertNotStrContains(stdout, "[Y/n]: confirm=true")
+    lu.assertNotStrContains(stdout, "(YYYY-MM-DD): date=")
+    lu.assertNotStrContains(stdout, "(HH:MM): time=")
+    lu.assertNotStrContains(stdout, "(YYYY-MM-DD HH:MM): datetime=")
 end
 
 

@@ -10,8 +10,9 @@ local function out(text)
     io.flush()
 end
 
-local function read_line()
+local function read_line(newline)
     local line = io.read("l")
+    if newline ~= false then out("\n") end
     if line == nil then return nil end
     return line
 end
@@ -189,7 +190,7 @@ function M.multiline(options, default)
     out("? " .. options.message .. " (end with a line containing .)\n")
     local lines = {}
     while true do
-        local line = read_line()
+        local line = read_line(false)
         if line == nil then
             if #lines == 0 then
                 if default ~= nil then return eof_result(default) end

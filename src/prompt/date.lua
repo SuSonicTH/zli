@@ -41,6 +41,8 @@ local function fallback_run(options, default, min_day, max_day)
     io.flush()
     while true do
         local line = io.read("l")
+        io.write("\n")
+        io.flush()
         if line == nil then
             local policy = config.get("eof")
             if policy == "error" then error("prompt.date: end of input", 3) end

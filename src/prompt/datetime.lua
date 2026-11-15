@@ -38,6 +38,8 @@ local function fallback_run(options, default, seconds)
     io.flush()
     while true do
         local line = io.read("l")
+        io.write("\n")
+        io.flush()
         if line == nil then
             local policy = config.get("eof")
             if policy == "error" then error("prompt.datetime: end of input", 3) end

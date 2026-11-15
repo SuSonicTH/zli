@@ -158,4 +158,4 @@ print("  launch code  : " .. string.rep("*", #manifest.secret))
 print("  launch       : " .. manifest.date .. " at " .. manifest.time)
 print("  briefing     : " .. manifest.briefing)
 print()
-print("Nothing above is real. This is only a prompt showcase.")
+
