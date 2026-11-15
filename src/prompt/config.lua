@@ -34,6 +34,7 @@ M.state = {
     spinner_interval = 0.08,
     progress_interval = 0.08,
     force_interactive = nil,
+    screen_hold = false,
 }
 
 function M.reset()
@@ -48,6 +49,7 @@ function M.reset()
         spinner_interval = 0.08,
         progress_interval = 0.08,
         force_interactive = nil,
+        screen_hold = false,
     }
 end
 

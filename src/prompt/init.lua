@@ -29,10 +29,30 @@ function M.screen(mode, fn)
         error("prompt.screen: expecting a function", 2)
     end
 
-    local previous = config.get("screen")
-    config.get().screen = mode
+    local state = config.get()
+    local previous = state.screen
+    local previous_hold = state.screen_hold
+    local entered = false
+
+    state.screen = mode
+    if mode == "alternate" then
+        if not previous_hold then
+            if config.is_interactive() then
+                term.alternate_screen(true)
+                term.hide_cursor()
+            end
+            entered = true
+        end
+        state.screen_hold = true
+    end
+
     local packed = table.pack(xpcall(fn, debug.traceback))
-    config.get().screen = previous
+    state.screen = previous
+    state.screen_hold = previous_hold
+    if entered and config.is_interactive() then
+        term.alternate_screen(false)
+        term.show_cursor()
+    end
     if not packed[1] then error(packed[2], 0) end
     return table.unpack(packed, 2, packed.n)
 end

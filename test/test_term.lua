@@ -113,6 +113,21 @@ print("chars=" .. table.concat(chars))
     lu.assertStrContains(stdout, "chars=abc")
 end
 
+
+function Test_term.Test_batch_defers_and_flushes()
+    local script = support.temp_file("term_batch", [[
+local term = require "term"
+term.batch(function()
+    term.write("a")
+    term.write("b")
+end)
+print("c")
+]])
+    local stdout, status = support.run({ script }, { home = support.temp_dir("term_home") })
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "abc")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

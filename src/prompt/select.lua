@@ -118,14 +118,26 @@ local function build(theme, options, state, multi)
         local item = visible[position]
         local current = item.index == state.selected
         local label_style = current and "selected" or (item.disabled and "muted" or nil)
-        local spans = { render.span("  " .. (current and theme.symbol("pointer") or " ") .. " ", "accent") }
+        local spans = {
+            render.span("  ", nil),
+            render.span(current and theme.symbol("pointer") or " ", current and "selected" or "accent"),
+            render.span(" ", current and "selected" or nil),
+        }
         if multi then
             local checked = state.checked[item.index]
+            local glyph_style
+            if current then
+                glyph_style = "selected"
+            elseif checked then
+                glyph_style = "accent"
+            else
+                glyph_style = "muted"
+            end
             spans[#spans + 1] = render.span(
                 checked and theme.symbol("checked") or theme.symbol("unchecked"),
-                checked and (current and "selected" or "accent") or "muted"
+                glyph_style
             )
-            spans[#spans + 1] = render.span(" ", nil)
+            spans[#spans + 1] = render.span(" ", current and "selected" or nil)
         end
         spans[#spans + 1] = render.span(item.label, label_style)
         if item.description then
@@ -151,9 +163,9 @@ local function build(theme, options, state, multi)
     local help
     if multi then
         if state.filter_enabled then
-            help = "space type  alt+a all  alt+i invert  enter done  esc cancel"
+            help = "space type  left/right toggle  alt+a all  alt+i invert  enter done  esc cancel"
         else
-            help = "space toggle  a all  i invert  enter done  esc cancel"
+            help = "space or left/right toggle  a all  i invert  enter done  esc cancel"
         end
     else
         help = "arrows move  enter select  esc cancel"
@@ -304,6 +316,17 @@ local function make_runner(options, multi)
             end
 
             if multi then
+                if input.key(event, "left") or input.key(event, "right") then
+                    local item
+                    for _, candidate in ipairs(state.items) do
+                        if candidate.index == state.selected then item = candidate break end
+                    end
+                    if item and not item.disabled then
+                        state.checked[item.index] = not state.checked[item.index] or nil
+                    end
+                    state.error = nil
+                    return "continue"
+                end
                 local all = input.ctrl(event, "a") or input.alt_char(event, "a")
                     or (not state.filter_enabled and input.key(event, "char") and event.char == "a")
                 local invert = input.alt_char(event, "i")

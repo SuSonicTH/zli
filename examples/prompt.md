@@ -33,8 +33,9 @@ visible.
 ## Things to try
 
 - Choose **Alternate screen** at the start to see the full-screen presentation.
-  Each component enters and leaves its own alternate screen; the final manifest
-  is printed back in the normal scrollback.
+  `prompt.screen` enters the alternate screen once for the whole sequence, so
+  prompts do not flash the original terminal contents between steps.  The final
+  manifest is printed back in the normal scrollback.
 - Press Esc at any prompt to cancel the whole showcase and restore the
   terminal.
 - Change a value and watch validation keep the field open (the call sign

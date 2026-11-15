@@ -1517,6 +1517,7 @@ List keys:
 | Home/End, Page Up/Page Down | Jump to the first/last item or move a page. |
 | Enter | Accept the selection or finish the multiselect. |
 | Space | Toggle the current multiselect item when filtering is off; while filtering it is part of the query. |
+| Left/Right | Toggle the current multiselect item. |
 | a, i | Select all or invert visible multiselect items when filtering is off. |
 | Alt+A, Alt+I | Select all or invert visible items while filtering. |
 | Esc | Clear a filter first, then cancel. |
@@ -1571,10 +1572,12 @@ Call `fn` with the default screen mode temporarily set to `mode`, then restore
 the previous mode even when `fn` raises.  `mode` is `"inline"` or
 `"alternate"`.
 
-Each component still manages its own alternate screen; this helper only changes
-the default used by components inside `fn`, so callers do not have to repeat
-`screen = "alternate"` on every prompt.  The return values of `fn` are returned
-unchanged.
+In alternate mode the helper enters the alternate screen once before `fn` and
+leaves it after `fn` returns, even when `fn` raises.  Components inside share
+that screen instead of entering and leaving it themselves, which avoids
+flashing the original terminal contents between prompts.  Summaries are drawn
+inside the alternate screen; normal output printed after the callback returns
+to the regular screen.  The return values of `fn` are returned unchanged.
 ]]),
                     entry("prompt.is_interactive", "prompt.is_interactive()", "function",
                         "Report whether prompts can use the terminal UI.",
@@ -1599,9 +1602,9 @@ Disabled items are shown but cannot be selected.
                     entry("prompt.multiselect", "prompt.multiselect(options)", "function",
                         "Choose zero or more items from a list.",
                         [[
-Return an array of selected values in item order.  Use Space to toggle the
-current item when filtering is off (while filtering, Space is part of the
-query), `a` to select everything visible, `i` to invert the visible
+Return an array of selected values in item order.  Use Space or Left/Right to
+toggle the current item when filtering is off (while filtering, Space is part
+of the query), `a` to select everything visible, `i` to invert the visible
 items (Alt+A and Alt+I while filtering) and Enter to finish.  `default` is an array of values and
 `default_indices` is an array of indices; both may be combined.
 
@@ -7207,6 +7210,9 @@ media keys, `"keypad_begin"` and the individual modifier keys.
                     entry("term.flush", "term.flush()", "function",
                         "Flush buffered terminal output.",
                         "Flush the shared terminal writer.  Most output functions flush already, so this is only needed after writing directly through `term.write`."),
+                    entry("term.batch", "term.batch(fn)", "function",
+                        "Batch terminal writes into one flush.",
+                        "Call `fn` with the implicit stdout flush after each terminal output call deferred, then flush once when `fn` returns.  This keeps a redrawn frame from being shown in several partial steps and reduces flicker.  The return values of `fn` are returned; errors are re-raised after the pending output is flushed."),
                     entry("term.move_to", "term.move_to(column, row)", "function",
                         "Move the cursor to an absolute position.",
                         "Move the cursor to `column` and `row`, both one based.  Returns nothing and does nothing without a terminal."),

@@ -623,6 +623,32 @@ print(prompt.password { message = "P", default = "secret", confirm = true })
     lu.assertStrContains(stdout, "secret")
 end
 
+
+function Test_prompt.Test_multiselect_left_right_toggle_and_highlight()
+    local result = drive({ key("right"), key("enter") }, function()
+        return prompt.multiselect { message = "Pick", items = { "a", "b" } }
+    end)
+    lu.assertEquals({ "a" }, result[1])
+
+    local _, frames = drive({ key("enter") }, function()
+        return prompt.multiselect { message = "Pick", items = { "a", "b" }, default = { "a" } }
+    end)
+    local highlighted_gap = false
+    for _, span in ipairs(frames[1].lines[2] or {}) do
+        if span.text == " " and span.style == "selected" then highlighted_gap = true end
+    end
+    lu.assertTrue(highlighted_gap)
+end
+
+function Test_prompt.Test_screen_hold_spans_the_callback()
+    config.reset()
+    prompt.screen("alternate", function()
+        lu.assertTrue(config.get("screen_hold"))
+    end)
+    lu.assertFalse(config.get("screen_hold"))
+    config.reset()
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

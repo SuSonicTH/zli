@@ -42,9 +42,10 @@ function M.run(options)
         if second == nil then return second, second_err end
         if first == second then return first end
 
-        render.write_spans(render.status(theme, "danger", "Passwords do not match"), theme)
-        term.write("\n")
-        term.flush()
+        term.batch(function()
+            render.write_spans(render.status(theme, "danger", "Passwords do not match"), theme)
+            term.write("\n")
+        end)
     end
 end
 

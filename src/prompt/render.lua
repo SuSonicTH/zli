@@ -1,6 +1,7 @@
 -- Frame model and inline/alternate presenters.
 
 local term = require "term"
+local config = require "prompt.config"
 local theme_mod = require "prompt.theme"
 
 local M = {}
@@ -180,41 +181,42 @@ function Inline:draw(frame)
     end
     if #lines == 0 then lines[1] = {} end
 
-    term.hide_cursor()
-    self:to_bottom()
-    if self.drawn > 0 then
-        term.move_by(0, -self.drawn)
-        term.move_to_column(1)
-    end
+    term.batch(function()
+        term.hide_cursor()
+        self:to_bottom()
+        if self.drawn > 0 then
+            term.move_by(0, -self.drawn)
+            term.move_to_column(1)
+        end
 
-    for _, line in ipairs(lines) do
-        term.clear("line")
-        M.write_spans(line, self.theme)
-        term.write("\n")
-    end
-
-    local count = #lines
-    if count < self.drawn then
-        local stale = self.drawn - count
-        for _ = 1, stale do
+        for _, line in ipairs(lines) do
             term.clear("line")
+            M.write_spans(line, self.theme)
             term.write("\n")
         end
-        term.move_by(0, -stale)
-    end
-    self.drawn = count
 
-    local cursor = frame.cursor
-    if cursor and cursor.row and cursor.row >= 1 and cursor.row <= count then
-        local row = math.min(cursor.row, count)
-        term.move_by(0, -(count - row + 1))
-        term.move_to_column(math.max(1, math.min((cursor.column or 0) + 1, size.columns)))
-        term.show_cursor()
-        self.cursor_row = row
-    else
-        term.hide_cursor()
-    end
-    term.flush()
+        local count = #lines
+        if count < self.drawn then
+            local stale = self.drawn - count
+            for _ = 1, stale do
+                term.clear("line")
+                term.write("\n")
+            end
+            term.move_by(0, -stale)
+        end
+        self.drawn = count
+
+        local cursor = frame.cursor
+        if cursor and cursor.row and cursor.row >= 1 and cursor.row <= count then
+            local row = math.min(cursor.row, count)
+            term.move_by(0, -(count - row + 1))
+            term.move_to_column(math.max(1, math.min((cursor.column or 0) + 1, size.columns)))
+            term.show_cursor()
+            self.cursor_row = row
+        else
+            term.hide_cursor()
+        end
+    end)
 end
 
 function Inline:commit(kind, summary, frame)
@@ -222,32 +224,33 @@ function Inline:commit(kind, summary, frame)
         self.frames[#self.frames + 1] = { kind = kind, summary = summary, frame = frame }
         return
     end
-    term.hide_cursor()
-    self:to_bottom()
-    if self.drawn > 0 then
-        term.move_by(0, -self.drawn)
-        term.move_to_column(1)
-        for _ = 1, self.drawn do
-            term.clear("line")
-            term.write("\n")
+    term.batch(function()
+        term.hide_cursor()
+        self:to_bottom()
+        if self.drawn > 0 then
+            term.move_by(0, -self.drawn)
+            term.move_to_column(1)
+            for _ = 1, self.drawn do
+                term.clear("line")
+                term.write("\n")
+            end
+            term.move_by(0, -self.drawn)
         end
-        term.move_by(0, -self.drawn)
-    end
-    self.drawn = 0
-    self.cursor_row = nil
+        self.drawn = 0
+        self.cursor_row = nil
 
-    if kind == "summary" and summary then
-        M.write_spans(summary, self.theme)
-        term.write("\n")
-    elseif kind == "frame" and frame then
-        local size = terminal_size()
-        for _, line in ipairs(frame.lines) do
-            M.write_spans(M.clip(line, size.columns, self.theme), self.theme)
+        if kind == "summary" and summary then
+            M.write_spans(summary, self.theme)
             term.write("\n")
+        elseif kind == "frame" and frame then
+            local size = terminal_size()
+            for _, line in ipairs(frame.lines) do
+                M.write_spans(M.clip(line, size.columns, self.theme), self.theme)
+                term.write("\n")
+            end
         end
-    end
-    term.show_cursor()
-    term.flush()
+        term.show_cursor()
+    end)
 end
 
 function Inline:close()
@@ -261,65 +264,90 @@ function Alternate:new(theme)
     return setmetatable({
         theme = theme,
         active = false,
+        shared = config.get("screen_hold"),
     }, self)
 end
 
 function Alternate:enter()
     if self.active then return end
-    term.alternate_screen(true)
+    if not self.shared then term.alternate_screen(true) end
     term.hide_cursor()
     self.active = true
 end
 
 function Alternate:draw(frame)
-    self:enter()
-    local size = terminal_size()
-    local content_width = math.min(size.columns, 80)
-    local left = math.max(1, math.floor((size.columns - content_width) / 2) + 1)
-    term.clear("all")
-    local max_lines = math.max(1, size.rows)
-    for index, line in ipairs(frame.lines) do
-        if index > max_lines then break end
-        term.move_to(left, index)
-        term.clear("line")
-        M.write_spans(M.clip(line, content_width, self.theme), self.theme)
-    end
+    term.batch(function()
+        self:enter()
+        local size = terminal_size()
+        local content_width = math.min(size.columns, 80)
+        local left = math.max(1, math.floor((size.columns - content_width) / 2) + 1)
+        term.clear("all")
+        local max_lines = math.max(1, size.rows)
+        for index, line in ipairs(frame.lines) do
+            if index > max_lines then break end
+            term.move_to(left, index)
+            term.clear("line")
+            M.write_spans(M.clip(line, content_width, self.theme), self.theme)
+        end
 
-    local cursor = frame.cursor
-    if cursor and cursor.row and cursor.row >= 1 and cursor.row <= max_lines then
-        term.move_to(left + math.min(cursor.column or 0, content_width - 1), cursor.row)
-        term.show_cursor()
-    else
-        term.hide_cursor()
-    end
-    term.flush()
+        local cursor = frame.cursor
+        if cursor and cursor.row and cursor.row >= 1 and cursor.row <= max_lines then
+            term.move_to(left + math.min(cursor.column or 0, content_width - 1), cursor.row)
+            term.show_cursor()
+        else
+            term.hide_cursor()
+        end
+    end)
 end
 
 function Alternate:commit(kind, summary, frame)
-    if self.active then
-        term.alternate_screen(false)
-        self.active = false
+    if self.shared then
+        term.batch(function()
+            if kind == "summary" and summary then
+                term.clear("all")
+                term.move_to(1, 1)
+                M.write_spans(summary, self.theme)
+                term.write("\n")
+            elseif kind == "frame" and frame then
+                term.clear("all")
+                for index, line in ipairs(frame.lines) do
+                    term.move_to(1, index)
+                    M.write_spans(line, self.theme)
+                end
+            end
+            term.show_cursor()
+        end)
+        self.active = true
+        return
     end
-    if kind == "summary" and summary then
-        M.write_spans(summary, self.theme)
-        term.write("\n")
-    elseif kind == "frame" and frame then
-        for _, line in ipairs(frame.lines) do
-            M.write_spans(line, self.theme)
-            term.write("\n")
+
+    term.batch(function()
+        if self.active then
+            term.alternate_screen(false)
+            self.active = false
         end
-    end
-    term.show_cursor()
-    term.flush()
+        if kind == "summary" and summary then
+            M.write_spans(summary, self.theme)
+            term.write("\n")
+        elseif kind == "frame" and frame then
+            for _, line in ipairs(frame.lines) do
+                M.write_spans(line, self.theme)
+                term.write("\n")
+            end
+        end
+        term.show_cursor()
+    end)
 end
 
 function Alternate:close()
-    if self.active then
-        term.alternate_screen(false)
-        self.active = false
-    end
-    term.show_cursor()
-    term.flush()
+    if self.shared then return end
+    term.batch(function()
+        if self.active then
+            term.alternate_screen(false)
+            self.active = false
+        end
+        term.show_cursor()
+    end)
 end
 
 function M.new(screen)

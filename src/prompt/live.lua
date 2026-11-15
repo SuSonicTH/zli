@@ -16,6 +16,7 @@ function Live:new(screen)
         theme = theme_mod.build(),
         active = false,
         alternate = false,
+        shared = config.get("screen_hold"),
         finished = false,
     }, self)
 end
@@ -39,26 +40,28 @@ function Live:update(spans)
     self.finished = false
 
     if self.screen == "alternate" then
-        if not self.alternate then
-            term.alternate_screen(true)
-            self.alternate = true
-        end
-        term.hide_cursor()
-        term.move_to(1, 1)
-        term.clear("line")
-        self:write_line(spans)
-        term.show_cursor()
-        term.flush()
+        term.batch(function()
+            if not self.alternate then
+                if not self.shared then term.alternate_screen(true) end
+                self.alternate = true
+            end
+            term.hide_cursor()
+            term.move_to(1, 1)
+            term.clear("line")
+            self:write_line(spans)
+            term.show_cursor()
+        end)
         self.active = true
         return
     end
 
-    term.hide_cursor()
-    term.write("\r")
-    term.clear("line")
-    self:write_line(spans)
-    term.show_cursor()
-    term.flush()
+    term.batch(function()
+        term.hide_cursor()
+        term.write("\r")
+        term.clear("line")
+        self:write_line(spans)
+        term.show_cursor()
+    end)
     self.active = true
 end
 
@@ -77,17 +80,23 @@ function Live:finish(kind, text)
         return
     end
 
-    if self.alternate then
-        term.alternate_screen(false)
-        self.alternate = false
-    elseif self.active then
-        term.write("\r")
-        term.clear("line")
-    end
-    self:write_line(spans)
-    term.write("\n")
-    term.show_cursor()
-    term.flush()
+    term.batch(function()
+        if self.alternate then
+            if self.shared then
+                term.move_to(1, 1)
+                term.clear("line")
+            else
+                term.alternate_screen(false)
+                self.alternate = false
+            end
+        else
+            term.write("\r")
+            term.clear("line")
+        end
+        self:write_line(spans)
+        term.write("\n")
+        term.show_cursor()
+    end)
     self.active = false
     self.finished = true
 end
@@ -98,16 +107,22 @@ function Live:close()
         self.finished = true
         return
     end
-    if self.alternate then
-        term.alternate_screen(false)
-        self.alternate = false
-    elseif self.active then
-        term.write("\r")
-        term.clear("line")
-        term.write("\n")
-    end
-    term.show_cursor()
-    term.flush()
+    term.batch(function()
+        if self.alternate then
+            if self.shared then
+                term.move_to(1, 1)
+                term.clear("line")
+            else
+                term.alternate_screen(false)
+                self.alternate = false
+            end
+        elseif self.active then
+            term.write("\r")
+            term.clear("line")
+            term.write("\n")
+        end
+        term.show_cursor()
+    end)
     self.active = false
     self.finished = true
 end

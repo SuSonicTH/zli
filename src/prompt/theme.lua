@@ -21,8 +21,8 @@ local default_styles = {
 
 local unicode = {
     pointer = "❯",
-    checked = "◉",
-    unchecked = "◯",
+    checked = "●",
+    unchecked = "○",
     radio_on = "●",
     radio_off = "○",
     arrow_up = "↑",

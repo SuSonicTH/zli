@@ -13,14 +13,33 @@ return function(term)
         "raw", "restore",
     }
 
+    local deferred = 0
+
     for _, name in ipairs(output) do
         local original = term[name]
         if original then
             term[name] = function(...)
-                io.flush()
+                if deferred == 0 then io.flush() end
                 return original(...)
             end
         end
+    end
+
+    function term.batch(fn)
+        if type(fn) ~= "function" then
+            error("term.batch: expecting a function", 2)
+        end
+        deferred = deferred + 1
+        local packed = table.pack(xpcall(fn, debug.traceback))
+        deferred = deferred - 1
+        if deferred == 0 then
+            local flush_ok, flush_error = pcall(term.flush)
+            if not flush_ok and packed[1] then
+                packed = table.pack(false, flush_error)
+            end
+        end
+        if not packed[1] then error(packed[2], 0) end
+        return table.unpack(packed, 2, packed.n)
     end
 
     local names = {
