@@ -37,6 +37,7 @@ print(term.wrap("abcdef", 3))
 print(string.format("%q", term.truncate("\27[31mabcdef\27[0m", 5)))
 print(string.format("%q", term.truncate("a\tb", 2)))
 print(pcall(term.wrap, "abcdef", 0))
+print("tabbed=" .. term.width("abc\ndef\tg"))
 ]])
     local stdout, status = support.run({ script }, { home = support.temp_dir("term_home") })
 
@@ -48,6 +49,7 @@ print(pcall(term.wrap, "abcdef", 0))
     lu.assertStrContains(stdout, "\\27[31mab...\\27[0m")
     lu.assertStrContains(stdout, '"a "')
     lu.assertStrContains(stdout, "false")
+    lu.assertStrContains(stdout, "tabbed=9")
 end
 
 function Test_term.Test_colour_constructors()

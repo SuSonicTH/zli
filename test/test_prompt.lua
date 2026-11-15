@@ -13,6 +13,7 @@ function Test_prompt.Test_width_helpers()
     lu.assertEquals(4, prompt.width("a界b"))
     lu.assertEquals(3, prompt.width("\27[31mabc\27[0m"))
     lu.assertEquals(9, prompt.width("a\tb"))
+    lu.assertEquals(9, prompt.width("abc\ndef\tg"))
 
     lu.assertEquals("a...", prompt.truncate("abcdef", 4))
     lu.assertEquals("abc…", prompt.truncate("abcdef", 4, "…"))
@@ -522,6 +523,39 @@ print("date=" .. tostring(prompt.date { message = "D", as = "string" }))
     lu.assertStrContains(stdout, "select=nil")
     lu.assertStrContains(stdout, "confirm=nil")
     lu.assertStrContains(stdout, "date=nil")
+end
+
+
+function Test_prompt.Test_invalid_utf8_paste_does_not_raise()
+    local result = drive({
+        { type = "paste", text = "\255" }, key("enter"),
+    }, function()
+        return prompt.text { message = "T", max_length = 10 }
+    end)
+    lu.assertEquals("\255", result[1])
+
+    result = drive({
+        { type = "paste", text = "\255" }, key("enter"),
+    }, function()
+        return prompt.password { message = "P" }
+    end)
+    lu.assertEquals("\255", result[1])
+end
+
+
+function Test_prompt.Test_clip_measures_tabs_at_display_column()
+    local theme = theme_mod.build()
+    local spans = render.clip({ { text = "ab" }, { text = "\tc" } }, 9, theme)
+    lu.assertEquals("ab\tc", render.plain(spans))
+end
+
+function Test_prompt.Test_date_rejects_time_only_default()
+    lu.assertErrorMsgContains("default must be a date", function()
+        prompt.date { message = "D", default = "10:30" }
+    end)
+    lu.assertErrorMsgContains("default must be a date", function()
+        prompt.datetime { message = "D", default = "10:30" }
+    end)
 end
 
 if not RUN_ALL then

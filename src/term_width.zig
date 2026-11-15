@@ -490,7 +490,9 @@ pub fn visibleWidth(s: []const u8) usize {
         }
         const decoded = decode(s, i);
         if (decoded.len == 0) break;
-        if (decoded.codepoint == '\t') {
+        if (decoded.codepoint == '\n') {
+            width = 0;
+        } else if (decoded.codepoint == '\t') {
             width += 8 - (width % 8);
         } else {
             width += codepointWidth(decoded.codepoint);
@@ -702,6 +704,7 @@ test "ascii and ansi width" {
 test "tabs advance to eight column stops" {
     try std.testing.expectEqual(@as(usize, 9), visibleWidth("a\tb"));
     try std.testing.expectEqual(@as(usize, 8), visibleWidth("\t"));
+    try std.testing.expectEqual(@as(usize, 9), visibleWidth("abc\ndef\tg"));
 }
 
 test "wide and combining characters" {

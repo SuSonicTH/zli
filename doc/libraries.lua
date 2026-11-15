@@ -1494,8 +1494,8 @@ List items are strings or tables:
 | `disabled` | Item cannot be selected or toggled. |
 | `checked` | Initial state in a multiselect. |
 
-Every component accepts `message` and `screen`.  Components that show a
-transient frame also accept `commit`.  List components add `items`, `default`,
+Every component accepts `screen`.  Prompting components accept `message`;
+components that show a transient frame also accept `commit`.  List components add `items`, `default`,
 `default_index`, `default_indices`, `filter` and `page_size`; multiselect adds
 `min`, `max` and `required`; text fields add `default`, `placeholder`,
 `max_length`, `required`, `trim` and `validate`.  Unsupported options are
@@ -1523,8 +1523,8 @@ List keys:
 | Printable characters | Filter the list when `filter` is enabled. |
 
 Text fields use the same editing keys as `readline`: arrows, Home/End,
-Backspace/Delete, Ctrl+A/E/B/F/K/U/W/Y, Alt+B/F/D and Ctrl+X for direct
-multiline mode.  Enter submits a single-line field.  Multiline fields submit on
+Backspace/Delete, Ctrl+A/E/B/F/K/U/W/Y and Alt+B/F/D.  Enter submits a
+single-line field.  Multiline fields submit on
 Enter and insert a newline on Alt+Enter (or Ctrl+Enter).  Esc cancels.
 
 Date and time keys:
@@ -1599,7 +1599,8 @@ Disabled items are shown but cannot be selected.
                         "Choose zero or more items from a list.",
                         [[
 Return an array of selected values in item order.  Use Space to toggle the
-current item, `a` to select everything visible, `i` to invert the visible
+current item when filtering is off (while filtering, Space is part of the
+query), `a` to select everything visible, `i` to invert the visible
 items (Alt+A and Alt+I while filtering) and Enter to finish.  `default` is an array of values and
 `default_indices` is an array of indices; both may be combined.
 

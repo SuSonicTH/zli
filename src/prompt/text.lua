@@ -32,8 +32,15 @@ local function validate_options(options)
 end
 
 local function codepoint_count(text)
-    local count = 0
-    for _ in utf8.codes(text) do count = count + 1 end
+    local count = utf8.len(text)
+    if count then return count end
+    -- Invalid UTF-8 is kept by the editor; count non-continuation bytes so
+    -- validation and masked summaries cannot raise.
+    count = 0
+    for index = 1, #text do
+        local byte = text:byte(index)
+        if byte < 0x80 or byte >= 0xC0 then count = count + 1 end
+    end
     return count
 end
 

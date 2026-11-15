@@ -62,8 +62,9 @@ function M.run(options)
     local theme = theme_mod.build()
     local min_day = dates.bounds(options.min, false)
     local max_day = dates.bounds(options.max, false)
-    local selected = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
-    if not selected.year then error("prompt.datetime: default must be a date and time", 3) end
+    local parsed_default = dates.from_value(options.default) or dates.today()
+    if not parsed_default.year then error("prompt.datetime: default must be a date and time", 3) end
+    local selected = dates.clamp(parsed_default, min_day, max_day)
 
     local state = {
         hour = selected.hour or 0, min = selected.min or 0, sec = selected.sec or 0,
@@ -346,7 +347,9 @@ return function(options)
     if not config.is_interactive() then
         local min_day = dates.bounds(options.min, false)
         local max_day = dates.bounds(options.max, false)
-        local default = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
+        local parsed_default = dates.from_value(options.default) or dates.today()
+        if not parsed_default.year then error("prompt.datetime: default must be a date and time", 3) end
+        local default = dates.clamp(parsed_default, min_day, max_day)
         return fallback_run(options, default, options.seconds == true)
     end
     return M.run(options)

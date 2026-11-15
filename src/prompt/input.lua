@@ -46,6 +46,9 @@ function M.open()
             local event, message = term.read_event(100)
             if event == nil then
                 if message == "eof" then return { type = "eof" } end
+                if message ~= "timeout" then
+                    error("prompt: " .. tostring(message or "could not read the terminal"), 0)
+                end
                 local size = term.size()
                 if size and (last_size == nil
                     or size.columns ~= last_size.columns

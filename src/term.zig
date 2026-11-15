@@ -5,6 +5,7 @@
 //! internal accessors at the bottom of this file.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 const zlua = @import("zlua");
 const Lua = zlua.Lua;
@@ -639,21 +640,54 @@ fn lua_poll(lua: *Lua) i32 {
     return 1;
 }
 
+const PollResult = enum { ready, timeout, closed };
+
+fn hasBufferedInput(input: *termy.Input) bool {
+    return input.start < input.len or input.paste_active;
+}
+
+fn pollInput(timeout_ms: i32) !PollResult {
+    if (builtin.os.tag == .windows) {
+        const ready_now = try inputPtr().poll(.fromMilliseconds(timeout_ms));
+        return if (ready_now) .ready else .timeout;
+    }
+
+    var fds = [_]std.posix.pollfd{.{
+        .fd = std.Io.File.stdin().handle,
+        .events = std.posix.POLL.IN,
+        .revents = 0,
+    }};
+    const count = try std.posix.poll(&fds, timeout_ms);
+    if (count == 0) return .timeout;
+    const hangup = std.posix.POLL.HUP | std.posix.POLL.ERR | std.posix.POLL.NVAL;
+    if ((fds[0].revents & hangup) != 0 and (fds[0].revents & std.posix.POLL.IN) == 0) return .closed;
+    return .ready;
+}
+
 fn lua_read_event(lua: *Lua) i32 {
+    const input = inputPtr();
     if (lua.typeOf(1) == .number) {
         const milliseconds = lua.checkInteger(1);
-        if (milliseconds >= 0) {
-            const ready_now = inputPtr().poll(.fromMilliseconds(@intCast(milliseconds))) catch |err|
+        if (milliseconds >= 0 and !hasBufferedInput(input)) {
+            const result = pollInput(@intCast(std.math.clamp(milliseconds, 0, std.math.maxInt(i32)))) catch |err|
                 return luaerror.ret(lua, "could not poll the terminal: {s}", .{@errorName(err)});
-            if (!ready_now) {
-                lua.pushNil();
-                _ = lua.pushString("timeout");
-                return 2;
+            switch (result) {
+                .timeout => {
+                    lua.pushNil();
+                    _ = lua.pushString("timeout");
+                    return 2;
+                },
+                .closed => {
+                    lua.pushNil();
+                    _ = lua.pushString("eof");
+                    return 2;
+                },
+                .ready => {},
             }
         }
     }
 
-    const event = inputPtr().read() catch |err| switch (err) {
+    const event = input.read() catch |err| switch (err) {
         error.EndOfInput => {
             lua.pushNil();
             _ = lua.pushString("eof");

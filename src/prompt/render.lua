@@ -50,7 +50,9 @@ end
 
 function M.width(spans)
     local total = 0
-    for _, span in ipairs(spans) do total = total + term.width(span.text) end
+    for _, span in ipairs(spans) do
+        total = term.width(string.rep(" ", total) .. span.text)
+    end
     return total
 end
 
@@ -78,12 +80,14 @@ function M.clip(spans, columns, symbols)
     local used = 0
     for _, span in ipairs(spans) do
         if used >= budget then break end
-        local span_width = term.width(span.text)
-        if used + span_width <= budget then
+        local prefixed = string.rep(" ", used) .. span.text
+        local combined = term.width(prefixed)
+        if combined <= budget then
             result[#result + 1] = span
-            used = used + span_width
+            used = combined
         else
-            local text = term.truncate(span.text, budget - used, "")
+            local text = term.truncate(prefixed, budget, "")
+            text = text:sub(used + 1)
             if text ~= "" then
                 result[#result + 1] = { text = text, style = span.style }
             end

@@ -69,8 +69,9 @@ function M.run(options)
     local max_day = dates.bounds(options.max, false)
     local theme = theme_mod.build()
 
-    local selected = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
-    if not selected.year then error("prompt.date: default must be a date", 3) end
+    local parsed_default = dates.from_value(options.default) or dates.today()
+    if not parsed_default.year then error("prompt.date: default must be a date", 3) end
+    local selected = dates.clamp(parsed_default, min_day, max_day)
     local state = { error = nil, width = 0, focus = false }
     local entry = editor_mod.new(20, 1, {
         initial = dates.format_date(selected),
@@ -298,7 +299,9 @@ return function(options)
     if not config.is_interactive() then
         local min_day = dates.bounds(options.min, false)
         local max_day = dates.bounds(options.max, false)
-        local default = dates.clamp(dates.from_value(options.default) or dates.today(), min_day, max_day)
+        local parsed_default = dates.from_value(options.default) or dates.today()
+        if not parsed_default.year then error("prompt.date: default must be a date", 3) end
+        local default = dates.clamp(parsed_default, min_day, max_day)
         return fallback_run(options, default, min_day, max_day)
     end
     return M.run(options)
