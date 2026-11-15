@@ -417,10 +417,13 @@ The documentation tests are strict by design.
    surrounding code.
 8. The plain debug binary is large and dynamically linked; use release builds
    when checking portability or size.
-9. `webui` ships its browser assets both as payload entries and as `@embedFile`
-   data in `src/webserver.zig`; changing `src/webui/app.js` or `app.css`
-   therefore needs a rebuild, not just a payload refresh. `assets_dir` is the
-   development escape hatch.
+9. `webui` is compiled into the binary rather than shipped as payload entries:
+   browser assets (`vendor.js`, `app.js`, `app.css`) live in `src/webserver.zig`
+   as `@embedFile` data, and the Lua modules are registered through
+   `lualib_list`/`src/libraries.zig` and loaded from `package.preload`. Changing
+   any `src/webui/*` file therefore needs a rebuild. `assets_dir` is the
+   development escape hatch for browser assets, and `webserver.asset_set` can
+   replace them at runtime.
 10. `webserver` is concurrent and non-blocking for connections, but all Lua
     callbacks still run on the `serve` task: a slow callback stalls every
     client. `httpserver` is the older blocking server; do not mix them up.

@@ -270,13 +270,6 @@ const payload_entries = [_]payload_entry{
     .{ .input = "src/tools/help.lua", .name = "help.lua" },
     .{ .input = "src/docs.lua", .name = "docs.lua" },
     .{ .input = "src/docs_markdown.lua", .name = "docs_markdown.lua" },
-    .{ .input = "src/webui/vendor.js", .name = "webui/vendor.js" },
-    .{ .input = "src/webui/app.js", .name = "webui/app.js" },
-    .{ .input = "src/webui/app.css", .name = "webui/app.css" },
-    .{ .input = "src/webui/init.lua", .name = "webui/init.lua" },
-    .{ .input = "src/webui/component.lua", .name = "webui/component.lua" },
-    .{ .input = "src/webui/html.lua", .name = "webui/html.lua" },
-    .{ .input = "src/webui/event.lua", .name = "webui/event.lua" },
 };
 
 /// Copies a compiled executable and appends the zli Lua payload to it.
