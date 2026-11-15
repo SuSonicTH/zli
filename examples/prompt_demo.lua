@@ -7,6 +7,11 @@
 
 local prompt = require "prompt"
 
+local function pause(milliseconds)
+    local deadline = os.nanotime() + milliseconds / 1000
+    while os.nanotime() < deadline do end
+end
+
 local environment = prompt.select {
     message = "Target environment",
     items = {
@@ -55,14 +60,14 @@ local progress = prompt.progress {
 }
 for _, feature in ipairs(features) do
     -- Replace this with real work.
-    for _ = 1, 20000 do end
+    pause(180)
     progress:advance()
 end
 progress:finish("Configuration ready")
 
 local spinner = prompt.spinner { text = "Warming caches" }
 for step = 1, 4 do
-    for _ = 1, 120000 do end
+    pause(270)
     spinner:step("Warming caches " .. step .. "/4")
 end
 spinner:finish("Caches warm")

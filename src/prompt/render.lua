@@ -302,21 +302,9 @@ end
 
 function Alternate:commit(kind, summary, frame)
     if self.shared then
-        term.batch(function()
-            if kind == "summary" and summary then
-                term.clear("all")
-                term.move_to(1, 1)
-                M.write_spans(summary, self.theme)
-                term.write("\n")
-            elseif kind == "frame" and frame then
-                term.clear("all")
-                for index, line in ipairs(frame.lines) do
-                    term.move_to(1, index)
-                    M.write_spans(line, self.theme)
-                end
-            end
-            term.show_cursor()
-        end)
+        -- In a shared alternate screen the next prompt clears the frame
+        -- immediately.  Printing a summary here only flashes for one frame,
+        -- so leave the screen untouched until the next draw or scope exit.
         self.active = true
         return
     end

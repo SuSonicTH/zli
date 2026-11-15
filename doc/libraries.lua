@@ -1575,9 +1575,10 @@ the previous mode even when `fn` raises.  `mode` is `"inline"` or
 In alternate mode the helper enters the alternate screen once before `fn` and
 leaves it after `fn` returns, even when `fn` raises.  Components inside share
 that screen instead of entering and leaving it themselves, which avoids
-flashing the original terminal contents between prompts.  Summaries are drawn
-inside the alternate screen; normal output printed after the callback returns
-to the regular screen.  The return values of `fn` are returned unchanged.
+flashing the original terminal contents between prompts.  Component summary
+lines are suppressed inside the shared screen because the next prompt would
+overwrite them immediately; normal output printed after the callback returns
+goes to the regular screen.  The return values of `fn` are returned unchanged.
 ]]),
                     entry("prompt.is_interactive", "prompt.is_interactive()", "function",
                         "Report whether prompts can use the terminal UI.",

@@ -120,13 +120,13 @@ local manifest = prompt.screen(style, function()
         show = "both",
     }
     for step = 1, #modules * 3 do
-        pause(60)
+        pause(180)
         calibration:update(step)
     end
     calibration:finish("Calibration complete")
 
     for _, module in prompt.progress.each(modules, { label = "Installing modules" }) do
-        pause(180)
+        pause(540)
     end
 
     local spinner = prompt.spinner {
@@ -135,7 +135,7 @@ local manifest = prompt.screen(style, function()
         interval = 0.05,
     }
     for step = 1, 8 do
-        pause(90)
+        pause(270)
         spinner:step("Polishing chrome " .. step .. "/8")
     end
     spinner:finish("All systems shiny")
