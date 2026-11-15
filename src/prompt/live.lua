@@ -10,9 +10,11 @@ local M = {}
 local Live = {}
 Live.__index = Live
 
-function Live:new(screen)
+function Live:new(screen, plain_start)
     return setmetatable({
         screen = screen or require("prompt.config").get("screen"),
+        plain_start = plain_start,
+        plain_started = false,
         theme = theme_mod.build(),
         active = false,
         alternate = false,
@@ -37,7 +39,14 @@ function Live:update(spans)
         M.capture[#M.capture + 1] = { kind = "update", text = render.plain(spans) }
         return
     end
-    if not config.is_interactive() then return end
+    if not config.is_interactive() then
+        if not self.plain_started and self.plain_start and self.plain_start ~= "" then
+            io.write(self.plain_start, "\n")
+            io.flush()
+        end
+        self.plain_started = true
+        return
+    end
     self.finished = false
 
     if self.screen == "alternate" then
@@ -77,10 +86,13 @@ function Live:finish(kind, text)
         return
     end
     if not config.is_interactive() then
+        if not self.plain_started and self.plain_start and self.plain_start ~= "" then
+            io.write(self.plain_start, "\n")
+        end
         if text and text ~= "" then
             io.write(render.plain(spans) .. "\n")
-            io.flush()
         end
+        io.flush()
         self.finished = true
         return
     end
@@ -132,8 +144,8 @@ function Live:close()
     self.finished = true
 end
 
-function M.new(screen)
-    return Live:new(screen)
+function M.new(screen, plain_start)
+    return Live:new(screen, plain_start)
 end
 
 return M

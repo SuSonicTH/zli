@@ -382,9 +382,9 @@ s:finish("Fetched")
 ]])
     local stdout, status = support.run({ script }, { home = support.temp_dir("prompt_home"), stdin = "" })
     lu.assertEquals(0, status, stdout)
-    lu.assertStrContains(stdout, "Copied")
-    lu.assertStrContains(stdout, "Fetched")
-    lu.assertNotStrContains(stdout, "[")
+    lu.assertStrContains(stdout, "Copy...\n✔ Copied\nFetch...\n✔ Fetched")
+    lu.assertNotStrContains(stdout, "\27[")
+
 end
 
 

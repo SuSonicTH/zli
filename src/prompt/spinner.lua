@@ -47,7 +47,7 @@ function Spinner:new(options)
         started = os.nanotime(),
         last_render = 0,
         rendered = false,
-        live = live.new(options.screen),
+        live = live.new(options.screen, (options.text ~= nil and options.text ~= "" and (options.text .. "...")) or "Working..."),
         finished = false,
     }, self)
     spinner.theme = theme_mod.build()

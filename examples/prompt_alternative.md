@@ -56,5 +56,6 @@ without masking because there is no terminal:
 printf '\n\n\n.\n\n\n\n\n\n\n' | ./zig-out/bin/zli examples/prompt_alternative.lua
 ```
 
-Progress and spinner updates are suppressed outside a terminal; only their
-final success lines are printed.
+Outside a terminal, progress and spinners print an initial `label...` or
+`text...` line, then their final success line. Intermediate updates are
+suppressed.

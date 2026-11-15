@@ -74,7 +74,7 @@ function Progress:new(options)
         last_render = 0,
         rendered = false,
         interval = options.min_interval or config.get("progress_interval"),
-        live = live.new(options.screen),
+        live = live.new(options.screen, (options.label ~= nil and options.label ~= "" and (options.label .. "...")) or "Working..."),
         finished = false,
     }, self)
     progress.theme = theme_mod.build()

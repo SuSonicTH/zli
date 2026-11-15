@@ -1704,7 +1704,9 @@ indeterminate animated bar.  `items` may supply the total from an array.
 `label` is printed before the bar.  `show` accepts `"bar"`, `"percent"`,
 `"count"` or `"both"` and defaults to `"both"` when `total` is known.
 
-The initial bar is drawn when the object is created.  `bar_width` sets the bar width.  `template` replaces the default layout and
+The initial bar is drawn when the object is created.  Without a terminal it
+prints the initial `label...` line and the final status; intermediate updates
+are suppressed.  `bar_width` sets the bar width.  `template` replaces the default layout and
 supports `{label}`, `{bar}`, `{percent}`, `{count}`, `{total}`, `{items}`,
 `{elapsed}`, `{rate}` and `{eta}`.  Unknown fields raise an error.
 `min_interval` throttles redraws in seconds; `screen = "alternate"` (or the global
@@ -1735,9 +1737,10 @@ use an explicit progress object and call `fail` instead.
 Return a spinner object.  `text` is the message beside the animation and
 `frames` overrides the Unicode dot or ASCII frame set.  `interval` is the
 minimum time between frames and defaults to 0.08 seconds.
-The first frame is drawn when the spinner is created.  `show_elapsed = true`
-appends the elapsed time.  `screen = "alternate"` (or the global default) uses
-the alternate screen.
+The first frame is drawn when the spinner is created.  Without a terminal it
+prints the initial `text...` line and the final status; intermediate updates
+are suppressed.  `show_elapsed = true` appends the elapsed time.
+`screen = "alternate"` (or the global default) uses the alternate screen.
 
 Call `step()` from the working loop.  A spinner cannot animate during a
 blocking C call, so code that never calls `step` shows no movement.
