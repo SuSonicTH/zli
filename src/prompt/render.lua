@@ -18,6 +18,7 @@ local function normalize_line(line)
     if line.text ~= nil then return { normalize_span(line) } end
     local spans = {}
     for _, span in ipairs(line) do spans[#spans + 1] = normalize_span(span) end
+    if line.help then spans.help = true end
     return spans
 end
 
@@ -109,6 +110,159 @@ function M.write_spans(spans, theme)
         term.write(span.text)
     end
     theme.reset()
+end
+
+local function byte_length(byte)
+    if byte == nil then return 1 end
+    if byte < 0x80 then return 1 end
+    if byte < 0xC0 then return 1 end
+    if byte < 0xE0 then return 2 end
+    if byte < 0xF0 then return 3 end
+    return 4
+end
+
+local function escape_length(text, index)
+    local next_byte = text:byte(index + 1)
+    if next_byte == nil then return 1 end
+    if next_byte == 0x5B then -- CSI
+        local position = index + 2
+        while position <= #text do
+            local byte = text:byte(position)
+            if byte >= 0x40 and byte <= 0x7E then return position - index + 1 end
+            position = position + 1
+        end
+        return #text - index + 1
+    end
+    if next_byte == 0x5D or next_byte == 0x50 or next_byte == 0x5E or next_byte == 0x5F then
+        local position = index + 2
+        while position <= #text do
+            local byte = text:byte(position)
+            if byte == 0x07 then return position - index + 1 end
+            if byte == 0x1B and text:byte(position + 1) == 0x5C then
+                return position - index + 2
+            end
+            position = position + 1
+        end
+        return #text - index + 1
+    end
+    return 2
+end
+
+--- Wrap spans into display lines without splitting escape sequences.
+-- Tabs advance to the next eight-column stop when they fit; a tab that would
+-- overflow is expanded to spaces up to the column budget.  Newlines start a
+-- new line.
+function M.wrap_spans(spans, columns)
+    if type(columns) ~= "number" or columns < 1 then
+        error("prompt.wrap_spans: columns must be a positive number", 2)
+    end
+    columns = math.floor(columns)
+
+    local lines = { {} }
+    local used = 0
+
+    local function new_line()
+        lines[#lines + 1] = {}
+        used = 0
+    end
+
+    local function append(text, style)
+        local line = lines[#lines]
+        local last = line[#line]
+        if last and last.style == style then
+            last.text = last.text .. text
+        else
+            line[#line + 1] = { text = text, style = style }
+        end
+    end
+
+    for _, span in ipairs(spans or {}) do
+        local text = tostring(span.text or "")
+        local style = span.style
+        local index = 1
+        while index <= #text do
+            local byte = text:byte(index)
+            if byte == 0x0A then
+                new_line()
+                index = index + 1
+            elseif byte == 0x09 then
+                local advance = 8 - (used % 8)
+                if used > 0 and used + advance > columns then
+                    new_line()
+                    advance = 8
+                end
+                if used + advance > columns then
+                    -- A tab cannot fit on this line; expand it to the
+                    -- remaining width instead of overflowing.
+                    local spaces = math.max(1, math.min(advance, columns - used))
+                    append(string.rep(" ", spaces), style)
+                    used = used + spaces
+                else
+                    append("\t", style)
+                    used = used + advance
+                end
+                index = index + 1
+            elseif byte == 0x1B then
+                local length = escape_length(text, index)
+                append(text:sub(index, index + length - 1), style)
+                index = index + length
+            else
+                local length = byte_length(byte)
+                if index + length - 1 > #text then length = 1 end
+                local char = text:sub(index, index + length - 1)
+                local width = term.width(char)
+                if used > 0 and used + width > columns then new_line() end
+                append(char, style)
+                used = used + width
+                index = index + length
+            end
+        end
+    end
+    return lines
+end
+
+--- Slice `lines` to a height-limited viewport.
+-- Returns the visible slice, the clamped first index and the last index.
+function M.viewport(lines, top, height)
+    lines = lines or {}
+    if #lines == 0 then return {}, 1, 0 end
+    top = math.floor(tonumber(top) or 1)
+    height = math.max(1, math.floor(tonumber(height) or #lines))
+    top = math.max(1, math.min(top, #lines))
+    local last = math.min(#lines, top + height - 1)
+    local result = {}
+    for index = top, last do result[#result + 1] = lines[index] end
+    return result, top, last
+end
+
+--- Pad spans to `width` display columns.
+-- `align` is "left" (default), "right" or "center".
+function M.pad(spans, width, align)
+    if type(width) ~= "number" or width < 0 then
+        error("prompt.pad: width must be zero or positive", 2)
+    end
+    align = align or "left"
+    if align ~= "left" and align ~= "right" and align ~= "center" then
+        error("prompt.pad: align must be 'left', 'right' or 'center'", 2)
+    end
+    local used = M.width(spans)
+    local gap = math.floor(width) - used
+    if gap <= 0 then return spans end
+
+    local left = 0
+    local right = gap
+    if align == "right" then
+        left, right = gap, 0
+    elseif align == "center" then
+        left = math.floor(gap / 2)
+        right = gap - left
+    end
+
+    local result = {}
+    if left > 0 then result[#result + 1] = { text = string.rep(" ", left) } end
+    for _, span in ipairs(spans) do result[#result + 1] = span end
+    if right > 0 then result[#result + 1] = { text = string.rep(" ", right) } end
+    return result
 end
 
 local function copy_spans(spans)

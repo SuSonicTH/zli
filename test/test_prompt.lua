@@ -66,32 +66,10 @@ function Test_prompt.Test_screen_scope_restores_mode()
     lu.assertEquals("inline", config.get("screen"))
 end
 
-local input = require "prompt.input"
-
-local function drive(events, fn)
-    config.reset()
-    config.configure { force_interactive = true }
-    render.capture = {}
-    input.events = events or {}
-    local result = table.pack(fn())
-    local frames = render.capture
-    input.events = nil
-    render.capture = nil
-    config.reset()
-    return result, frames
-end
-
-local function key(code, extra)
-    local event = { type = "key", code = code }
-    for name, value in pairs(extra or {}) do event[name] = value end
-    return event
-end
-
-local function char(value, extra)
-    local event = { type = "key", code = "char", char = value }
-    for name, item in pairs(extra or {}) do event[name] = item end
-    return event
-end
+local prompt_support = require "test/prompt_support"
+local drive = prompt_support.drive
+local key = prompt_support.key
+local char = prompt_support.char
 
 function Test_prompt.Test_select_navigation_and_default()
     local result = drive({ key("down"), key("enter") }, function()

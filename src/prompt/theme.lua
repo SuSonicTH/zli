@@ -12,11 +12,15 @@ local default_styles = {
     accent = { fg = "cyan", bold = true },
     selected = { fg = "black", bg = "cyan", bold = true },
     selected_muted = { fg = "bright_black", bg = "cyan" },
+    match = { fg = "bright_yellow", bold = true, underline = true },
+    selected_match = { fg = "black", bg = "bright_yellow", bold = true },
     success = { fg = "green", bold = true },
     danger = { fg = "red", bold = true },
     warning = { fg = "yellow" },
     border = { fg = "bright_black" },
     error = { fg = "red" },
+    added = { fg = "green" },
+    removed = { fg = "red" },
 }
 
 local unicode = {
@@ -35,6 +39,17 @@ local unicode = {
     separator = "›",
     bullet = "•",
     mask = "•",
+    expanded = "▾",
+    collapsed = "▸",
+    partial = "◐",
+    move = "↕",
+    scroll_left = "‹",
+    scroll_right = "›",
+    step_done = "✔",
+    step_active = "●",
+    step_pending = "○",
+    file = "·",
+    directory = "▸",
 }
 
 local ascii = {
@@ -53,6 +68,17 @@ local ascii = {
     separator = ">",
     bullet = "*",
     mask = "*",
+    expanded = "v",
+    collapsed = ">",
+    partial = "[-]",
+    move = "|",
+    scroll_left = "<",
+    scroll_right = ">",
+    step_done = "ok",
+    step_active = "*",
+    step_pending = "o",
+    file = ".",
+    directory = ">",
 }
 
 local function env(name)

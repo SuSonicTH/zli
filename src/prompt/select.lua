@@ -2,8 +2,10 @@
 
 local config = require "prompt.config"
 local fallback = require "prompt.fallback"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local items_mod = require "prompt.items"
+local list_mod = require "prompt.list"
 local render = require "prompt.render"
 
 local M = {}
@@ -35,35 +37,6 @@ local function backspace(text)
     return text:sub(1, offset - 1)
 end
 
-local function first_enabled(visible)
-    for position, item in ipairs(visible) do
-        if not item.disabled then return position end
-    end
-    return nil
-end
-
-local function position_of(visible, index)
-    if index == nil then return nil end
-    for position, item in ipairs(visible) do
-        if item.index == index then return position end
-    end
-    return nil
-end
-
-local function move(visible, selected, delta)
-    if #visible == 0 then return selected end
-    local position = position_of(visible, selected) or (delta > 0 and 0 or #visible + 1)
-    local candidate = position
-    for _ = 1, #visible do
-        candidate = candidate + delta
-        if candidate > #visible then candidate = 1 end
-        if candidate < 1 then candidate = #visible end
-        local item = visible[candidate]
-        if not item.disabled then return item.index end
-    end
-    return selected
-end
-
 local function term_size()
     local term = require "term"
     local size = term.size()
@@ -78,14 +51,10 @@ local function page_size_for(options, extra)
 end
 
 local function build(theme, options, state, multi)
-    local visible = items_mod.filter(state.items, state.query)
-    state.visible = visible
+    local visible = state.list.visible
+    state.list:ensure_selected()
     local page = page_size_for(options, state.filter_enabled and 1 or 0)
-    local selected_position = position_of(visible, state.selected)
-    if selected_position == nil then
-        state.selected = first_enabled(visible) and visible[first_enabled(visible)].index or nil
-        selected_position = position_of(visible, state.selected)
-    end
+    local selected_position = state.list:current_position()
 
     local lines = {}
     lines[#lines + 1] = render.line(
@@ -96,7 +65,7 @@ local function build(theme, options, state, multi)
     if state.filter_enabled then
         lines[#lines + 1] = render.line(
             render.span("  filter: ", "muted"),
-            render.span(state.query == "" and theme.symbol("ellipsis") or state.query, "accent")
+            render.span(state.list.query == "" and theme.symbol("ellipsis") or state.list.query, "accent")
         )
     end
 
@@ -116,7 +85,7 @@ local function build(theme, options, state, multi)
 
     for position = top, math.min(#visible, top + page - 1) do
         local item = visible[position]
-        local current = item.index == state.selected
+        local current = item.index == state.list.selected
         local label_style = current and "selected" or (item.disabled and "muted" or nil)
         local spans = {
             render.span("  ", nil),
@@ -124,7 +93,7 @@ local function build(theme, options, state, multi)
             render.span(" ", current and "selected" or nil),
         }
         if multi then
-            local checked = state.checked[item.index]
+            local checked = state.list.checked[item.index]
             local glyph_style
             if current then
                 glyph_style = "selected"
@@ -156,10 +125,6 @@ local function build(theme, options, state, multi)
         lines[#lines + 1] = render.line(render.span("  no matches", "muted"))
     end
 
-    if state.error then
-        lines[#lines + 1] = render.line(render.span(state.error, "error"))
-    end
-
     local help
     if multi then
         if state.filter_enabled then
@@ -171,24 +136,30 @@ local function build(theme, options, state, multi)
         help = "arrows move  enter select  esc cancel"
         if state.filter_enabled then help = help .. "  type to filter" end
     end
-    lines[#lines + 1] = render.line(render.span(help, "muted"))
+    if state.show_help ~= false then
+        lines[#lines + 1] = field_mod.help_line(help)
+    end
 
     return render.frame(lines)
 end
 
 local function selected_label(state, multi)
-    local chosen = {}
-    for _, item in ipairs(state.items) do
-        if multi and state.checked[item.index] then chosen[#chosen + 1] = item.label end
-        if not multi and item.index == state.selected then return item.label end
+    if not multi then
+        local item = state.list:item_at(state.list.selected)
+        return item and item.label or ""
     end
-    if not multi then return "" end
+
+    local chosen = {}
+    for _, item in ipairs(state.list.items) do
+        if state.list.checked[item.index] then chosen[#chosen + 1] = item.label end
+    end
     if #chosen == 0 then return "none" end
     if #chosen <= 3 then return table.concat(chosen, ", ") end
     return #chosen .. " selected"
 end
 
-local function make_runner(options, multi)
+local function make_field(options, multi, field_options)
+    field_options = field_options or {}
     validate(options)
     if multi then
         if options.min ~= nil and (type(options.min) ~= "number" or options.min < 0) then
@@ -202,47 +173,40 @@ local function make_runner(options, multi)
         end
     end
     local items = items_mod.normalize(options.items)
-    local state = {
+    local list = list_mod.new {
         items = items,
-        query = "",
-        selected = items_mod.default_index(items, options.default, options.default_index) or items_mod.first_enabled(items),
+        selected = items_mod.default_index(items, options.default, options.default_index)
+            or items_mod.first_enabled(items),
         checked = items_mod.default_set(items, options.default, options.default_indices),
+        height = options.page_size,
+    }
+    local state = {
+        list = list,
         top = 1,
         error = nil,
+        show_help = field_options.show_help ~= false,
     }
-    state.filter_enabled = options.filter == true or (options.filter == "auto" and #items > options.page_size)
-
-    local function update_selection()
-        local visible = items_mod.filter(items, state.query)
-        if position_of(visible, state.selected) == nil then
-            state.selected = first_enabled(visible) and visible[first_enabled(visible)].index or nil
-        end
-    end
+    state.filter_enabled = options.filter == true
+        or (options.filter == "auto" and #items > options.page_size)
 
     local function on_event(event)
         if event.type == "paste" and state.filter_enabled then
-            state.query = state.query .. event.text:gsub("[\r\n]+", " ")
+            state.list:set_query(state.list.query .. event.text:gsub("[\r\n]+", " "))
             state.top = 1
-            update_selection()
             return "continue"
         end
         if event.type == "key" then
             if input.cancel(event) then
-                if input.key(event, "esc") and state.query ~= "" then
-                    state.query = ""
+                if input.key(event, "esc") and state.list.query ~= "" then
+                    state.list:set_query("")
                     state.error = nil
-                    update_selection()
+                    state.top = 1
                     return "continue"
                 end
                 return "cancel"
             end
             if input.enter(event) then
-                local visible = state.visible or items_mod.filter(items, state.query)
-                local current = state.selected
-                local item
-                for _, candidate in ipairs(visible) do
-                    if candidate.index == current then item = candidate break end
-                end
+                local item = state.list:current()
                 if item == nil then
                     state.error = "Choose an item."
                     return "continue"
@@ -252,8 +216,7 @@ local function make_runner(options, multi)
                     return "continue"
                 end
                 if multi then
-                    local count = 0
-                    for _ in pairs(state.checked) do count = count + 1 end
+                    local count = state.list:checked_count()
                     local minimum = options.required and math.max(1, options.min or 0) or (options.min or 0)
                     if count < minimum then
                         state.error = "Choose at least " .. minimum .. "."
@@ -263,66 +226,48 @@ local function make_runner(options, multi)
                         state.error = "Choose at most " .. options.max .. "."
                         return "continue"
                     end
-                    return "submit", items_mod.selected_values(items, state.checked)
+                    return "submit", state.list:selected_values()
                 elseif options.return_index then
                     return "submit", item.index
                 else
                     return "submit", item.value
                 end
             end
-            if input.key(event, "up") or (not state.filter_enabled and input.key(event, "char") and event.char == "k") then
-                state.selected = move(items_mod.filter(items, state.query), state.selected, -1)
+            if input.key(event, "up")
+                or (not state.filter_enabled and input.key(event, "char") and event.char == "k") then
+                state.list:move(-1)
                 state.error = nil
                 return "continue"
             end
-            if input.key(event, "down") or (not state.filter_enabled and input.key(event, "char") and event.char == "j") then
-                state.selected = move(items_mod.filter(items, state.query), state.selected, 1)
+            if input.key(event, "down")
+                or (not state.filter_enabled and input.key(event, "char") and event.char == "j") then
+                state.list:move(1)
                 state.error = nil
                 return "continue"
             end
             if input.key(event, "home") then
-                local visible = items_mod.filter(items, state.query)
-                state.selected = visible[first_enabled(visible) or 1] and visible[first_enabled(visible) or 1].index
+                state.list:first()
                 state.error = nil
                 return "continue"
             end
             if input.key(event, "end") then
-                local visible = items_mod.filter(items, state.query)
-                for position = #visible, 1, -1 do
-                    if not visible[position].disabled then
-                        state.selected = visible[position].index
-                        break
-                    end
-                end
+                state.list:last()
                 state.error = nil
                 return "continue"
             end
             if input.key(event, "page_up") or input.key(event, "page_down") then
                 local direction = input.key(event, "page_up") and -1 or 1
                 local page = page_size_for(options, state.filter_enabled and 1 or 0)
-                local visible = items_mod.filter(items, state.query)
-                local position = position_of(visible, state.selected) or 1
-                local target = math.max(1, math.min(#visible, position + direction * page))
-                for offset = 0, #visible do
-                    local candidate = target + offset * direction
-                    if candidate < 1 or candidate > #visible then break end
-                    if not visible[candidate].disabled then
-                        state.selected = visible[candidate].index
-                        break
-                    end
-                end
+                state.list:page(direction, page)
                 state.error = nil
                 return "continue"
             end
 
             if multi then
                 if input.key(event, "left") or input.key(event, "right") then
-                    local item
-                    for _, candidate in ipairs(state.items) do
-                        if candidate.index == state.selected then item = candidate break end
-                    end
+                    local item = state.list:item_at(state.list.selected)
                     if item and not item.disabled then
-                        state.checked[item.index] = not state.checked[item.index] or nil
+                        state.list:toggle(item.index)
                     end
                     state.error = nil
                     return "continue"
@@ -332,27 +277,18 @@ local function make_runner(options, multi)
                 local invert = input.alt_char(event, "i")
                     or (not state.filter_enabled and input.key(event, "char") and event.char == "i")
                 if not state.filter_enabled and input.key(event, "char") and event.char == " " then
-                    local item
-                    for _, candidate in ipairs(state.items) do
-                        if candidate.index == state.selected then item = candidate break end
-                    end
+                    local item = state.list:item_at(state.list.selected)
                     if item and not item.disabled then
-                        state.checked[item.index] = not state.checked[item.index] or nil
+                        state.list:toggle(item.index)
                     end
                     state.error = nil
                     return "continue"
                 elseif all then
-                    for _, item in ipairs(items_mod.filter(items, state.query)) do
-                        if not item.disabled then state.checked[item.index] = true end
-                    end
+                    state.list:check_all(true)
                     state.error = nil
                     return "continue"
                 elseif invert then
-                    for _, item in ipairs(items_mod.filter(items, state.query)) do
-                        if not item.disabled then
-                            state.checked[item.index] = not state.checked[item.index] or nil
-                        end
-                    end
+                    state.list:invert_all(true)
                     state.error = nil
                     return "continue"
                 end
@@ -360,22 +296,19 @@ local function make_runner(options, multi)
 
             if state.filter_enabled then
                 if input.key(event, "backspace") then
-                    state.query = backspace(state.query)
+                    state.list:set_query(backspace(state.list.query))
                     state.top = 1
-                    update_selection()
                     return "continue"
                 end
                 if input.ctrl(event, "u") then
-                    state.query = ""
+                    state.list:set_query("")
                     state.top = 1
-                    update_selection()
                     return "continue"
                 end
                 local char = input.printable(event)
                 if char then
-                    state.query = state.query .. char
+                    state.list:set_query(state.list.query .. char)
                     state.top = 1
-                    update_selection()
                     return "continue"
                 end
             end
@@ -383,28 +316,78 @@ local function make_runner(options, multi)
         return "continue"
     end
 
-    return function()
+    local field
+    field = field_mod.new {
+        type = field_options.type or (multi and "multiselect" or "select"),
+        options = options,
+        message = field_options.message or options.message,
+        draw_active = function(_, width, theme)
+            return build(theme, options, state, multi)
+        end,
+        draw_compact = function(self, theme)
+            return render.summary(theme, self.message, selected_label(state, multi))
+        end,
+        handle = function(self, event)
+            local action, value = on_event(event)
+            self.error = state.error
+            return action, value
+        end,
+        value = function()
+            if multi then return state.list:selected_values() end
+            local item = state.list:current()
+            if item == nil then return nil end
+            if options.return_index then return item.index end
+            return item.value
+        end,
+        set_value = function(_, value)
+            state.error = nil
+            if multi then
+                local checked = {}
+                local values = type(value) == "table" and value or { value }
+                for _, candidate in ipairs(values) do
+                    local index = items_mod.find(items, candidate)
+                    if index and not items[index].disabled then checked[index] = true end
+                end
+                state.list.checked = checked
+                state.list:refresh()
+            else
+                local index
+                if options.return_index then
+                    index = items_mod.find_index(items, value)
+                end
+                if index == nil then index = items_mod.find(items, value) end
+                if index then state.list.selected = index end
+                state.list:refresh()
+            end
+        end,
+        summary = function(self, theme)
+            return render.summary(theme, self.message, selected_label(state, multi))
+        end,
+        close = function() end,
+    }
+
+    local function run()
         local theme = require("prompt.theme").build()
         return input.run {
             screen = options.screen,
             commit = options.commit,
-            frame = function() return build(theme, options, state, multi) end,
-            on_event = on_event,
-            summary = function()
-                return render.summary(theme, options.message, selected_label(state, multi))
-            end,
-            final_frame = function() return build(theme, options, state, multi) end,
+            frame = function() return field:frame(nil, theme) end,
+            on_event = function(event) return field:handle(event) end,
+            summary = function() return field:summary(theme) end,
+            final_frame = function() return field:frame(nil, theme) end,
         }
     end
+    return field, run
 end
 
 function M.select(options)
     options = options or {}
-    local run = make_runner(options, false)
+    local _, run = make_field(options, false)
     if not config.is_interactive() then
         validate(options)
         local items = items_mod.normalize(options.items)
-        local selected = items_mod.default_index(items, options.default, options.default_index) or items_mod.first_enabled(items)
+        local selected = items_mod.default_index(items, options.default, options.default_index)
+            or items_mod.first_enabled(items)
         return fallback.select(options, items, selected)
     end
     return run()
@@ -412,7 +395,7 @@ end
 
 function M.multiselect(options)
     options = options or {}
-    local run = make_runner(options, true)
+    local _, run = make_field(options, true)
     if not config.is_interactive() then
         validate(options)
         local items = items_mod.normalize(options.items)
@@ -421,6 +404,18 @@ function M.multiselect(options)
         return fallback.multiselect(options, items, checked)
     end
     return run()
+end
+
+--- Build a reusable select or multiselect field for `prompt.form`.
+-- `field_options.multi = true` creates a multiselect field.  A boolean second
+-- argument is accepted for compatibility with earlier internal callers.
+function M.new_field(options, field_options)
+    if type(field_options) == "boolean" then
+        field_options = { multi = field_options }
+    end
+    field_options = field_options or {}
+    local field = make_field(options or {}, field_options.multi == true, field_options)
+    return field
 end
 
 return M

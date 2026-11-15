@@ -1543,8 +1543,9 @@ Date and time keys:
 | a, p | Toggle AM/PM when `hour24 = false`. |
 
 The theme uses semantic tokens instead of element-specific colours:
-`message`, `title`, `muted`, `accent`, `selected`, `selected_muted`, `success`,
-`danger`, `warning`, `border` and `error`.  Each token is a `term.style` table.
+`message`, `title`, `muted`, `accent`, `selected`, `selected_muted`, `match`,
+`selected_match`, `success`, `danger`, `warning`, `border`, `error`, `added`
+and `removed`.  Each token is a `term.style` table.
 Colour is disabled automatically when the output is not a terminal, `NO_COLOR`
 is set or `TERM=dumb`; `color = "always"` forces it on.  Symbols use Unicode
 when the locale supports it and fall back to ASCII; `symbols = "ascii"` forces

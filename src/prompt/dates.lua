@@ -70,6 +70,7 @@ end
 
 function M.valid(year, month, day)
     if type(year) ~= "number" or type(month) ~= "number" or type(day) ~= "number" then return false end
+    if year < 1 or year > 9999 then return false end
     if month < 1 or month > 12 or day < 1 or day > M.days_in_month(year, month) then return false end
     return true
 end
@@ -102,6 +103,247 @@ function M.parse_datetime(text)
     if not date or not time then return nil end
     date.hour, date.min, date.sec = time.hour, time.min, time.sec
     return date
+end
+
+local english_short = {
+    jan = 1, feb = 2, mar = 3, apr = 4, may = 5, jun = 6,
+    jul = 7, aug = 8, sep = 9, oct = 10, nov = 11, dec = 12,
+}
+
+local english_long = {
+    january = 1, february = 2, march = 3, april = 4, may = 5, june = 6,
+    july = 7, august = 8, september = 9, october = 10, november = 11, december = 12,
+}
+
+local short_months = {}
+local long_months = {}
+for name, value in pairs(english_short) do short_months[name] = value end
+for name, value in pairs(english_long) do long_months[name] = value end
+
+-- `os.date` is locale-sensitive, so accept the current locale's month names in
+-- addition to the English fallback.
+local month_stamp_year = os.date("*t").year
+for month = 1, 12 do
+    local stamp = os.time { year = month_stamp_year, month = month, day = 15, hour = 12 }
+    if stamp then
+        short_months[os.date("%b", stamp):lower()] = month
+        long_months[os.date("%B", stamp):lower()] = month
+    end
+end
+
+local function month_lookup(map)
+    local names = {}
+    for name, value in pairs(map) do
+        names[#names + 1] = { name = name, value = value }
+    end
+    table.sort(names, function(left, right) return #left.name > #right.name end)
+    return { names = names }
+end
+
+local short_lookup = month_lookup(short_months)
+local long_lookup = month_lookup(long_months)
+
+local ampm_values = { am = "am", pm = "pm" }
+local am_stamp = os.time { year = month_stamp_year, month = 1, day = 15, hour = 9 }
+local pm_stamp = os.time { year = month_stamp_year, month = 1, day = 15, hour = 15 }
+if am_stamp then
+    local name = os.date("%p", am_stamp)
+    if name and name ~= "" then ampm_values[name:lower()] = "am" end
+end
+if pm_stamp then
+    local name = os.date("%p", pm_stamp)
+    if name and name ~= "" then ampm_values[name:lower()] = "pm" end
+end
+local ampm_lookup = month_lookup(ampm_values)
+
+local function compile_format(format, short_names, long_names, ampm_names)
+    local tokens = {}
+    local index = 1
+
+    local function literal(value)
+        tokens[#tokens + 1] = { kind = "literal", value = value }
+    end
+
+    local function field(name, pattern)
+        tokens[#tokens + 1] = {
+            kind = "field",
+            name = name,
+            pattern = pattern,
+        }
+    end
+
+    while index <= #format do
+        local char = format:sub(index, index)
+        if char == "%" then
+            local spec = format:sub(index + 1, index + 1)
+            index = index + 2
+            if spec == "F" then
+                field("year", "%d%d%d%d")
+                literal("-")
+                field("month", "%d%d?")
+                literal("-")
+                field("day", "%d%d?")
+            elseif spec == "T" then
+                field("hour", "%d%d?")
+                literal(":")
+                field("min", "%d%d?")
+                literal(":")
+                field("sec", "%d%d?")
+            elseif spec == "R" then
+                field("hour", "%d%d?")
+                literal(":")
+                field("min", "%d%d?")
+            elseif spec == "Y" then
+                field("year", "%d%d%d%d")
+            elseif spec == "y" then
+                field("year_short", "%d%d")
+            elseif spec == "m" then
+                field("month", "%d%d?")
+            elseif spec == "d" then
+                field("day", "%d%d?")
+            elseif spec == "e" then
+                tokens[#tokens + 1] = { kind = "day_space" }
+            elseif spec == "H" then
+                field("hour", "%d%d?")
+            elseif spec == "I" then
+                field("hour12", "%d%d?")
+            elseif spec == "M" then
+                field("min", "%d%d?")
+            elseif spec == "S" then
+                field("sec", "%d%d?")
+            elseif spec == "b" then
+                tokens[#tokens + 1] = { kind = "month", lookup = short_names }
+            elseif spec == "B" then
+                tokens[#tokens + 1] = { kind = "month", lookup = long_names }
+            elseif spec == "p" then
+                tokens[#tokens + 1] = { kind = "ampm", lookup = ampm_names }
+            elseif spec == "%" then
+                literal("%")
+            else
+                return nil
+            end
+        else
+            literal(char)
+            index = index + 1
+        end
+    end
+    return tokens
+end
+
+local function apply_field(result, name, value)
+    if name == "year" then
+        result.year = tonumber(value)
+    elseif name == "year_short" then
+        local short = tonumber(value)
+        if short == nil then return false end
+        result.year = short >= 69 and 1900 + short or 2000 + short
+    elseif name == "month" then
+        result.month = tonumber(value)
+    elseif name == "day" then
+        result.day = tonumber(value)
+    elseif name == "hour" then
+        result.hour = tonumber(value)
+    elseif name == "hour12" then
+        result.hour12 = tonumber(value)
+    elseif name == "min" then
+        result.min = tonumber(value)
+    elseif name == "sec" then
+        result.sec = tonumber(value)
+    end
+    return true
+end
+
+--- Parse a string produced by `os.date(format)` for the common date/time
+-- specifiers.  Returns a table of fields, or nil when the format is not
+-- supported or the text does not match.
+function M.parse_format(text, format, short_names, long_names, ampm_names)
+    if type(text) ~= "string" or type(format) ~= "string" then return nil end
+    local tokens = compile_format(
+        format,
+        short_names and month_lookup(short_names) or short_lookup,
+        long_names and month_lookup(long_names) or long_lookup,
+        ampm_names and month_lookup(ampm_names) or ampm_lookup
+    )
+    if tokens == nil then return nil end
+
+    local result = {}
+    local position = 1
+    for _, token in ipairs(tokens) do
+        if position > #text + 1 then return nil end
+        if token.kind == "literal" then
+            if text:sub(position, position + #token.value - 1) ~= token.value then return nil end
+            position = position + #token.value
+        elseif token.kind == "month" then
+            local remaining = text:sub(position):lower()
+            local matched
+            for _, entry in ipairs(token.lookup.names) do
+                if remaining:sub(1, #entry.name) == entry.name then
+                    matched = entry
+                    break
+                end
+            end
+            if matched == nil then return nil end
+            result.month = matched.value
+            position = position + #matched.name
+        elseif token.kind == "ampm" then
+            local remaining = text:sub(position):lower()
+            local matched
+            for _, entry in ipairs(token.lookup.names) do
+                if remaining:sub(1, #entry.name) == entry.name then
+                    matched = entry
+                    break
+                end
+            end
+            if matched == nil then return nil end
+            result.ampm = matched.value
+            position = position + #matched.name
+        elseif token.kind == "day_space" then
+            -- `%e` is always two characters: a space for days 1-9, or two
+            -- digits for days 10-31.  This matters when a numeric field follows
+            -- without a separator.
+            local first = text:sub(position, position)
+            local digits
+            if first == " " then
+                digits = text:sub(position + 1, position + 1)
+                if digits == nil or not digits:match("%d") then return nil end
+            else
+                digits = text:sub(position, position + 1)
+                if #digits ~= 2 or not digits:match("^%d%d$") then return nil end
+            end
+            result.day = tonumber(digits)
+            position = position + 2
+        elseif token.kind == "field" then
+            local subject = text:sub(position)
+            local value, consumed
+            value = subject:match("^(" .. token.pattern .. ")")
+            if value == nil then return nil end
+            consumed = #value
+            if not apply_field(result, token.name, value) then return nil end
+            position = position + consumed
+        end
+    end
+    if position ~= #text + 1 then return nil end
+
+    if result.hour12 ~= nil then
+        if result.hour12 < 1 or result.hour12 > 12 then return nil end
+        if result.ampm == nil then return nil end
+        local hour = result.hour12 % 12
+        if result.ampm == "pm" then hour = hour + 12 end
+        result.hour = hour
+        result.hour12 = nil
+    elseif result.ampm ~= nil then
+        return nil
+    end
+
+    if result.year ~= nil and result.month ~= nil and result.day ~= nil then
+        if not M.valid(result.year, result.month, result.day) then return nil end
+    end
+    if result.month ~= nil and (result.month < 1 or result.month > 12) then return nil end
+    if result.day ~= nil and (result.day < 1 or result.day > 31) then return nil end
+    if result.hour ~= nil and (result.hour < 0 or result.hour > 23) then return nil end
+    if result.min ~= nil and (result.min < 0 or result.min > 59) then return nil end
+    if result.sec ~= nil and (result.sec < 0 or result.sec > 59) then return nil end
+    return result
 end
 
 function M.format_date(value)

@@ -2,6 +2,7 @@
 
 local config = require "prompt.config"
 local dates = require "prompt.dates"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local render = require "prompt.render"
 local theme_mod = require "prompt.theme"
@@ -65,11 +66,14 @@ local function fallback_run(options, default, min_day, max_day)
     end
 end
 
-function M.run(options)
+--- Build a reusable date field.
+function M.new_field(options, field_options)
+    field_options = field_options or {}
     validate(options)
+    local show_help = field_options.show_help ~= false
+    local message = field_options.message or options.message
     local min_day = dates.bounds(options.min, false)
     local max_day = dates.bounds(options.max, false)
-    local theme = theme_mod.build()
 
     local parsed_default
     if options.default == nil then
@@ -115,9 +119,8 @@ function M.run(options)
         return offset, dates.days_in_month(selected.year, selected.month)
     end
 
-    local function frame()
-        local size = term_size()
-        local columns = size.columns
+    local function frame(width)
+        local columns = width and math.max(1, math.floor(width)) or term_size().columns
         local entry_width = math.max(1, columns - 8)
         if entry_width ~= state.width then
             state.width = entry_width
@@ -125,7 +128,7 @@ function M.run(options)
         end
 
         local lines = {
-            render.line(render.span("? ", "accent"), render.span(options.message, "message")),
+            field_mod.label(message),
         }
         local title = dates.month_name(selected.month) .. " " .. selected.year
         local padding = math.max(0, math.floor((21 - #title) / 2))
@@ -178,12 +181,11 @@ function M.run(options)
                 render.span(dates.format_date(selected), "accent")
             )
         end
-        if state.error then
-            lines[#lines + 1] = render.line(render.span(state.error, "error"))
+        if show_help then
+            lines[#lines + 1] = field_mod.help_line(
+                "arrows move  PgUp/PgDn month  t today  / type  enter accept"
+            )
         end
-        lines[#lines + 1] = render.line(
-            render.span("arrows move  PgUp/PgDn month  t today  / type  enter accept", "muted")
-        )
         return render.frame(lines, cursor)
     end
 
@@ -286,21 +288,76 @@ function M.run(options)
         return "continue"
     end
 
+    local field
+    field = field_mod.new {
+        type = field_options.type or "date",
+        options = options,
+        message = message,
+        draw_active = function(_, width)
+            return frame(width)
+        end,
+        draw_compact = function(self, theme)
+            return render.summary(theme, self.message, dates.format_date(selected))
+        end,
+        handle = function(self, event)
+            local action, value = on_event(event)
+            self.error = state.error
+            return action, value
+        end,
+        value = function()
+            return dates.to_result(selected, options, false)
+        end,
+        set_value = function(_, value)
+            local parsed = dates.from_value(value)
+            if not parsed and options.as == "string" and options.format and type(value) == "string" then
+                local fields = dates.parse_format(value, options.format)
+                if fields and fields.month and fields.day then
+                    if not fields.year then fields.year = selected.year end
+                    parsed = fields
+                end
+            end
+            if not parsed or not parsed.year or not parsed.month or not parsed.day then
+                error("prompt.date: value must be a date", 2)
+            end
+            if not dates.valid(parsed.year, parsed.month, parsed.day) then
+                error("prompt.date: value must be a date", 2)
+            end
+            selected = dates.clamp(parsed, min_day, max_day)
+            state.focus = false
+            state.error = nil
+            sync_entry()
+        end,
+        summary = function(self, theme)
+            return render.summary(theme, self.message, dates.format_date(selected))
+        end,
+        close = function()
+            entry:close()
+        end,
+    }
+    return field
+end
+
+function M.run(options)
+    validate(options)
+    local theme = theme_mod.build()
+    local field = M.new_field(options)
+    local function draw()
+        return field:frame(nil, theme)
+    end
+
     local packed = table.pack(input.run {
         screen = options.screen,
         commit = options.commit,
-        frame = frame,
-        on_event = on_event,
-        summary = function()
-            return render.summary(theme, options.message, dates.format_date(selected))
-        end,
-        final_frame = frame,
+        frame = draw,
+        on_event = function(event) return field:handle(event) end,
+        summary = function() return field:summary(theme) end,
+        final_frame = draw,
     })
-    entry:close()
+    field:close()
     return table.unpack(packed, 1, packed.n)
 end
 
-return function(options)
+function M.__call(_, options)
     options = options or {}
     validate(options)
     if not config.is_interactive() then
@@ -318,3 +375,5 @@ return function(options)
     end
     return M.run(options)
 end
+
+return setmetatable(M, { __call = function(_, options) return M.__call(M, options) end })

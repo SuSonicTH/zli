@@ -2,6 +2,7 @@
 
 local config = require "prompt.config"
 local fallback = require "prompt.fallback"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local render = require "prompt.render"
 local theme_mod = require "prompt.theme"
@@ -68,105 +69,128 @@ local function check_value(options, value)
     return value
 end
 
-function M.run(options)
+--- Build a reusable field.
+-- `field_options.show_help` suppresses the key hint line inside a form.
+function M.new_field(options, field_options)
+    field_options = field_options or {}
     validate_options(options)
     local height = options.rows or 5
-    local state = { error = nil, width = 0, height = height }
-    local theme = theme_mod.build()
+    local show_help = field_options.show_help ~= false
+    local message = field_options.message or options.message
+    local state = { error = nil, width = 0, accepted = nil }
 
     local editor = editor_mod.new(40, height, {
         initial = options.default or "",
         single_line = false,
-        submit_on_enter = true,
-        alt_enter_newline = true,
+        submit_on_enter = field_options.submit_on_enter ~= false,
+        alt_enter_newline = field_options.alt_enter_newline ~= false,
         max_length = options.max_length,
     })
 
-    local function width()
-        local term = require "term"
-        local size = term.size()
-        return math.max(1, (size and size.columns or 80) - 3)
-    end
-
-    local function current_frame()
-        local columns = width()
-        if columns ~= state.width then
-            state.width = columns
-            editor:resize(columns, height)
-        end
-        local lines = {
-            render.line(
-                render.span("? ", "accent"),
-                render.span(options.message, "message")
-            ),
-        }
-        local rows, position = editor:render()
-        local placeholder = editor:len() == 0 and options.placeholder
-        for index = 1, height do
-            local spans = { render.span("  ", nil) }
-            if placeholder and index == 1 then
-                spans[#spans + 1] = render.span(options.placeholder, "muted")
-            else
-                for _, span in ipairs(rows[index] or {}) do spans[#spans + 1] = span end
+    local field
+    field = field_mod.new {
+        type = field_options.type or "multiline",
+        options = options,
+        message = message,
+        draw_active = function(self, width, theme)
+            local columns = field_mod.active_width(width)
+            if columns ~= state.width then
+                state.width = columns
+                editor:resize(columns, height)
             end
-            lines[#lines + 1] = spans
-        end
-        if state.error then
-            lines[#lines + 1] = render.line(render.span(state.error, "error"))
-        end
-        lines[#lines + 1] = render.line(
-            render.span("Alt+Enter newline  Enter submit  Esc cancel", "muted")
-        )
-        local cursor = {
-            row = 2 + ((position and position.row) or 0),
-            column = ((position and position.column) or 0) + 2,
-        }
-        if placeholder then cursor = { row = 2, column = 2 } end
-        return render.frame(lines, cursor)
-    end
-
-    local function accept(value)
-        local checked, message = check_value(options, value)
-        if checked == nil then
-            state.error = message
-            return nil
-        end
-        return checked
-    end
-
-    local function on_event(event)
-        if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
-        if event.type == "key" or event.type == "paste" then
+            local lines = { field_mod.label(self.message) }
+            local rows, position = editor:render()
+            local placeholder = editor:len() == 0 and options.placeholder
+            for index = 1, height do
+                local spans = { render.span("  ", nil) }
+                if placeholder and index == 1 then
+                    spans[#spans + 1] = render.span(options.placeholder, "muted")
+                else
+                    for _, span in ipairs(rows[index] or {}) do spans[#spans + 1] = span end
+                end
+                lines[#lines + 1] = spans
+            end
+            if show_help then
+                lines[#lines + 1] = field_mod.help_line(
+                    "Alt+Enter newline  Enter submit  Esc cancel"
+                )
+            end
+            local cursor = {
+                row = 2 + ((position and position.row) or 0),
+                column = ((position and position.column) or 0) + 2,
+            }
+            if placeholder then cursor = { row = 2, column = 2 } end
+            return render.frame(lines, cursor)
+        end,
+        draw_compact = function(self, theme)
+            local value = state.accepted
+            if value == nil then value = editor:value() end
+            return render.summary(theme, self.message, summary_text(value))
+        end,
+        handle = function(self, event)
+            if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
+            if event.type == "key" or event.type == "paste" then
+                self.error = nil
+                state.accepted = nil
+                local action = editor:feed(event)
+                if action == "submit" then
+                    local value, message_text = check_value(options, editor:value())
+                    if value == nil then
+                        self.error = message_text
+                        state.accepted = nil
+                        return "continue"
+                    end
+                    state.accepted = value
+                    return "submit", value
+                elseif action == "abort" then
+                    return "cancel"
+                elseif action == "eof" then
+                    return "eof"
+                end
+            end
+            return "continue"
+        end,
+        value = function()
+            if state.accepted ~= nil then return state.accepted end
+            return editor:value()
+        end,
+        set_value = function(_, value)
+            state.accepted = nil
             state.error = nil
-            local action = editor:feed(event)
-            if action == "submit" then
-                local value = accept(editor:value())
-                if value ~= nil then return "submit", value end
-                return "continue"
-            elseif action == "abort" then
-                return "cancel"
-            elseif action == "eof" then
-                return "eof"
-            end
-        end
-        return "continue"
+            editor:set_text(tostring(value or ""))
+        end,
+        summary = function(self, theme)
+            local value = state.accepted
+            if value == nil then value = editor:value() end
+            return render.summary(theme, self.message, summary_text(value))
+        end,
+        close = function()
+            editor:close()
+        end,
+    }
+    return field
+end
+
+function M.run(options, field_options)
+    local theme = theme_mod.build()
+    local field = M.new_field(options, field_options)
+    local function draw()
+        return field:frame(nil, theme)
     end
 
     local packed = table.pack(input.run {
         screen = options.screen,
         commit = options.commit,
-        frame = current_frame,
-        on_event = on_event,
-        summary = function(value)
-            return render.summary(theme, options.message, summary_text(value))
-        end,
-        final_frame = current_frame,
+        frame = draw,
+        on_event = function(event) return field:handle(event) end,
+        summary = function() return field:summary(theme) end,
+        final_frame = draw,
     })
-    editor:close()
+    field:close()
     return table.unpack(packed, 1, packed.n)
 end
 
-return function(options)
+function M.__call(_, options)
     validate_options(options)
     if not config.is_interactive() then
         while true do
@@ -179,3 +203,5 @@ return function(options)
     end
     return M.run(options)
 end
+
+return setmetatable(M, { __call = function(_, options) return M.__call(M, options) end })

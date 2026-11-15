@@ -2,6 +2,7 @@
 
 local config = require "prompt.config"
 local dates = require "prompt.dates"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local render = require "prompt.render"
 local theme_mod = require "prompt.theme"
@@ -104,11 +105,14 @@ local function fallback_run(options, default)
     end
 end
 
-function M.run(options)
+--- Build a reusable time field.
+function M.new_field(options, field_options)
+    field_options = field_options or {}
     validate(options)
     local seconds = options.seconds == true
     local hour24 = options.hour24 ~= false
-    local theme = theme_mod.build()
+    local show_help = field_options.show_help ~= false
+    local message = field_options.message or options.message
     local selected = from_time(options.default)
     if not selected then error("prompt.time: default must be a time", 3) end
     local state = {
@@ -130,7 +134,7 @@ function M.run(options)
 
     local function frame()
         local lines = {
-            render.line(render.span("? ", "accent"), render.span(options.message, "message")),
+            field_mod.label(message),
         }
         local values = {
             string.format("%02d", display_hour()),
@@ -147,10 +151,11 @@ function M.run(options)
         if state.digits ~= "" then
             lines[#lines + 1] = render.line(render.span("  typing: " .. state.digits, "muted"))
         end
-        if state.error then lines[#lines + 1] = render.line(render.span(state.error, "error")) end
-        lines[#lines + 1] = render.line(
-            render.span("left/right segment  up/down adjust  digits type  enter accept", "muted")
-        )
+        if show_help then
+            lines[#lines + 1] = field_mod.help_line(
+                "left/right segment  up/down adjust  digits type  enter accept"
+            )
+        end
         return render.frame(lines)
     end
 
@@ -265,19 +270,67 @@ function M.run(options)
         return "continue"
     end
 
-    return input.run {
-        screen = options.screen,
-        commit = options.commit,
-        frame = frame,
-        on_event = on_event,
-        summary = function()
-            return render.summary(theme, options.message, dates.format_time(state, seconds))
+    local field
+    field = field_mod.new {
+        type = field_options.type or "time",
+        options = options,
+        message = message,
+        draw_active = function(_, width)
+            return frame(width)
         end,
-        final_frame = frame,
+        draw_compact = function(self, theme)
+            return render.summary(theme, self.message, dates.format_time(state, seconds))
+        end,
+        handle = function(self, event)
+            local action, value = on_event(event)
+            self.error = state.error
+            return action, value
+        end,
+        value = function()
+            normalize(state, seconds)
+            return to_result(state, options)
+        end,
+        set_value = function(_, value)
+            local parsed = from_time(value)
+            if not parsed and options.as == "string" and options.format and type(value) == "string" then
+                local fields = dates.parse_format(value, options.format)
+                if fields and fields.hour then parsed = fields end
+            end
+            if not parsed or parsed.hour == nil then
+                error("prompt.time: value must be a time", 2)
+            end
+            state.hour, state.min, state.sec = parsed.hour, parsed.min or 0, parsed.sec or 0
+            state.segment, state.digits, state.error = 1, "", nil
+        end,
+        summary = function(self, theme)
+            return render.summary(theme, self.message, dates.format_time(state, seconds))
+        end,
+        close = function() end,
     }
+    return field
 end
 
-return function(options)
+function M.run(options)
+    validate(options)
+    local theme = theme_mod.build()
+    local field = M.new_field(options)
+    local function draw()
+        return field:frame(nil, theme)
+    end
+
+    local packed = table.pack(input.run {
+        screen = options.screen,
+        commit = options.commit,
+        frame = draw,
+        on_event = function(event) return field:handle(event) end,
+        summary = function() return field:summary(theme) end,
+        final_frame = draw,
+    })
+    field:close()
+    return table.unpack(packed, 1, packed.n)
+end
+
+function M.__call(_, options)
     options = options or {}
     validate(options)
     if not config.is_interactive() then
@@ -285,3 +338,5 @@ return function(options)
     end
     return M.run(options)
 end
+
+return setmetatable(M, { __call = function(_, options) return M.__call(M, options) end })

@@ -2,6 +2,7 @@
 
 local config = require "prompt.config"
 local dates = require "prompt.dates"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local render = require "prompt.render"
 local theme_mod = require "prompt.theme"
@@ -58,10 +59,13 @@ local function fallback_run(options, default, seconds)
     end
 end
 
-function M.run(options)
+--- Build a reusable date-and-time field.
+function M.new_field(options, field_options)
+    field_options = field_options or {}
     validate(options)
     local seconds = options.seconds == true
-    local theme = theme_mod.build()
+    local show_help = field_options.show_help ~= false
+    local message = field_options.message or options.message
     local min_day = dates.bounds(options.min, false)
     local max_day = dates.bounds(options.max, false)
     local parsed_default
@@ -69,7 +73,9 @@ function M.run(options)
         parsed_default = dates.today()
     else
         parsed_default = dates.from_value(options.default)
-        if not parsed_default or not parsed_default.year then error("prompt.datetime: default must be a date and time", 3) end
+        if not parsed_default or not parsed_default.year then
+            error("prompt.datetime: default must be a date and time", 3)
+        end
     end
     local selected = dates.clamp(parsed_default, min_day, max_day)
 
@@ -118,17 +124,16 @@ function M.run(options)
         return dates.to_result(value, options, true)
     end
 
-    local function frame()
-        local term = require "term"
-        local size = term.size() or { columns = 80, rows = 24 }
-        local entry_width = math.max(1, size.columns - 8)
+    local function frame(width)
+        local columns = width and math.max(1, math.floor(width)) or (require("term").size() or { columns = 80 }).columns
+        local entry_width = math.max(1, columns - 8)
         if entry_width ~= state.width then
             state.width = entry_width
             entry:resize(entry_width, 1)
         end
 
         local lines = {
-            render.line(render.span("? ", "accent"), render.span(options.message, "message")),
+            field_mod.label(message),
         }
         local title = dates.month_name(selected.month) .. " " .. selected.year
         lines[#lines + 1] = render.line(render.span(string.rep(" ", math.max(0, math.floor((21 - #title) / 2))) .. title, "title"))
@@ -182,10 +187,11 @@ function M.run(options)
             lines[#lines + 1] = spans
             cursor = { row = #lines, column = 8 + ((position and position.column) or 0) }
         end
-        if state.error then lines[#lines + 1] = render.line(render.span(state.error, "error")) end
-        lines[#lines + 1] = render.line(
-            render.span("Tab date/time  arrows move  / type  enter accept  esc cancel", "muted")
-        )
+        if show_help then
+            lines[#lines + 1] = field_mod.help_line(
+                "Tab date/time  arrows move  / type  enter accept  esc cancel"
+            )
+        end
         return render.frame(lines, cursor)
     end
 
@@ -332,23 +338,85 @@ function M.run(options)
         return "continue"
     end
 
+    local field
+    field = field_mod.new {
+        type = field_options.type or "datetime",
+        options = options,
+        message = message,
+        draw_active = function(_, width)
+            return frame(width)
+        end,
+        draw_compact = function(self, theme)
+            local value = { year = selected.year, month = selected.month, day = selected.day,
+                hour = state.hour, min = state.min, sec = seconds and state.sec or 0 }
+            return render.summary(theme, self.message, dates.format_datetime(value, seconds))
+        end,
+        handle = function(self, event)
+            local action, value = on_event(event)
+            self.error = state.error
+            return action, value
+        end,
+        value = function()
+            return result()
+        end,
+        set_value = function(_, value)
+            local parsed = dates.from_value(value)
+            if not parsed and options.as == "string" and options.format and type(value) == "string" then
+                local fields = dates.parse_format(value, options.format)
+                if fields and fields.month and fields.day then
+                    if not fields.year then fields.year = selected.year end
+                    parsed = fields
+                end
+            end
+            if not parsed or not parsed.year or not parsed.month or not parsed.day then
+                error("prompt.datetime: value must be a date and time", 2)
+            end
+            if not dates.valid(parsed.year, parsed.month, parsed.day) then
+                error("prompt.datetime: value must be a date and time", 2)
+            end
+            selected = dates.clamp(parsed, min_day, max_day)
+            state.hour = parsed.hour or 0
+            state.min = parsed.min or 0
+            state.sec = parsed.sec or 0
+            state.focus = "date"
+            state.segment = 1
+            state.digits = ""
+            state.error = nil
+            sync_entry()
+        end,
+        summary = function(self, theme)
+            local value = { year = selected.year, month = selected.month, day = selected.day,
+                hour = state.hour, min = state.min, sec = seconds and state.sec or 0 }
+            return render.summary(theme, self.message, dates.format_datetime(value, seconds))
+        end,
+        close = function()
+            entry:close()
+        end,
+    }
+    return field
+end
+
+function M.run(options)
+    validate(options)
+    local theme = theme_mod.build()
+    local field = M.new_field(options)
+    local function draw()
+        return field:frame(nil, theme)
+    end
+
     local packed = table.pack(input.run {
         screen = options.screen,
         commit = options.commit,
-        frame = frame,
-        on_event = on_event,
-        summary = function()
-            local value = { year = selected.year, month = selected.month, day = selected.day,
-                hour = state.hour, min = state.min, sec = seconds and state.sec or 0 }
-            return render.summary(theme, options.message, dates.format_datetime(value, seconds))
-        end,
-        final_frame = frame,
+        frame = draw,
+        on_event = function(event) return field:handle(event) end,
+        summary = function() return field:summary(theme) end,
+        final_frame = draw,
     })
-    entry:close()
+    field:close()
     return table.unpack(packed, 1, packed.n)
 end
 
-return function(options)
+function M.__call(_, options)
     options = options or {}
     validate(options)
     if not config.is_interactive() then
@@ -359,10 +427,14 @@ return function(options)
             parsed_default = dates.today()
         else
             parsed_default = dates.from_value(options.default)
-            if not parsed_default or not parsed_default.year then error("prompt.datetime: default must be a date and time", 3) end
+            if not parsed_default or not parsed_default.year then
+                error("prompt.datetime: default must be a date and time", 3)
+            end
         end
         local default = dates.clamp(parsed_default, min_day, max_day)
         return fallback_run(options, default, options.seconds == true)
     end
     return M.run(options)
 end
+
+return setmetatable(M, { __call = function(_, options) return M.__call(M, options) end })

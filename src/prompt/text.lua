@@ -2,6 +2,7 @@
 
 local config = require "prompt.config"
 local fallback = require "prompt.fallback"
+local field_mod = require "prompt.field"
 local input = require "prompt.input"
 local render = require "prompt.render"
 local theme_mod = require "prompt.theme"
@@ -74,10 +75,14 @@ local function check_value(options, value)
     return value
 end
 
-function M.run(options, field)
-    field = field or {}
+--- Build a reusable field.
+-- `field_options.mask` replaces every displayed character and
+-- `field_options.message` overrides the label (used by password confirmation).
+function M.new_field(options, field_options)
+    field_options = field_options or {}
     validate_options(options)
-    local mask = field.mask
+    local mask = field_options.mask
+    local message = field_options.message or options.message
 
     local editor = editor_mod.new(40, 1, {
         initial = options.default or "",
@@ -86,89 +91,102 @@ function M.run(options, field)
         max_length = options.max_length,
         mask = mask,
     })
-    local state = { error = nil, width = 0 }
-    local theme = theme_mod.build()
+    local state = { error = nil, width = 0, accepted = nil }
 
-    local function width()
-        local term = require "term"
-        local size = term.size()
-        return math.max(1, (size and size.columns or 80) - 3)
-    end
-
-    local function current_frame()
-        local columns = width()
-        if columns ~= state.width then
-            state.width = columns
-            editor:resize(columns, 1)
-        end
-
-        local lines = {
-            render.line(
-                render.span("? ", "accent"),
-                render.span(field.message or options.message, "message")
-            ),
-        }
-        local cursor
-        if editor:len() == 0 and options.placeholder then
-            lines[#lines + 1] = render.line(
-                render.span("  ", nil),
-                render.span(options.placeholder, "muted")
-            )
-            cursor = { row = 2, column = 2 }
-        else
-            local rows, position = editor:render()
-            local spans = { render.span("  ", nil) }
-            for _, span in ipairs(rows[1] or {}) do spans[#spans + 1] = span end
-            lines[#lines + 1] = spans
-            cursor = { row = 2, column = (position and position.column or 0) + 2 }
-        end
-        if state.error then
-            lines[#lines + 1] = render.line(render.span(state.error, "error"))
-        end
-        return render.frame(lines, cursor)
-    end
-
-    local function accept(value)
-        local checked, message = check_value(options, value)
-        if checked == nil then
-            state.error = message
-            return nil
-        end
-        return checked
-    end
-
-    local function on_event(event)
-        if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
-        if event.type == "key" or event.type == "paste" then
-            state.error = nil
-            local action = editor:feed(event)
-            if action == "submit" then
-                local value = accept(editor:value())
-                if value ~= nil then return "submit", value end
-                return "continue"
-            elseif action == "abort" then
-                return "cancel"
-            elseif action == "eof" then
-                return "eof"
+    local field
+    field = field_mod.new {
+        type = field_options.type or "text",
+        options = options,
+        message = message,
+        draw_active = function(self, width, theme)
+            local columns = field_mod.active_width(width)
+            if columns ~= state.width then
+                state.width = columns
+                editor:resize(columns, 1)
             end
-        end
-        return "continue"
+
+            local lines = { field_mod.label(self.message) }
+            local cursor
+            if editor:len() == 0 and options.placeholder then
+                lines[#lines + 1] = render.line(
+                    render.span("  ", nil),
+                    render.span(options.placeholder, "muted")
+                )
+                cursor = { row = 2, column = 2 }
+            else
+                local rows, position = editor:render()
+                local spans = { render.span("  ", nil) }
+                for _, span in ipairs(rows[1] or {}) do spans[#spans + 1] = span end
+                lines[#lines + 1] = spans
+                cursor = { row = 2, column = (position and position.column or 0) + 2 }
+            end
+            return render.frame(lines, cursor)
+        end,
+        draw_compact = function(self, theme)
+            local value = state.accepted
+            if value == nil then value = editor:value() end
+            return render.summary(theme, self.message, M.summary_value(theme, value, mask))
+        end,
+        handle = function(self, event)
+            if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
+            if event.type == "key" or event.type == "paste" then
+                self.error = nil
+                state.accepted = nil
+                local action = editor:feed(event)
+                if action == "submit" then
+                    local value, message_text = check_value(options, editor:value())
+                    if value == nil then
+                        self.error = message_text
+                        state.accepted = nil
+                        return "continue"
+                    end
+                    state.accepted = value
+                    return "submit", value
+                elseif action == "abort" then
+                    return "cancel"
+                elseif action == "eof" then
+                    return "eof"
+                end
+            end
+            return "continue"
+        end,
+        value = function()
+            if state.accepted ~= nil then return state.accepted end
+            return editor:value()
+        end,
+        set_value = function(_, value)
+            state.accepted = nil
+            state.error = nil
+            editor:set_text(tostring(value or ""))
+        end,
+        summary = function(self, theme)
+            local value = state.accepted
+            if value == nil then value = editor:value() end
+            return render.summary(theme, self.message, M.summary_value(theme, value, mask))
+        end,
+        close = function()
+            editor:close()
+        end,
+    }
+    return field
+end
+
+function M.run(options, field_options)
+    local theme = theme_mod.build()
+    local field = M.new_field(options, field_options)
+    local function draw()
+        return field:frame(nil, theme)
     end
 
     local packed = table.pack(input.run {
         screen = options.screen,
         commit = options.commit,
-        frame = current_frame,
-        on_event = on_event,
-        summary = function(value)
-            return render.summary(theme, field.message or options.message, M.summary_value(theme, value, mask))
-        end,
-        final_frame = current_frame,
+        frame = draw,
+        on_event = function(event) return field:handle(event) end,
+        summary = function() return field:summary(theme) end,
+        final_frame = draw,
     })
-    editor:close()
-    if packed[1] ~= nil then
-        if field.on_value then field.on_value(packed[1]) end
-    end
+    field:close()
     return table.unpack(packed, 1, packed.n)
 end
 
