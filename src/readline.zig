@@ -10,6 +10,7 @@ const luaerror = @import("luaerror.zig");
 const lineedit = @import("lineedit.zig");
 const history_mod = @import("history.zig");
 const term = @import("term.zig");
+const termkey = @import("termkey.zig");
 const termy = @import("termy");
 
 const allocator = std.heap.c_allocator;
@@ -239,42 +240,11 @@ const BackendCtx = struct {
 
 extern fn fflush(stream: ?*anyopaque) c_int;
 
-fn convertKey(key: termy.event.KeyEvent) lineedit.Key {
-    const code: lineedit.KeyCode = switch (key.code) {
-        .Char => |cp| .{ .char = cp },
-        .Enter => .enter,
-        .Backspace => .backspace,
-        .Delete => .delete,
-        .Left => .left,
-        .Right => .right,
-        .Up => .up,
-        .Down => .down,
-        .Home => .home,
-        .End => .end,
-        .Tab => .tab,
-        .PageUp => .page_up,
-        .PageDown => .page_down,
-        .Esc => .esc,
-        .Insert => .insert,
-        .F => |number| .{ .f = number },
-        else => .null_key,
-    };
-
-    // The Windows console reports Ctrl+A..Ctrl+Z as the raw control bytes
-    // 0x01..0x1A.  Normalise them to the same keys the Unix parser produces.
-    return lineedit.applyControlCode(.{
-        .code = code,
-        .shift = key.modifier.Shift,
-        .control = key.modifier.Control,
-        .alt = key.modifier.Alt,
-    });
-}
-
 fn pushPending(ctx: *BackendCtx, event: termy.event.Event) !void {
     switch (event) {
         .Key => |key| {
             if (key.kind == .Release) return;
-            try ctx.pending.append(allocator, .{ .key = convertKey(key) });
+            try ctx.pending.append(allocator, .{ .key = termkey.convertKey(key) });
         },
         .Paste => |text| {
             ctx.pending.append(allocator, .{ .paste = try allocator.dupe(u8, text) }) catch return error.OutOfMemory;
@@ -398,7 +368,7 @@ fn backendReadEvent(context: *anyopaque) anyerror!?lineedit.Event {
         switch (event) {
             .Key => |key| {
                 if (key.kind == .Release) continue;
-                return .{ .key = convertKey(key) };
+                return .{ .key = termkey.convertKey(key) };
             },
             .Paste => |text| return .{ .paste = text },
             .Resize => |size| return .{ .resize = .{ .rows = size.rows, .columns = size.columns } },

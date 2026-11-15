@@ -1,0 +1,66 @@
+-- Prompt: small, procedural terminal UI components.
+--
+-- Components draw inline by default and redraw only the region they own.  Set
+-- `screen = "alternate"` (globally, per call, or with `prompt.screen`) for a
+-- full-screen presentation.
+
+local config = require "prompt.config"
+local term = require "term"
+
+local M = {}
+
+function M.configure(options)
+    config.configure(options)
+    return M
+end
+
+function M.is_interactive()
+    return config.is_interactive()
+end
+
+function M.screen(mode, fn)
+    if type(mode) ~= "string" then
+        error("prompt.screen: expecting a screen mode", 2)
+    end
+    if mode ~= "inline" and mode ~= "alternate" then
+        error("prompt.screen: screen must be 'inline' or 'alternate'", 2)
+    end
+    if type(fn) ~= "function" then
+        error("prompt.screen: expecting a function", 2)
+    end
+
+    local previous = config.get("screen")
+    config.get().screen = mode
+    local packed = table.pack(xpcall(fn, debug.traceback))
+    config.get().screen = previous
+    if not packed[1] then error(packed[2], 0) end
+    return table.unpack(packed, 2, packed.n)
+end
+
+local function component(name)
+    return function(options)
+        return require("prompt." .. name)(options)
+    end
+end
+
+M.select = component("select")
+M.multiselect = function(options)
+    return require("prompt.select").multiselect(options)
+end
+M.text = component("text")
+M.multiline = component("multiline")
+M.password = component("password")
+M.confirm = component("confirm")
+M.date = component("date")
+M.time = component("time")
+M.datetime = component("datetime")
+M.progress = component("progress")
+M.spinner = component("spinner")
+
+M.width = term.width
+M.truncate = term.truncate
+M.wrap = term.wrap
+
+M._config = config
+
+return M

@@ -16,6 +16,7 @@ const uuid = @import("uuid.zig");
 const tar = @import("tar.zig");
 const gzip = @import("gzip.zig");
 const markdown = @import("markdown.zig");
+const prompt_editor = @import("prompt_editor.zig");
 
 pub extern fn luaopen_lsqlite3(state: ?*zlua.LuaState) callconv(.c) c_int;
 pub extern fn luaopen_lpeg(state: ?*zlua.LuaState) callconv(.c) c_int;
@@ -60,6 +61,10 @@ const preload: []const zlua.FnReg = &.{
     .{
         .name = "pager",
         .func = zlua.wrap(pager.register),
+    },
+    .{
+        .name = "prompt_editor",
+        .func = zlua.wrap(prompt_editor.register),
     },
     .{
         .name = "filesystem",
@@ -139,6 +144,11 @@ const luascripts: []const luascript = &.{
     .{ .name = "webui.component", .source = @embedFile("webui.component.lua") },
     .{ .name = "webui.html", .source = @embedFile("webui.html.lua") },
     .{ .name = "webui.event", .source = @embedFile("webui.event.lua") },
+    .{ .name = "prompt", .source = @embedFile("prompt.init.lua") },
+    .{ .name = "prompt.config", .source = @embedFile("prompt.config.lua") },
+    .{ .name = "prompt.theme", .source = @embedFile("prompt.theme.lua") },
+    .{ .name = "prompt.render", .source = @embedFile("prompt.render.lua") },
+    .{ .name = "prompt.input", .source = @embedFile("prompt.input.lua") },
     .{ .name = "xlsxmlwriter", .source = @embedFile("xlsxmlwriter.lua") },
     .{ .name = "xml2lua", .source = @embedFile("xml2lua.lua") },
     .{ .name = "XmlParser", .source = @embedFile("XmlParser.lua") },

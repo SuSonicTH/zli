@@ -91,12 +91,18 @@ pub fn build(b: *std.Build) void {
         "src/term_width.zig",
         "src/history.zig",
         "src/lineedit.zig",
+        "src/prompt_editor.zig",
     }) |path| {
+        var imports: []const std.Build.Module.Import = &.{};
+        if (std.mem.eql(u8, path, "src/prompt_editor.zig")) {
+            imports = &.{.{ .name = "termy", .module = b.dependency("termy", .{}).module("termy") }};
+        }
         const unit_tests = b.addTest(.{
             .root_module = b.createModule(.{
                 .root_source_file = b.path(path),
                 .target = target,
                 .optimize = optimize,
+                .imports = imports,
             }),
         });
         const run_unit_tests = b.addRunArtifact(unit_tests);
@@ -394,6 +400,11 @@ var lualib_list = [_]lualib_entry{
     .{ .input = "src/term.lua", .name = "term.lua" },
     .{ .input = "src/readline.lua", .name = "readline.lua" },
     .{ .input = "src/pager.lua", .name = "pager.lua" },
+    .{ .input = "src/prompt/init.lua", .name = "prompt.init.lua" },
+    .{ .input = "src/prompt/config.lua", .name = "prompt.config.lua" },
+    .{ .input = "src/prompt/theme.lua", .name = "prompt.theme.lua" },
+    .{ .input = "src/prompt/render.lua", .name = "prompt.render.lua" },
+    .{ .input = "src/prompt/input.lua", .name = "prompt.input.lua" },
     .{ .input = "src/filesystem.lua", .name = "filesystem.lua" },
     .{ .input = "src/grid.lua", .name = "grid.lua" },
     .{ .input = "src/httpclient.lua", .name = "httpclient.lua" },

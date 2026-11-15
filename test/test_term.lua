@@ -27,6 +27,23 @@ print("ok")
     lu.assertNotStrContains(stdout, "\27[")
 end
 
+function Test_term.Test_display_width_helpers()
+    local script = support.temp_file("term_width", [[
+local term = require "term"
+print(term.width("abc"), term.width("a界b"))
+print(term.truncate("abcdef", 4))
+print(term.truncate("abcdef", 4, "…"))
+print(term.wrap("abcdef", 3))
+]])
+    local stdout, status = support.run({ script }, { home = support.temp_dir("term_home") })
+
+    lu.assertEquals(0, status, stdout)
+    lu.assertStrContains(stdout, "3\t4")
+    lu.assertStrContains(stdout, "a...")
+    lu.assertStrContains(stdout, "abc…")
+    lu.assertStrContains(stdout, "abc\ndef")
+end
+
 function Test_term.Test_colour_constructors()
     local script = support.temp_file("term_colours", [[
 local term = require "term"

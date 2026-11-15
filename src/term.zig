@@ -11,6 +11,7 @@ const Lua = zlua.Lua;
 const luax = @import("luax.zig");
 const luaerror = @import("luaerror.zig");
 const termy = @import("termy");
+const width = @import("term_width.zig");
 
 const allocator = std.heap.c_allocator;
 
@@ -171,6 +172,9 @@ pub fn isTtyValue() bool {
 const functions = [_]zlua.FnReg{
     .{ .name = "is_tty", .func = zlua.wrap(lua_is_tty) },
     .{ .name = "size", .func = zlua.wrap(lua_size) },
+    .{ .name = "width", .func = zlua.wrap(lua_width) },
+    .{ .name = "truncate", .func = zlua.wrap(lua_truncate) },
+    .{ .name = "wrap", .func = zlua.wrap(lua_wrap) },
     .{ .name = "clear", .func = zlua.wrap(lua_clear) },
     .{ .name = "write", .func = zlua.wrap(lua_write) },
     .{ .name = "flush", .func = zlua.wrap(lua_flush) },
@@ -224,6 +228,41 @@ fn lua_size(lua: *Lua) i32 {
     _ = lua.pushString("rows");
     lua.pushInteger(size.rows);
     lua.setTable(-3);
+    return 1;
+}
+
+fn lua_width(lua: *Lua) i32 {
+    const text = lua.checkString(1);
+    lua.pushInteger(@intCast(width.visibleWidth(std.mem.sliceTo(text, 0))));
+    return 1;
+}
+
+fn columnArgument(lua: *Lua, index: i32) usize {
+    const value = lua.checkInteger(index);
+    if (value < 0 or value > std.math.maxInt(i32)) lua.argError(index, "expecting a column count between 0 and 2147483647");
+    return @intCast(value);
+}
+
+fn lua_truncate(lua: *Lua) i32 {
+    const text = std.mem.sliceTo(lua.checkString(1), 0);
+    const columns = columnArgument(lua, 2);
+    const ellipsis = std.mem.sliceTo(lua.optString(3) orelse "...", 0);
+
+    const result = width.truncate(text, columns, ellipsis, allocator) catch |err|
+        return luaerror.ret(lua, "could not truncate the text: {s}", .{@errorName(err)});
+    defer allocator.free(result);
+    _ = lua.pushString(result);
+    return 1;
+}
+
+fn lua_wrap(lua: *Lua) i32 {
+    const text = std.mem.sliceTo(lua.checkString(1), 0);
+    const columns = columnArgument(lua, 2);
+
+    const result = width.wrap(text, columns, allocator) catch |err|
+        return luaerror.ret(lua, "could not wrap the text: {s}", .{@errorName(err)});
+    defer allocator.free(result);
+    _ = lua.pushString(result);
     return 1;
 }
 

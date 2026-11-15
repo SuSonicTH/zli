@@ -131,6 +131,19 @@ pub const Options = struct {
     complete: ?CompleteHook = null,
     history: ?*history.History = null,
     multiline_color: bool = true,
+    /// Enter submits instead of inserting a newline.  The line editor's
+    /// historical behaviour stays the default so readline is unchanged.
+    submit_on_enter: bool = false,
+    /// Alt+Enter (or Ctrl+Enter, which terminals encode the same way) inserts
+    /// a newline instead of submitting.
+    alt_enter_newline: bool = false,
+    /// Strip newlines from initial text and pasted text, and never insert one
+    /// from a key.
+    single_line: bool = false,
+    /// Maximum number of codepoints accepted while editing.
+    max_length: ?usize = null,
+    /// Echo every codepoint as this mask character instead of the real text.
+    mask: ?u21 = null,
 };
 
 pub const Result = union(enum) {
@@ -147,7 +160,7 @@ const Row = struct {
     prefix: Prefix,
 };
 
-const Action = enum { continue_editing, submit, abort, eof };
+pub const Action = enum { continue_editing, submit, abort, eof };
 
 const CompletionState = struct {
     start: usize,
@@ -184,6 +197,7 @@ pub const Editor = struct {
     completion: ?CompletionState = null,
     candidates: std.ArrayList([]u8) = .empty,
     search: ?SearchState = null,
+    mask_scratch: std.ArrayList(u8) = .empty,
 
     pub fn init(allocator: std.mem.Allocator, backend: Backend, options: Options) Editor {
         return .{ .allocator = allocator, .backend = backend, .options = options };
@@ -195,12 +209,59 @@ pub const Editor = struct {
         self.draft.deinit(self.allocator);
         self.rows.deinit(self.allocator);
         self.prompt_scratch.deinit(self.allocator);
+        self.mask_scratch.deinit(self.allocator);
         self.clearCandidates();
         self.candidates.deinit(self.allocator);
         if (self.search) |*search| {
             search.query.deinit(self.allocator);
             search.saved.deinit(self.allocator);
         }
+    }
+
+    /// Prepare the editor for externally driven rendering.  This performs the
+    /// one-time setup that `run()` normally does, without reading events or
+    /// touching the terminal.
+    pub fn begin(self: *Editor, size: Size) !void {
+        try self.appendSanitised(self.options.initial);
+        self.cursor = self.buffer.items.len;
+        self.history_index = if (self.options.history) |h| h.count() else 0;
+        self.size = size;
+        self.anchor_row = 0;
+    }
+
+    pub fn feedKey(self: *Editor, key: Key) !Action {
+        return self.handleKey(key);
+    }
+
+    pub fn feedPaste(self: *Editor, text: []const u8) !void {
+        self.clearCompletion();
+        self.exitSearch(false);
+        try self.insertPaste(text);
+    }
+
+    pub fn renderFrame(self: *Editor) !void {
+        try self.render();
+    }
+
+    pub fn textValue(self: *const Editor) []const u8 {
+        return self.buffer.items;
+    }
+
+    pub fn textLength(self: *const Editor) usize {
+        return self.buffer.items.len;
+    }
+
+    pub fn setSize(self: *Editor, size: Size) void {
+        self.size = size;
+    }
+
+    pub fn setText(self: *Editor, text: []const u8) !void {
+        self.buffer.clearRetainingCapacity();
+        self.cursor = 0;
+        self.goal = null;
+        self.top = 0;
+        try self.appendSanitised(text);
+        self.cursor = self.buffer.items.len;
     }
 
     pub fn run(self: *Editor) !Result {
@@ -280,7 +341,13 @@ pub const Editor = struct {
                         self.toggleDirect();
                         return .continue_editing;
                     },
-                    '\r', '\n' => return .submit,
+                    '\r', '\n' => {
+                        if (self.options.alt_enter_newline and !self.options.single_line) {
+                            try self.insertByte('\n');
+                            return .continue_editing;
+                        }
+                        return .submit;
+                    },
                     0x7f, 0x08 => {
                         try self.killWordLeft();
                         return .continue_editing;
@@ -301,7 +368,13 @@ pub const Editor = struct {
                     },
                     else => {},
                 },
-                .enter => return .submit,
+                .enter => {
+                    if (self.options.alt_enter_newline and !self.options.single_line) {
+                        try self.insertByte('\n');
+                        return .continue_editing;
+                    }
+                    return .submit;
+                },
                 .backspace => {
                     try self.killWordLeft();
                     return .continue_editing;
@@ -389,7 +462,13 @@ pub const Editor = struct {
                     self.cursor = self.buffer.items.len;
                     self.goal = null;
                 },
-                .enter => return .submit,
+                .enter => {
+                    if (self.options.alt_enter_newline and !self.options.single_line) {
+                        try self.insertByte('\n');
+                    } else {
+                        return .submit;
+                    }
+                },
                 .tab => try self.handleTab(),
                 .backspace => self.deleteLeft(),
                 else => {},
@@ -464,6 +543,8 @@ pub const Editor = struct {
         if (self.search != null) {
             self.exitSearch(true);
         }
+        if (self.options.single_line) return .submit;
+        if (self.options.submit_on_enter) return .submit;
         if (self.direct) {
             try self.insertByte('\n');
             return .continue_editing;
@@ -484,7 +565,23 @@ pub const Editor = struct {
 
     // -- buffer editing ---------------------------------------------------
 
+    fn codepointCount(text: []const u8) usize {
+        var count: usize = 0;
+        var i: usize = 0;
+        while (i < text.len) {
+            i = width.nextBoundary(text, i);
+            count += 1;
+        }
+        return count;
+    }
+
+    fn atMaxLength(self: *const Editor) bool {
+        const limit = self.options.max_length orelse return false;
+        return codepointCount(self.buffer.items) >= limit;
+    }
+
     fn insertCodepoint(self: *Editor, cp: u21) !void {
+        if (self.atMaxLength()) return;
         var encoded: [4]u8 = undefined;
         const len = std.unicode.utf8Encode(cp, &encoded) catch return;
         try self.buffer.replaceRange(self.allocator, self.cursor, 0, encoded[0..len]);
@@ -499,9 +596,48 @@ pub const Editor = struct {
     }
 
     fn insertSlice(self: *Editor, bytes: []const u8) !void {
-        try self.buffer.replaceRange(self.allocator, self.cursor, 0, bytes);
-        self.cursor += bytes.len;
+        var end = bytes.len;
+        if (self.options.max_length) |limit| {
+            const remaining = limit -| codepointCount(self.buffer.items);
+            var i: usize = 0;
+            var count: usize = 0;
+            while (i < bytes.len and count < remaining) {
+                i = width.nextBoundary(bytes, i);
+                count += 1;
+            }
+            end = i;
+        }
+        if (end == 0) return;
+        try self.buffer.replaceRange(self.allocator, self.cursor, 0, bytes[0..end]);
+        self.cursor += end;
         self.goal = null;
+    }
+
+    /// Normalise control characters and tabs for the editor's layout.
+    fn sanitise(self: *Editor, text: []const u8, clean: *std.ArrayList(u8)) !void {
+        var i: usize = 0;
+        while (i < text.len) {
+            const b = text[i];
+            if (b == '\r') {
+                if (i + 1 < text.len and text[i + 1] == '\n') i += 1;
+                if (self.options.single_line) {
+                    try clean.append(self.allocator, ' ');
+                } else {
+                    try clean.append(self.allocator, '\n');
+                }
+            } else if (b == '\t') {
+                try clean.appendSlice(self.allocator, "    ");
+            } else if (b == '\n') {
+                if (self.options.single_line) {
+                    try clean.append(self.allocator, ' ');
+                } else {
+                    try clean.append(self.allocator, '\n');
+                }
+            } else if (b >= 0x20 and b != 0x7f) {
+                try clean.append(self.allocator, b);
+            }
+            i += 1;
+        }
     }
 
     /// Append text with control characters and tabs normalised for the
@@ -509,40 +645,14 @@ pub const Editor = struct {
     fn appendSanitised(self: *Editor, text: []const u8) !void {
         var clean: std.ArrayList(u8) = .empty;
         defer clean.deinit(self.allocator);
-
-        var i: usize = 0;
-        while (i < text.len) {
-            const b = text[i];
-            if (b == '\r') {
-                if (i + 1 < text.len and text[i + 1] == '\n') i += 1;
-                try clean.append(self.allocator, '\n');
-            } else if (b == '\t') {
-                try clean.appendSlice(self.allocator, "    ");
-            } else if (b == '\n' or (b >= 0x20 and b != 0x7f)) {
-                try clean.append(self.allocator, b);
-            }
-            i += 1;
-        }
+        try self.sanitise(text, &clean);
         if (clean.items.len != 0) try self.buffer.appendSlice(self.allocator, clean.items);
     }
 
     fn insertPaste(self: *Editor, text: []const u8) !void {
         var clean: std.ArrayList(u8) = .empty;
         defer clean.deinit(self.allocator);
-
-        var i: usize = 0;
-        while (i < text.len) {
-            const b = text[i];
-            if (b == '\r') {
-                if (i + 1 < text.len and text[i + 1] == '\n') i += 1;
-                try clean.append(self.allocator, '\n');
-            } else if (b == '\t') {
-                try clean.appendSlice(self.allocator, "    ");
-            } else if (b == '\n' or (b >= 0x20 and b != 0x7f)) {
-                try clean.append(self.allocator, b);
-            }
-            i += 1;
-        }
+        try self.sanitise(text, &clean);
         if (clean.items.len != 0) try self.insertSlice(clean.items);
     }
 
@@ -954,7 +1064,7 @@ pub const Editor = struct {
             while (i < line_end) {
                 const decoded = width.decode(bytes, i);
                 if (decoded.len == 0) break;
-                const cp_width = width.codepointWidth(decoded.codepoint);
+                const cp_width = if (self.options.mask != null) 1 else width.codepointWidth(decoded.codepoint);
                 if (column + cp_width > avail and column > 0) {
                     try self.rows.append(self.allocator, .{ .start = row_start, .end = i, .prefix = prefix });
                     prefix = if (line_index == 0) first_indent else .cont_indent;
@@ -986,6 +1096,9 @@ pub const Editor = struct {
     fn cursorColumn(self: *const Editor) usize {
         const index = self.cursorRow();
         const row = self.rows.items[index];
+        if (self.options.mask != null) {
+            return self.prefixWidth(row.prefix) + codepointCount(self.buffer.items[row.start..self.cursor]);
+        }
         return self.prefixWidth(row.prefix) + width.visibleWidthSlice(self.buffer.items, row.start, self.cursor);
     }
 
@@ -1055,7 +1168,21 @@ pub const Editor = struct {
             } else {
                 try self.backend.vtable.write(self.backend.ctx, self.prefixText(row.prefix));
             }
-            try self.backend.vtable.write(self.backend.ctx, self.buffer.items[row.start..row.end]);
+            if (self.options.mask) |mask| {
+                self.mask_scratch.clearRetainingCapacity();
+                var index = row.start;
+                while (index < row.end) {
+                    const decoded = width.decode(self.buffer.items, index);
+                    if (decoded.len == 0) break;
+                    var encoded: [4]u8 = undefined;
+                    const len = std.unicode.utf8Encode(mask, &encoded) catch 1;
+                    try self.mask_scratch.appendSlice(self.allocator, encoded[0..len]);
+                    index += decoded.len;
+                }
+                try self.backend.vtable.write(self.backend.ctx, self.mask_scratch.items);
+            } else {
+                try self.backend.vtable.write(self.backend.ctx, self.buffer.items[row.start..row.end]);
+            }
         }
 
         const stale_end = @min(self.last_rows, height);

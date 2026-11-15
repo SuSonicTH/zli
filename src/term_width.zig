@@ -518,6 +518,96 @@ pub fn byteAtColumn(s: []const u8, start: usize, end: usize, columns: usize) usi
     return i;
 }
 
+/// Truncate `s` to at most `columns` display cells, appending `ellipsis` when
+/// content was removed. ANSI escape sequences are copied through unchanged.
+pub fn truncate(
+    s: []const u8,
+    columns: usize,
+    ellipsis: []const u8,
+    allocator: std.mem.Allocator,
+) ![]u8 {
+    if (visibleWidth(s) <= columns) return allocator.dupe(u8, s);
+
+    const ellipsis_width = visibleWidth(ellipsis);
+    const add_ellipsis = ellipsis_width != 0 and ellipsis_width < columns;
+    const budget = if (add_ellipsis) columns - ellipsis_width else columns;
+
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
+
+    var i: usize = 0;
+    var used: usize = 0;
+    while (i < s.len) {
+        const skip = ansiSequenceLength(s, i);
+        if (skip != 0) {
+            try out.appendSlice(allocator, s[i .. i + skip]);
+            i += skip;
+            continue;
+        }
+        const decoded = decode(s, i);
+        if (decoded.len == 0) break;
+        const cp_width = codepointWidth(decoded.codepoint);
+        if (used + cp_width > budget) break;
+        try out.appendSlice(allocator, s[i .. i + decoded.len]);
+        used += cp_width;
+        i += decoded.len;
+    }
+
+    if (add_ellipsis) try out.appendSlice(allocator, ellipsis);
+    return out.toOwnedSlice(allocator);
+}
+
+/// Wrap `s` at `columns` display cells. Existing newlines are preserved, tabs
+/// are expanded to eight-column stops and ANSI sequences are copied through.
+pub fn wrap(s: []const u8, columns: usize, allocator: std.mem.Allocator) ![]u8 {
+    const limit = @max(@as(usize, 1), columns);
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
+
+    var line_width: usize = 0;
+    var i: usize = 0;
+    while (i < s.len) {
+        if (s[i] == '\n') {
+            try out.append(allocator, '\n');
+            line_width = 0;
+            i += 1;
+            continue;
+        }
+        if (s[i] == '\r') {
+            i += 1;
+            continue;
+        }
+        const skip = ansiSequenceLength(s, i);
+        if (skip != 0) {
+            try out.appendSlice(allocator, s[i .. i + skip]);
+            i += skip;
+            continue;
+        }
+        const decoded = decode(s, i);
+        if (decoded.len == 0) break;
+        if (decoded.codepoint == '\t') {
+            const advance = 8 - (line_width % 8);
+            if (line_width != 0 and line_width + advance > limit) {
+                try out.append(allocator, '\n');
+                line_width = 0;
+            }
+            try out.appendNTimes(allocator, ' ', advance);
+            line_width += advance;
+            i += decoded.len;
+            continue;
+        }
+        const cp_width = codepointWidth(decoded.codepoint);
+        if (line_width != 0 and line_width + cp_width > limit) {
+            try out.append(allocator, '\n');
+            line_width = 0;
+        }
+        try out.appendSlice(allocator, s[i .. i + decoded.len]);
+        line_width += cp_width;
+        i += decoded.len;
+    }
+    return out.toOwnedSlice(allocator);
+}
+
 pub fn displayRows(s: []const u8, width: usize) usize {
     if (width == 0) return 1;
     var rows: usize = 1;
@@ -600,4 +690,36 @@ test "width tables are sorted" {
             previous = interval.last;
         }
     }
+}
+
+test "truncate respects display columns and ellipsis" {
+    const allocator = std.testing.allocator;
+
+    const ascii = try truncate("abcdef", 4, "...", allocator);
+    defer allocator.free(ascii);
+    try std.testing.expectEqualStrings("a...", ascii);
+
+    const wide_text = try truncate("a界bc", 3, "…", allocator);
+    defer allocator.free(wide_text);
+    try std.testing.expectEqualStrings("a…", wide_text);
+
+    const ansi = try truncate("\x1b[31mabcdef\x1b[0m", 5, "...", allocator);
+    defer allocator.free(ansi);
+    try std.testing.expectEqualStrings("\x1b[31mab...", ansi);
+}
+
+test "wrap breaks on display columns" {
+    const allocator = std.testing.allocator;
+
+    const ascii = try wrap("abcdef", 3, allocator);
+    defer allocator.free(ascii);
+    try std.testing.expectEqualStrings("abc\ndef", ascii);
+
+    const words = try wrap("ab cd", 3, allocator);
+    defer allocator.free(words);
+    try std.testing.expectEqualStrings("ab \ncd", words);
+
+    const wide_text = try wrap("a界b", 3, allocator);
+    defer allocator.free(wide_text);
+    try std.testing.expectEqualStrings("a界\nb", wide_text);
 }
