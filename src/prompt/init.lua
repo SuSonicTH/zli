@@ -43,7 +43,9 @@ local function component(name)
     end
 end
 
-M.select = component("select")
+M.select = function(options)
+    return require("prompt.select").select(options)
+end
 M.multiselect = function(options)
     return require("prompt.select").multiselect(options)
 end
