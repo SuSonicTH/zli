@@ -52,6 +52,7 @@ function Spinner:new(options)
     }, self)
     spinner.theme = theme_mod.build()
     spinner.frames = spinner.frames or (spinner.theme.unicode and unicode_frames or ascii_frames)
+    spinner:step(nil, true)
     return spinner
 end
 

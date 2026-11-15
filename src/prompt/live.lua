@@ -17,6 +17,7 @@ function Live:new(screen)
         active = false,
         alternate = false,
         shared = config.get("screen_hold"),
+        cleared = false,
         finished = false,
     }, self)
 end
@@ -44,6 +45,10 @@ function Live:update(spans)
             if not self.alternate then
                 if not self.shared then term.alternate_screen(true) end
                 self.alternate = true
+            end
+            if not self.cleared then
+                term.clear("all")
+                self.cleared = true
             end
             term.hide_cursor()
             term.move_to(1, 1)

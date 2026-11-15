@@ -60,14 +60,14 @@ local progress = prompt.progress {
 }
 for _, feature in ipairs(features) do
     -- Replace this with real work.
-    pause(180)
+    pause(750)
     progress:advance()
 end
 progress:finish("Configuration ready")
 
 local spinner = prompt.spinner { text = "Warming caches" }
 for step = 1, 4 do
-    pause(270)
+    pause(750)
     spinner:step("Warming caches " .. step .. "/4")
 end
 spinner:finish("Caches warm")

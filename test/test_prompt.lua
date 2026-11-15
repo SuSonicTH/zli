@@ -349,7 +349,6 @@ end
 function Test_prompt.Test_spinner_frames_and_finish()
     live.capture = {}
     local spinner = prompt.spinner { text = "Fetch", interval = 0.001 }
-    spinner:step(nil, true)
     spinner:step("Fetching", true)
     spinner:finish("Fetched")
     local texts = {}
@@ -606,7 +605,7 @@ function Test_prompt.Test_progress_and_spinner_use_monotonic_seconds()
     live.capture = nil
     os.nanotime = real_nanotime
     lu.assertEquals(2, updates)
-    lu.assertEquals(2, spins)
+    lu.assertEquals(3, spins)
 end
 
 function Test_prompt.Test_password_default_confirms_in_fallback()

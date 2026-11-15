@@ -78,6 +78,7 @@ function Progress:new(options)
         finished = false,
     }, self)
     progress.theme = theme_mod.build()
+    progress:draw(true)
     return progress
 end
 
