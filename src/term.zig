@@ -644,16 +644,16 @@ fn lua_poll(lua: *Lua) i32 {
     return 1;
 }
 
-const PollResult = enum { ready, timeout, closed };
+const PollResult = struct { ready: bool, hangup: bool };
 
 fn hasBufferedInput(input: *termy.Input) bool {
     return input.start < input.len or input.paste_active;
 }
 
 fn pollInput(timeout_ms: i32) !PollResult {
-    if (builtin.os.tag == .windows) {
+    if (comptime builtin.os.tag == .windows) {
         const ready_now = try inputPtr().poll(.fromMilliseconds(timeout_ms));
-        return if (ready_now) .ready else .timeout;
+        return .{ .ready = ready_now, .hangup = false };
     }
 
     var fds = [_]std.posix.pollfd{.{
@@ -662,47 +662,53 @@ fn pollInput(timeout_ms: i32) !PollResult {
         .revents = 0,
     }};
     const count = try std.posix.poll(&fds, timeout_ms);
-    if (count == 0) return .timeout;
+    if (count == 0) return .{ .ready = false, .hangup = false };
     const hangup = std.posix.POLL.HUP | std.posix.POLL.ERR | std.posix.POLL.NVAL;
-    if ((fds[0].revents & hangup) != 0) return .closed;
-    return .ready;
+    return .{
+        .ready = (fds[0].revents & std.posix.POLL.IN) != 0,
+        .hangup = (fds[0].revents & hangup) != 0,
+    };
 }
 
 fn lua_read_event(lua: *Lua) i32 {
     const input = inputPtr();
+    var pending_hangup = false;
     if (lua.typeOf(1) == .number) {
         const milliseconds = lua.checkInteger(1);
         if (milliseconds >= 0 and !hasBufferedInput(input)) {
-            const result = pollInput(@intCast(std.math.clamp(milliseconds, 0, std.math.maxInt(i32)))) catch |err|
+            const status = pollInput(@intCast(std.math.clamp(milliseconds, 0, std.math.maxInt(i32)))) catch |err|
                 return luaerror.ret(lua, "could not poll the terminal: {s}", .{@errorName(err)});
-            switch (result) {
-                .timeout => {
-                    lua.pushNil();
-                    _ = lua.pushString("timeout");
-                    return 2;
-                },
-                .closed => {
+            if (!status.ready) {
+                if (status.hangup) {
                     lua.pushNil();
                     _ = lua.pushString("eof");
-                    return 2;
-                },
-                .ready => {},
+                } else {
+                    lua.pushNil();
+                    _ = lua.pushString("timeout");
+                }
+                return 2;
             }
+            pending_hangup = status.hangup;
         }
     }
 
-    const event = input.read() catch |err| switch (err) {
-        error.EndOfInput => {
+    const event = input.read() catch |err| {
+        if (err == error.EndOfInput) {
             lua.pushNil();
             _ = lua.pushString("eof");
             return 2;
-        },
-        error.InvalidEventFound => {
+        }
+        if (err == error.InvalidEventFound) {
             lua.pushNil();
             _ = lua.pushString("invalid");
             return 2;
-        },
-        else => return luaerror.ret(lua, "could not read a terminal event: {s}", .{@errorName(err)}),
+        }
+        if (err == error.FailedToReadEvent and pending_hangup) {
+            lua.pushNil();
+            _ = lua.pushString("eof");
+            return 2;
+        }
+        return luaerror.ret(lua, "could not read a terminal event: {s}", .{@errorName(err)});
     };
 
     pushEvent(lua, event);

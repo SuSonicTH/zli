@@ -67,6 +67,28 @@ print(term.color.fg.bright_cyan)
     lu.assertStrContains(stdout, "bright_cyan\n")
 end
 
+
+function Test_term.Test_timed_read_drains_closed_pipe()
+    if os.is_windows then return end
+    local script = support.temp_file("term_pipe", [[
+local term = require "term"
+print("poll=" .. tostring(term.poll(0)))
+local event, message = term.read_event(100)
+print("first=" .. tostring(event and event.char) .. " " .. tostring(message))
+local event2, message2 = term.read_event(100)
+print("second=" .. tostring(event2 and event2.char) .. " " .. tostring(message2))
+]])
+    local exe = ZLI.exe_path or arg[0]
+    local home = support.temp_dir("term_home")
+    local command = "HOME=" .. support.quote(home)
+        .. " printf a | " .. support.quote(exe) .. " " .. support.quote(script)
+    local pipe = assert(io.popen(command, "r"))
+    local stdout = pipe:read("a") or ""
+    pipe:close()
+    lu.assertStrContains(stdout, "first=a nil")
+    lu.assertStrContains(stdout, "second=nil eof")
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
