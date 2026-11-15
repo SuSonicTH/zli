@@ -219,6 +219,81 @@ print("confirm=" .. tostring(prompt.confirm { message = "Sure?", default = true 
 end
 
 
+local dates = require "prompt.dates"
+
+function Test_prompt.Test_date_arithmetic()
+    for _, value in ipairs {
+        { 1970, 1, 1 }, { 2000, 2, 29 }, { 2026, 11, 15 }, { 1999, 12, 31 },
+    } do
+        local days = dates.days_from_civil(value[1], value[2], value[3])
+        local year, month, day = dates.civil_from_days(days)
+        lu.assertEquals(value[1], year)
+        lu.assertEquals(value[2], month)
+        lu.assertEquals(value[3], day)
+    end
+    lu.assertEquals(4, dates.weekday(1970, 1, 1))
+    lu.assertEquals(7, dates.weekday(2026, 11, 15))
+    lu.assertEquals(29, dates.days_in_month(2000, 2))
+    lu.assertEquals(28, dates.days_in_month(2026, 2))
+    lu.assertNil(dates.parse_date("2026-02-30"))
+    lu.assertEquals("2026-11-15", dates.format_date(dates.parse_date("2026-11-15")))
+end
+
+function Test_prompt.Test_date_picker_navigation_and_typing()
+    local result = drive({ key("right"), key("enter") }, function()
+        return prompt.date { message = "Date", default = "2026-11-15", as = "string" }
+    end)
+    lu.assertEquals("2026-11-16", result[1])
+
+    local events = {}
+    for _, value in ipairs { "2", "0", "2", "7", "-", "0", "1", "-", "0", "2" } do
+        events[#events + 1] = char(value)
+    end
+    events[#events + 1] = key("enter")
+    events[#events + 1] = key("enter")
+    result = drive(events, function()
+        return prompt.date { message = "Date", default = "2026-11-15", as = "string" }
+    end)
+    lu.assertEquals("2027-01-02", result[1])
+end
+
+function Test_prompt.Test_date_picker_bounds()
+    local result = drive({ key("right"), key("enter") }, function()
+        return prompt.date {
+            message = "Date",
+            default = "2026-11-30",
+            min = "2026-11-01",
+            max = "2026-11-30",
+            as = "string",
+        }
+    end)
+    lu.assertEquals("2026-11-30", result[1])
+end
+
+function Test_prompt.Test_time_picker_segments_and_typing()
+    local result = drive({ key("right"), key("up"), key("enter") }, function()
+        return prompt.time { message = "Time", default = { hour = 10, min = 30 } }
+    end)
+    lu.assertEquals(31, result[1].min)
+
+    result = drive({ char("1"), char("5"), char("4"), char("5"), key("enter") }, function()
+        return prompt.time { message = "Time", default = { hour = 10, min = 30 } }
+    end)
+    lu.assertEquals(15, result[1].hour)
+    lu.assertEquals(45, result[1].min)
+end
+
+function Test_prompt.Test_datetime_tab_and_time_adjust()
+    local result = drive({ key("tab"), key("right"), key("up"), key("enter") }, function()
+        return prompt.datetime { message = "When", default = "2026-11-15 10:30", as = "table" }
+    end)
+    lu.assertEquals(2026, result[1].year)
+    lu.assertEquals(11, result[1].month)
+    lu.assertEquals(15, result[1].day)
+    lu.assertEquals(10, result[1].hour)
+    lu.assertEquals(31, result[1].min)
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end
