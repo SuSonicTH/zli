@@ -1651,6 +1651,33 @@ components that show a transient frame also accept `commit`.  List components ad
 `max_length`, `required`, `trim` and `validate`.  Unsupported options are
 ignored, so consult the entry for each component.
 
+`prompt.form` and `prompt.wizard` collect several fields in one scrolling
+frame.  A field spec has a `name`, a `type` and a `message`, plus the options of
+the component named by `type`:
+
+| field type | component | notes |
+| --- | --- | --- |
+| `text` | `prompt.text` | Single-line text. |
+| `multiline` | `prompt.multiline` | Enter inserts a newline; Alt+Enter advances. Ctrl+Enter submits the whole form. |
+| `password` | `prompt.password` | Masked text, including confirmation. |
+| `confirm` | `prompt.confirm` | Yes/no value. |
+| `select` | `prompt.select` | Single choice from `items`. |
+| `multiselect` | `prompt.multiselect` | Multiple choices, honouring `min` and `max`. |
+| `date` | `prompt.date` | Calendar date; `as` controls the result format. |
+| `time` | `prompt.time` | Time of day; `as` controls the result format. |
+| `datetime` | `prompt.datetime` | Date and time in one frame. |
+
+Form keys:
+
+| key | action |
+| --- | --- |
+| Tab, Shift+Tab | Focus the next or previous field. |
+| Enter | Accept the focused field and move to the next one; submits on the last field. |
+| Ctrl+Enter | Submit the form from any field, including a multiline field. |
+| Alt+Enter | Accept a multiline field and advance. |
+| Ctrl+T | Switch the date and time sections in a `datetime` field (Tab is reserved for moving between fields). |
+| Esc | Cancel the form. |
+
 `commit` is one of:
 
 | value | result after the component finishes |
@@ -1687,7 +1714,7 @@ Date and time keys:
 | Page Up/Page Down | Previous or next month. |
 | t | Select today when it is inside the allowed range. |
 | / or a digit | Focus the typed date/time entry. |
-| Tab | Switch between the date and time sections. |
+| Tab | Toggle the typed entry in `date` or switch sections in `datetime`. In a form Tab moves between fields instead; use `/` or a digit for `date`, and Ctrl+T for `datetime`. |
 | Left/Right | Switch time segment in `time` and `datetime`. |
 | Up/Down, Page Up/Page Down | Adjust the time segment by one or five. |
 | a, p | Toggle AM/PM when `hour24 = false`. |
@@ -1850,14 +1877,116 @@ returns `os.time` for today's date at the chosen time.
 Pick a date and a time together.
 
 Show the calendar and time segments in one frame.  Tab switches between the
-date and time sections; the calendar keys and the time segment keys documented
-for `prompt.date` and `prompt.time` apply to the active section.  The time is
-always shown in 24-hour form; `hour24` is not supported here.
+date and time sections; inside `prompt.form` and `prompt.wizard` Tab moves
+between fields, so use Ctrl+T to switch sections there.  The calendar keys and
+the time segment keys documented for `prompt.date` and `prompt.time` apply to
+the active section.  The time is always shown in 24-hour form; `hour24` is not
+supported here.
 
 The result format follows `prompt.date` and includes `hour`, `min` and `sec`
 when `as = "table"`.  `seconds` controls the time precision and `min`/`max`
 bound the date portion; a default outside the date bounds is clamped.  The typed entry accepts
 `YYYY-MM-DD HH:MM[:SS]`.
+
+#### `prompt.form(options)`
+
+Collect several related values in one scrolling form.
+
+Show one compact row per field and expand the focused field below its label.
+`fields` is an array of field specs, each with `name`, `type` and `message`
+plus the options of the component named by `type`; the form field-type table in
+the module overview lists the supported types.  `values` supplies initial
+values by field name and `title` is drawn above the fields.
+
+`required = true` rejects an empty value.  A field-level `validate(value)` may
+return `false, message` or `nil, message` to reject that value.  A top-level
+`validate(values)` receives the collected table and its message is rendered in
+the footer.  On every submit all fields are validated, the first invalid field
+receives focus and its message stays under the field.  The body scrolls as a
+whole and keeps the focused field visible.  `submit` is an optional label shown
+in the key hint when the last field is focused.  Ctrl+Enter submits from any
+field, including inside a multiline field; Tab and Shift+Tab commit the focused
+field before moving, so a pending typed date or password confirmation is not
+discarded.
+
+Return a table keyed by field name.  Esc returns `nil, "cancelled"`; end of
+input returns `nil, "eof"`.  Without a terminal each field is prompted in order
+with its plain-text fallback; a failure that is not handled by the field prints
+the message and returns `nil, message`.
+
+#### `prompt.wizard(options)`
+
+Collect values across several form pages.
+
+`steps` is an array of pages with `title`, `fields` and optional
+`validate(values)` and `skip(values)` callbacks.  Every page has the same
+fields and keys as `prompt.form`.  Values are merged across steps, and page
+objects keep their editors, so going back restores what was typed.
+
+Enter advances to the next step; on the last step it submits, or opens the
+review page when `review = true`.  Ctrl+Enter validates every step and submits
+from anywhere; with `review = true` it opens the review page instead, and
+pressing it again from the review page submits.  Alt+Left goes back one step;
+`b` also goes back on steps whose focused field does not edit text (confirm,
+date, time and datetime) and on the review page.  With `review = true` the
+wizard appends a generated summary page before the final submit.  Skipped steps
+are not shown, validated or returned.  Esc cancels immediately when nothing has
+changed; afterwards it asks for a second Esc before discarding the edits.
+
+Fields are constructed when a step becomes visible.  A step that is visible
+when the wizard opens is constructed even if a later answer skips it, so its
+field options must be valid; a step that is skipped from the start is not
+constructed until it becomes visible.
+
+`values` supplies initial values, `title` is drawn above the step indicator and
+`submit` is the optional label used for the submit key hints.  Field names must
+be unique across all steps because the answers merge into one table keyed by
+name.  The result is the merged value table.
+Without a terminal the steps are prompted in order, skipped steps are skipped
+and the review block is printed before the values are returned.
+
+#### `prompt.steps(options)`
+
+Render a one-line step indicator.
+
+`steps` is an array of step titles or tables with a `title` field and
+`current` is the 1-based active step.  Return a plain string with done, active
+and pending markers, for example `✔ Basics  ● Details  ○ Review` in Unicode
+mode.
+
+`width` defaults to the terminal width.  When the full indicator does not fit,
+it collapses to `current/total Title`, such as `2/3 Details`; a value that still
+does not fit is truncated.  This helper is also used in the header of
+`prompt.wizard`.
+
+#### `prompt.pause(options)`
+
+Wait for a key before continuing.
+
+Show `message` and wait for the terminal.  With `any = true` (the default for
+`any` is false) any key dismisses the pause; otherwise only Enter does.  Esc
+and Ctrl+C return `nil, "cancelled"` after restoring the terminal.
+
+The default message is `Press any key to continue`.  Without a terminal the
+message is printed once and the call returns `true` immediately, so scripts and
+tests do not block on piped input.  End of input while waiting returns
+`nil, "eof"`.
+
+#### `prompt.toast(options)`
+
+Show a short one-line notice.
+
+Draw `message` on the live line using `kind`, which is `"info"` (the
+default), `"success"`, `"warning"` or `"danger"`.  `timeout` is the maximum
+number of seconds to wait for a key and defaults to 1.5; any key dismisses the
+notice.  A `timeout` of zero returns without waiting; with `persist = false`
+it does not draw at all, because a transient line cleared immediately would
+only leave a blank line.
+
+By default the line is erased after the timeout.  `persist = true` leaves the
+notice in the scrollback instead, and is the useful combination with a zero
+timeout.  Without a terminal the notice is printed
+once.  The function returns `true`.
 
 #### `prompt.progress(options)`
 
@@ -1895,6 +2024,23 @@ end
 The iterator returns a to-be-closed progress object, so an error in the loop
 body clears the live line automatically.  To report a failure in the transcript,
 use an explicit progress object and call `fail` instead.
+
+#### `prompt.progress.multi(options)`
+
+Track several progress items together.
+
+Return an object that draws one progress region for a group of items.
+`items` is an array of tables with a `key`, a `label` (defaults to the key), an
+optional `total` and an optional initial `current`.  `label` is the heading.
+Keys must be unique.  `stacked = true` renders one segmented bar with a legend;
+otherwise the object uses one line per item through the shared live block.
+`bar_width` overrides the bar width.
+
+All mutations redraw immediately.  Without a terminal the constructor prints
+the heading and one start line per item, updates are suppressed, and `finish`
+or `fail` prints the final status.  The methods that change an item accept its
+`key`; the `multi:*` entries below document the full method set, including the
+`__close` metamethod.
 
 #### `prompt.spinner(options)`
 
@@ -1993,6 +2139,64 @@ Clear an unfinished progress line.
 Remove the live progress line and restore the cursor without printing a
 success or failure summary.  This is also the `__close` metamethod, so a
 to-be-closed variable cleans up automatically when its scope exits.
+
+#### `multi:update(key, value)`
+
+Set one item's completed count.
+
+Find the item by `key`, set its count to `value` (clamped to zero and to
+its total when one is known) and redraw the group.  An unknown key raises an
+error.  The method returns the multi-progress object for chaining.
+
+#### `multi:advance(key [, amount])`
+
+Add to one item's completed count.
+
+Increase the item's count by `amount` (default one) and redraw.  The value
+follows the same clamping rules as `multi:update`, and the method returns the
+multi-progress object.
+
+#### `multi:set_total(key, total)`
+
+Change one item's total.
+
+Replace the item's total, clamp its current count and redraw immediately.
+This is useful when the size of an item becomes known after the object was
+created.  The total must be non-negative and the method returns the
+multi-progress object.
+
+#### `multi:set_label(label)`
+
+Change the group heading.
+
+Replace the heading shown before the bar or above the item lines and redraw
+immediately.  Passing `nil` or an empty string removes it.  The method returns
+the multi-progress object.
+
+#### `multi:finish([text])`
+
+Finish the group with a success line.
+
+Mark every item as complete, replace the live region with a success summary
+and print a newline.  `text` defaults to the label and then to `"done"`.
+Calling `finish` more than once is harmless.  The method returns the
+multi-progress object.
+
+#### `multi:fail([text])`
+
+Finish the group with a failure line.
+
+Stop the group and leave a danger-coloured failure summary.  `text` defaults
+to the label and then to `"failed"`.  Calling `fail` after `finish` does
+nothing.  The method returns the multi-progress object.
+
+#### `multi:close()`
+
+Clear an unfinished multi-progress region.
+
+Remove the live region and restore the cursor without printing a summary.
+This is also the `__close` metamethod, so a to-be-closed variable cleans up
+automatically when its scope exits.
 
 #### `spinner:step([text [, force]])`
 

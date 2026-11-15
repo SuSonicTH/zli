@@ -41,13 +41,18 @@ function M.open()
 
     local session = {}
     local last_size = term.size()
-    function session:read()
+    -- `wait` is an optional poll timeout in milliseconds.  Without it the call
+    -- blocks until an event arrives, which is what the component loop wants.
+    -- With it, a timeout returns nil so callers such as toasts can check their
+    -- own deadline.
+    function session:read(wait)
         while true do
-            local event, message = term.read_event(100)
+            local event, message = term.read_event(wait or 100)
             if event == nil then
                 if message == "eof" then return { type = "eof" } end
                 if message == "invalid" then
                     -- Ignore an unrecognised key sequence and keep reading.
+                    if wait then return nil end
                 elseif message ~= "timeout" then
                     error("prompt: " .. tostring(message or "could not read the terminal"), 0)
                 end
@@ -58,6 +63,7 @@ function M.open()
                     last_size = size
                     return { type = "resize", columns = size.columns, rows = size.rows }
                 end
+                if wait then return nil end
             elseif event.type == "key" and event.kind == "release" then
                 -- Ignore key releases; they are noise for every component.
             elseif event.type == "mouse" then

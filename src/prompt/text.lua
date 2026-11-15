@@ -150,6 +150,17 @@ function M.new_field(options, field_options)
             end
             return "continue"
         end,
+        commit = function(self)
+            local value, message_text = check_value(options, editor:value())
+            if value == nil then
+                self.error = message_text
+                state.accepted = nil
+                return false, message_text
+            end
+            self.error = nil
+            state.accepted = value
+            return true
+        end,
         value = function()
             if state.accepted ~= nil then return state.accepted end
             return editor:value()

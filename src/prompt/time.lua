@@ -203,13 +203,18 @@ function M.new_field(options, field_options)
         end
     end
 
+    local function apply_digits()
+        if state.digits == "" then return end
+        set_segment(tonumber(state.digits) or current_value())
+        state.digits = ""
+    end
+
     local function on_event(event)
         if event.type == "resize" then return "continue" end
         if input.cancel(event) then return "cancel" end
         if input.enter(event) then
             if state.digits ~= "" then
-                set_segment(tonumber(state.digits) or current_value())
-                state.digits = ""
+                apply_digits()
                 return "continue"
             end
             normalize(state, seconds)
@@ -286,9 +291,34 @@ function M.new_field(options, field_options)
             self.error = state.error
             return action, value
         end,
+        commit = function(self)
+            apply_digits()
+            self.error = state.error
+            return true
+        end,
         value = function()
-            normalize(state, seconds)
-            return to_result(state, options)
+            -- Include pending segment digits without clearing them: drawing and
+            -- merging read values before an explicit commit.
+            local pending = { hour = state.hour, min = state.min, sec = state.sec }
+            if state.digits ~= "" then
+                local max = limits(options, state.segment)
+                local value = math.min(tonumber(state.digits) or 0, max)
+                if state.segment == 1 then
+                    if hour24 then
+                        pending.hour = value
+                    else
+                        local hour = value % 12
+                        if state.hour >= 12 then hour = hour + 12 end
+                        pending.hour = hour
+                    end
+                elseif state.segment == 2 then
+                    pending.min = value
+                else
+                    pending.sec = value
+                end
+            end
+            normalize(pending, seconds)
+            return to_result(pending, options)
         end,
         set_value = function(_, value)
             local parsed = from_time(value)

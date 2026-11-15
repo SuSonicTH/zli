@@ -304,6 +304,16 @@ function M.new_field(options, field_options)
             self.error = state.error
             return action, value
         end,
+        commit = function(self)
+            if state.focus then
+                if not apply_entry() then
+                    self.error = state.error
+                    return false, state.error
+                end
+            end
+            self.error = nil
+            return true
+        end,
         value = function()
             return dates.to_result(selected, options, false)
         end,

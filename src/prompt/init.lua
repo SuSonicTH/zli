@@ -78,6 +78,11 @@ M.time = component("time")
 M.datetime = component("datetime")
 M.progress = require("prompt.progress")
 M.spinner = component("spinner")
+M.form = component("form")
+M.wizard = component("wizard")
+M.steps = component("steps")
+M.pause = component("pause")
+M.toast = component("toast")
 
 M.width = term.width
 M.truncate = term.truncate

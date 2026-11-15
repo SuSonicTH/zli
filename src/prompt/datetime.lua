@@ -116,10 +116,31 @@ function M.new_field(options, field_options)
         return offset, dates.days_in_month(selected.year, selected.month)
     end
 
+    local function apply_digits()
+        if state.digits == "" then return end
+        local max = state.segment == 1 and 23 or 59
+        local value = math.min(tonumber(state.digits) or 0, max)
+        if state.segment == 1 then state.hour = value
+        elseif state.segment == 2 then state.min = value
+        else state.sec = value end
+        state.digits = ""
+    end
+
     local function result()
+        -- Include pending time digits without clearing them; `commit` applies
+        -- them when the form advances or submits.
+        local hour, min = state.hour, state.min
+        local sec = seconds and state.sec or 0
+        if state.digits ~= "" then
+            local max = state.segment == 1 and 23 or 59
+            local value = math.min(tonumber(state.digits) or 0, max)
+            if state.segment == 1 then hour = value
+            elseif state.segment == 2 then min = value
+            elseif seconds then sec = value end
+        end
         local value = {
             year = selected.year, month = selected.month, day = selected.day,
-            hour = state.hour, min = state.min, sec = seconds and state.sec or 0,
+            hour = hour, min = min, sec = sec,
         }
         return dates.to_result(value, options, true)
     end
@@ -240,7 +261,19 @@ function M.new_field(options, field_options)
             end
             return "cancel"
         end
+        if input.ctrl(event, "t") then
+            if state.focus == "entry" then
+                apply_entry()
+                return "continue"
+            end
+            if state.focus == "time" then apply_digits() end
+            if state.focus == "date" then state.focus = "time"
+            else state.focus = "date" end
+            state.error = nil
+            return "continue"
+        end
         if input.key(event, "tab") then
+            if state.focus == "time" then apply_digits() end
             if state.focus == "date" then state.focus = "time"
             elseif state.focus == "time" then state.focus = "date"
             else state.focus = "date" end
@@ -257,7 +290,10 @@ function M.new_field(options, field_options)
         end
 
         if state.focus == "time" then
-            if input.enter(event) then return "submit", result() end
+            if input.enter(event) then
+                apply_digits()
+                return "submit", result()
+            end
             if input.key(event, "left") then
                 local count = seconds and 3 or 2
                 state.segment = (state.segment - 2) % count + 1
@@ -355,6 +391,18 @@ function M.new_field(options, field_options)
             local action, value = on_event(event)
             self.error = state.error
             return action, value
+        end,
+        commit = function(self)
+            if state.focus == "entry" then
+                if not apply_entry() then
+                    self.error = state.error
+                    return false, state.error
+                end
+            elseif state.focus == "time" then
+                apply_digits()
+            end
+            self.error = nil
+            return true
         end,
         value = function()
             return result()

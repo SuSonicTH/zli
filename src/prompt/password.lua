@@ -134,6 +134,30 @@ function M.new_field(options, field_options)
             end
             return "continue"
         end,
+        commit = function(self)
+            if stage == "first" and options.confirm then
+                first_value = current:value()
+                stage = "second"
+                accepted = nil
+                current:close()
+                current = second_field()
+                self.error = nil
+                return false, "Confirm the password."
+            elseif stage == "second" then
+                if current:value() ~= first_value then
+                    self.error = "Passwords do not match"
+                    stage = "first"
+                    accepted = nil
+                    first_value = nil
+                    current:close()
+                    current = first_field()
+                    return false, self.error
+                end
+                accepted = first_value
+                self.error = nil
+            end
+            return true
+        end,
         value = function()
             if accepted ~= nil then return accepted end
             if stage == "second" then return first_value or "" end

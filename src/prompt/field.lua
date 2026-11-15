@@ -8,6 +8,7 @@
 -- Fields provide:
 --   draw(width, active, theme) -> lines, cursor
 --   handle(event)              -> action, value?
+--   commit()                   -> apply pending edits, false + message on error
 --   value()                    -> current result value
 --   set_value(value)           -> replace the current value
 --   summary(theme)             -> spans for one compact row
@@ -35,6 +36,7 @@ function M.new(spec)
         _draw_active = spec.draw_active,
         _draw_compact = spec.draw_compact,
         _handle = spec.handle,
+        _commit = spec.commit,
         _value = spec.value,
         _set_value = spec.set_value,
         _summary = spec.summary,
@@ -99,6 +101,14 @@ function Field:frame(width, theme)
     return require("prompt.render").frame(lines, cursor)
 end
 
+--- Apply any pending editor state before the owner validates or advances.
+-- Returns true on success or false and a message.  Components without pending
+-- state simply succeed.
+function Field:commit()
+    if self._commit then return self._commit(self) end
+    return true
+end
+
 function Field:value()
     return self._value(self)
 end
@@ -153,8 +163,11 @@ function M.help_line(text)
 end
 
 --- Apply a field width, falling back to the terminal width.
+-- Components prefix editor lines with two spaces, so an explicit width leaves
+-- two columns for that indent.  The fallback keeps the standalone prompts
+-- clear of the terminal edge.
 function M.active_width(width)
-    if width ~= nil then return math.max(1, math.floor(width)) end
+    if width ~= nil then return math.max(1, math.floor(width) - 2) end
     local term = require "term"
     local size = term.size()
     return math.max(1, (size and size.columns or 80) - 3)
