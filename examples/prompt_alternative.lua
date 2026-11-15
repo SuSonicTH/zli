@@ -1,10 +1,11 @@
 -- A tour of the `prompt` library using a fictional mission launch.
 --
--- Everything here is simulated: no files are written, no server is contacted
--- and the progress bars only exist to look busy.
+-- The showcase runs entirely in the alternate screen.  Everything here is
+-- simulated: no files are written, no server is contacted and the progress
+-- bars only exist to look busy.
 --
 -- Run it with:
---   ./zig-out/bin/zli examples/prompt.lua
+--   ./zig-out/bin/zli examples/prompt_alternative.lua
 --
 -- With piped input the same questions use the plain-text fallback.
 
@@ -20,26 +21,18 @@ local function pause(milliseconds)
     while os.nanotime() < deadline do end
 end
 
+local function cancel(message)
+    error({ cancelled = true, message = message }, 0)
+end
+
 local function need(value, message)
-    if value == nil then
-        print("Showcase cancelled: " .. tostring(message or "cancelled"))
-        os.exit(0)
-    end
+    if value == nil then cancel(message) end
     return value
 end
 
-heading("Prompt showcase")
+heading("Prompt showcase (alternate screen)")
 
-local style = need(prompt.select {
-    message = "Presentation style",
-    items = {
-        { label = "Inline", value = "inline", description = "keep the scrollback" },
-        { label = "Alternate screen", value = "alternate", description = "full-screen, restored on exit" },
-    },
-    default = "inline",
-})
-
-local manifest = prompt.screen(style, function()
+local ok, manifest = pcall(prompt.screen, "alternate", function()
     local mission = need(prompt.select {
         message = "Choose a fictional mission",
         items = {
@@ -50,14 +43,14 @@ local manifest = prompt.screen(style, function()
         },
         default = "espresso",
         filter = "auto",
-    })
+    }, "cancelled")
 
     local modules = need(prompt.multiselect {
         message = "Install made-up modules",
         items = { "gravity", "crumpet", "radio", "mirrors", "tea" },
         default = { "gravity", "radio" },
         min = 1,
-    })
+    }, "cancelled")
 
     local callsign = need(prompt.text {
         message = "Crew call sign",
@@ -68,51 +61,46 @@ local manifest = prompt.screen(style, function()
             if value:find("%s") then return nil, "spaces are not allowed" end
             return true
         end,
-    })
+    }, "cancelled")
 
     local motto = need(prompt.multiline {
         message = "Mission motto",
         default = "We came. We brewed. We left a tidy orbit.",
         rows = 3,
         max_length = 160,
-    })
+    }, "cancelled")
 
     local secret = need(prompt.password {
         message = "Launch code",
         default = "correct-horse",
         confirm = true,
         confirm_message = "Launch code (one more time)",
-    })
+    }, "cancelled")
 
     local launch_date = need(prompt.date {
         message = "Launch date",
         default = os.date("*t"),
         min = os.date("%Y-%m-%d"),
         as = "string",
-    })
+    }, "cancelled")
 
     local launch_time = need(prompt.time {
         message = "Launch time",
         default = { hour = 9, min = 30 },
         as = "string",
-    })
+    }, "cancelled")
 
     local briefing = need(prompt.datetime {
         message = "Crew briefing",
         default = os.date("*t"),
         as = "string",
-    })
+    }, "cancelled")
 
-    local go = prompt.confirm {
+    local go = need(prompt.confirm {
         message = "Authorise the simulated launch?",
         default = true,
-    }
-    if not go then
-        print("Launch aborted. Nothing happened.")
-        os.exit(0)
-    end
-
-    heading("Simulated preparation")
+    }, "cancelled")
+    if not go then cancel("launch aborted") end
 
     local calibration = prompt.progress {
         total = #modules * 3,
@@ -152,9 +140,16 @@ local manifest = prompt.screen(style, function()
     }
 end)
 
+if not ok then
+    if type(manifest) == "table" and manifest.cancelled then
+        print("Showcase cancelled: " .. tostring(manifest.message or "cancelled"))
+        os.exit(0)
+    end
+    error(manifest, 0)
+end
+
 heading("Simulated launch manifest")
 
-print("  presentation : " .. style)
 print("  mission      : " .. manifest.mission)
 print("  call sign    : " .. manifest.callsign)
 print("  modules      : " .. table.concat(manifest.modules, ", "))
