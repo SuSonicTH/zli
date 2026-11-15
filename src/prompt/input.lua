@@ -46,7 +46,9 @@ function M.open()
             local event, message = term.read_event(100)
             if event == nil then
                 if message == "eof" then return { type = "eof" } end
-                if message ~= "timeout" then
+                if message == "invalid" then
+                    -- Ignore an unrecognised key sequence and keep reading.
+                elseif message ~= "timeout" then
                     error("prompt: " .. tostring(message or "could not read the terminal"), 0)
                 end
                 local size = term.size()

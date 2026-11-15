@@ -633,6 +633,10 @@ fn lua_line_wrap(lua: *Lua) i32 {
 }
 
 fn lua_poll(lua: *Lua) i32 {
+    if (hasBufferedInput(inputPtr())) {
+        lua.pushBoolean(true);
+        return 1;
+    }
     const milliseconds = lua.optInteger(1) orelse 0;
     const ready_now = inputPtr().poll(.fromMilliseconds(@intCast(std.math.clamp(milliseconds, -1, std.math.maxInt(i32))))) catch |err|
         return luaerror.ret(lua, "could not poll the terminal: {s}", .{@errorName(err)});
@@ -660,7 +664,7 @@ fn pollInput(timeout_ms: i32) !PollResult {
     const count = try std.posix.poll(&fds, timeout_ms);
     if (count == 0) return .timeout;
     const hangup = std.posix.POLL.HUP | std.posix.POLL.ERR | std.posix.POLL.NVAL;
-    if ((fds[0].revents & hangup) != 0 and (fds[0].revents & std.posix.POLL.IN) == 0) return .closed;
+    if ((fds[0].revents & hangup) != 0) return .closed;
     return .ready;
 }
 
@@ -691,6 +695,11 @@ fn lua_read_event(lua: *Lua) i32 {
         error.EndOfInput => {
             lua.pushNil();
             _ = lua.pushString("eof");
+            return 2;
+        },
+        error.InvalidEventFound => {
+            lua.pushNil();
+            _ = lua.pushString("invalid");
             return 2;
         },
         else => return luaerror.ret(lua, "could not read a terminal event: {s}", .{@errorName(err)}),

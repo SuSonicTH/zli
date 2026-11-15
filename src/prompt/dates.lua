@@ -198,7 +198,7 @@ end
 function M.bounds(value, is_time)
     if value == nil then return nil end
     local parsed = M.from_value(value)
-    if not parsed then error("prompt: invalid date bound", 3) end
+    if not parsed or not parsed.year then error("prompt: invalid date bound", 3) end
     if is_time then
         return (parsed.hour or 0) * 3600 + (parsed.min or 0) * 60 + (parsed.sec or 0)
     end

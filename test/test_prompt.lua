@@ -558,6 +558,16 @@ function Test_prompt.Test_date_rejects_time_only_default()
     end)
 end
 
+
+function Test_prompt.Test_date_rejects_date_less_bounds_and_tables()
+    lu.assertErrorMsgContains("invalid date bound", function()
+        prompt.date { message = "D", min = "10:30" }
+    end)
+    lu.assertErrorMsgContains("default must be a date", function()
+        prompt.date { message = "D", default = { hour = 10 } }
+    end)
+end
+
 if not RUN_ALL then
     os.exit(lu.LuaUnit.run('-v'))
 end

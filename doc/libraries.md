@@ -8152,8 +8152,9 @@ Read one terminal event.
 
 Without an argument the call blocks.  With a non-negative `milliseconds` it
 returns `nil, "timeout"` when no event arrives in time.  At end of input it
-returns `nil, "eof"`, and on failure `nil, message`.  Otherwise it returns an
-event table as described in the module documentation.
+returns `nil, "eof"`, `nil, "invalid"` for an unparseable key sequence, and on
+failure `nil, message`.  Otherwise it returns an event table as described in
+the module documentation.
 
 #### `term.query_cursor([milliseconds])`
 
