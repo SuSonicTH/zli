@@ -44,16 +44,17 @@ local function term_size()
     return size
 end
 
-local function page_size_for(options, extra)
+local function page_size_for(options, extra, max_height)
     local size = term_size()
+    local rows = max_height or size.rows
     local overhead = 4 + (extra or 0)
-    return math.max(3, math.min(options.page_size, size.rows - 1 - overhead))
+    return math.max(3, math.min(options.page_size, rows - 1 - overhead))
 end
 
 local function build(theme, options, state, multi)
     local visible = state.list.visible
     state.list:ensure_selected()
-    local page = page_size_for(options, state.filter_enabled and 1 or 0)
+    local page = page_size_for(options, state.filter_enabled and 1 or 0, state.max_height)
     local selected_position = state.list:current_position()
 
     local lines = {}
@@ -185,6 +186,7 @@ local function make_field(options, multi, field_options)
         top = 1,
         error = nil,
         show_help = field_options.show_help ~= false,
+        max_height = nil,
     }
     state.filter_enabled = options.filter == true
         or (options.filter == "auto" and #items > options.page_size)
@@ -257,7 +259,7 @@ local function make_field(options, multi, field_options)
             end
             if input.key(event, "page_up") or input.key(event, "page_down") then
                 local direction = input.key(event, "page_up") and -1 or 1
-                local page = page_size_for(options, state.filter_enabled and 1 or 0)
+                local page = page_size_for(options, state.filter_enabled and 1 or 0, state.max_height)
                 state.list:page(direction, page)
                 state.error = nil
                 return "continue"
@@ -321,7 +323,8 @@ local function make_field(options, multi, field_options)
         type = field_options.type or (multi and "multiselect" or "select"),
         options = options,
         message = field_options.message or options.message,
-        draw_active = function(_, width, theme)
+        draw_active = function(self, width, theme)
+            state.max_height = self.max_height
             return build(theme, options, state, multi)
         end,
         draw_compact = function(self, theme)

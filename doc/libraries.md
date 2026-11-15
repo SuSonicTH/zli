@@ -1666,6 +1666,10 @@ the component named by `type`:
 | `date` | `prompt.date` | Calendar date; `as` controls the result format. |
 | `time` | `prompt.time` | Time of day; `as` controls the result format. |
 | `datetime` | `prompt.datetime` | Date and time in one frame. |
+| `search` | `prompt.search` | Ranked search with optional preview. |
+| `tree` | `prompt.tree` | Hierarchical picker; `multi` and `as` apply. |
+| `grid` | `prompt.grid` | Two-dimensional multi-select. |
+| `reorder` | `prompt.reorder` | Reorder a list of values. |
 
 Form keys:
 
@@ -1704,6 +1708,68 @@ Text fields use the same editing keys as `readline`: arrows, Home/End,
 Backspace/Delete, Ctrl+A/E/B/F/K/U/W/Y and Alt+B/F/D.  Enter submits a
 single-line field.  Multiline fields submit on
 Enter and insert a newline on Alt+Enter (or Ctrl+Enter).  Esc cancels.
+
+`prompt.text` also accepts `suggestions`, an array or a
+`function(query) -> items` callback, plus `complete` (`"tab"`, `"auto"` or
+false), `max_suggestions` (default 6) and `suggestion_filter` (`"prefix"`,
+`"substring"` or `"fuzzy"`).  A suggestion is a string or a table with `label`,
+`value` and `description`.  When suggestions are configured and `complete` is
+not false, a dropdown opens below the field.  `complete = "auto"` highlights
+the first match as you type; `prompt.autocomplete` is sugar for `complete =
+"auto"`.  Inside a form Tab moves between fields, so highlight a suggestion
+with Up/Down and accept it with Enter instead.
+
+Autocomplete keys:
+
+| key | action |
+| --- | --- |
+| Up/Down | Highlight a suggestion. |
+| Tab | Insert the highlighted suggestion, or the common completion when none is highlighted. |
+| Enter | Accept a highlighted suggestion and submit; submits the typed value when none is highlighted. |
+| Esc | Close the dropdown first, then cancel. |
+
+Search keys for `prompt.search`:
+
+| key | action |
+| --- | --- |
+| Printable characters | Edit the query when filtering is enabled. |
+| Up/Down, Page Up/Page Down | Move the highlighted match. |
+| Enter | Select the highlighted match. |
+| Esc | Clear the query first, then cancel. |
+
+Tree keys for `prompt.tree`:
+
+| key | action |
+| --- | --- |
+| Up/Down, Home/End, Page Up/Page Down | Move the cursor. |
+| Right | Expand a collapsed branch, or move to its first child. |
+| Left | Collapse an expanded branch, or move to the parent. |
+| Space | Toggle expansion; in multi mode check the node and its descendants. |
+| Enter | Select the node or finish the multi-select. |
+| Printable characters | Filter the tree (unless `filter = false`). |
+| Esc | Clear the filter first, then cancel. |
+
+Grid keys for `prompt.grid`:
+
+| key | action |
+| --- | --- |
+| Arrows, Page Up/Page Down | Move the cursor in two dimensions. |
+| Space | Toggle the current cell. |
+| a, i, n | Select all, invert, or clear. |
+| Enter | Finish. |
+| Esc | Cancel. |
+
+Reorder keys for `prompt.reorder`:
+
+| key | action |
+| --- | --- |
+| Up/Down, Home/End, Page Up/Page Down | Move the cursor. |
+| Alt/Ctrl+Up, Alt/Ctrl+Down | Move the current item. |
+| g, G | Jump to the first or last item. |
+| s | Sort by label, cycling ascending and descending. |
+| r | Restore the initial order. |
+| Enter | Accept the new order. |
+| Esc | Cancel. |
 
 Date and time keys:
 
@@ -1808,6 +1874,25 @@ field is empty.  `max_length` counts Unicode codepoints.
 whitespace before validation and before returning.  `validate` receives the
 cleaned value and may return `false, message` or `nil, message` to reject it;
 the message is shown below the field and editing continues.
+
+`suggestions` turns the field into an autocomplete input.  It is an array of
+items or a `function(query)` that returns one.  Each item is a string or a
+table with `label`, `value` and `description`.  `complete` selects the
+completion policy: `"tab"` (the default when suggestions are present) completes
+on Tab, `"auto"` also highlights the first match while typing, and `false`
+disables the dropdown.  `max_suggestions` limits the menu to six rows by
+default and `suggestion_filter` is `"prefix"` (default), `"substring"` or
+`"fuzzy"`.  Use `prompt.autocomplete` for the `"auto"` shorthand.
+
+#### `prompt.autocomplete(options)`
+
+Read a line with automatic suggestions.
+
+Equivalent to `prompt.text` with `complete = "auto"`.  All text options and
+suggestion options apply.  The first matching suggestion is highlighted as the
+value changes, so Enter accepts it; clear the menu with Esc or use `complete =
+"tab"` when Enter should submit the typed value instead.  Without a terminal
+the suggestion list is ignored and the plain text prompt is used.
 
 #### `prompt.multiline(options)`
 
@@ -1928,7 +2013,8 @@ review page when `review = true`.  Ctrl+Enter validates every step and submits
 from anywhere; with `review = true` it opens the review page instead, and
 pressing it again from the review page submits.  Alt+Left goes back one step;
 `b` also goes back on steps whose focused field does not edit text (confirm,
-date, time and datetime) and on the review page.  With `review = true` the
+date, time, datetime, and search or tree with `filter = false`) and on the
+review page.  With `review = true` the
 wizard appends a generated summary page before the final submit.  Skipped steps
 are not shown, validated or returned.  Esc cancels immediately when nothing has
 changed; afterwards it asks for a second Esc before discarding the edits.
@@ -1987,6 +2073,107 @@ By default the line is erased after the timeout.  `persist = true` leaves the
 notice in the scrollback instead, and is the useful combination with a zero
 timeout.  Without a terminal the notice is printed
 once.  The function returns `true`.
+
+#### `prompt.search(options)`
+
+Search a list with ranked matches and an optional preview.
+
+Show an editable query above a ranked list.  `items` uses the standard list
+item shape plus an optional `keywords` string or array that is searched in
+addition to the label and description, for both fuzzy and substring filtering.
+`filter` is `"fuzzy"` (the default), `"substring"` or `false` for item order
+without matching; `false` also hides the query line.  `limit` caps the result
+list at ten entries by default.  Matched byte ranges are drawn with the
+`match` and `selected_match` theme tokens.
+
+`preview(item, width, height)` returns a string or an array of lines for the
+highlighted item.  It is rendered in a pane to the right of the list when the
+terminal is at least 72 columns wide and is omitted on narrower screens.  The
+function receives the normalised item table and the available pane size.
+`preview = false` disables the pane.
+
+`default` is a value and `default_index` is an index used for the initial
+selection.  When `return_index = true`, a numeric `default` or restored value
+is treated as an item index.  A default or restored item is kept in the list
+even when it falls outside `limit`.  When an explicit default cannot be
+restored (missing, disabled, or an invalid numeric index), nothing is selected
+and Enter reports that no matching item is available; without any default the
+first enabled item is selected.  Enter returns the selected item's `value`;
+`return_index = true` returns the item index instead.  Esc clears a non-empty
+query first and cancels when the query is already empty.  An empty result shows
+an inline message.  There is no search history.  Without a terminal the items
+are printed as a numbered list and a number is read from standard input.
+
+#### `prompt.tree(options)`
+
+Pick a node from a tree.
+
+`items` is an array of nodes.  A node is a string or a table with `label`,
+optional `value` (defaults to the label), `description`, `disabled` and a
+nested `children` array.  `expanded` is `false` (the default), `true` or a
+depth: a number expands branches whose depth is below it.  `filter` defaults to
+true and enables type-to-filter, which keeps matching nodes and their ancestors
+and expands the path to each match.  Set `filter = false` to reserve printable
+keys.  `default` optionally selects one node (or an array of nodes in multi
+mode) by its result value; forms use it to restore saved values.  Single mode
+starts on the first enabled node when `default` is omitted, and a default that
+cannot be matched also leaves that first node selected.  Without a default, or
+when a multi-mode default cannot be matched, a multi-select starts with an
+empty checked set.
+
+`as` controls the result: `"value"` (the default) returns the node value,
+`"node"` returns the value the caller supplied for that node (a string for
+string nodes, otherwise the original table) and `"path"` returns the array of
+labels from the root to the selected node.  With `multi = true` Space checks a
+branch and every enabled descendant; parents show a partial glyph when only
+some descendants are checked.  Disabled nodes cannot be checked or selected,
+including when values are restored with `set_value`.  A multi-select returns an
+array of checked results in tree order; `min`, `max` and `required` constrain
+it.
+
+Without a terminal the flattened tree is printed with numbers and a number (or
+a comma-separated list for multi) is read from standard input.  A blank line in
+single mode accepts the initial/default node.  In multi mode a blank line
+accepts a supplied valid default; without one it yields an empty selection,
+which is checked against `min`, `max` and `required`.  End of input returns a
+supplied default that can be matched and satisfies the multi-select
+constraints, returns `nil, message` when those constraints are violated, and
+returns `nil, "eof"` otherwise.
+
+#### `prompt.grid(options)`
+
+Choose several items from a compact grid.
+
+Lay the items out in rows and return the checked values in item order.  When
+`columns` is `"auto"` (the default) the column count is derived from the widest
+label and the available width; a number fixes the count.  Arrow keys move in
+two dimensions, Space toggles the current cell, and `a`, `i` and `n` select
+all, invert the selection or clear it.  Disabled items are shown but cannot be
+toggled.  `default` is an array of values and `default_indices` is an array of
+indices used for the initial checked set; both may be combined.
+
+`min`, `max` and `required` behave as in `prompt.multiselect`; a violated
+constraint keeps the grid open and displays the message.  The plain-text
+fallback is exactly `prompt.multiselect`, so the same numbered list and
+comma-separated answer format apply.
+
+#### `prompt.reorder(options)`
+
+Reorder a list with the keyboard.
+
+Return a new array containing the item values in their edited order.  `items`
+uses the standard list shape and `default` is an optional array of values that
+supplies the initial order; values not mentioned in `default` keep their item
+order afterwards.  `sort = "label"` sorts the initial order by label.
+
+Up/Down move the cursor and Alt+Up, Alt+Down, Ctrl+Up and Ctrl+Down move the
+current item.  `g` and `G` jump to the first or last item, `s` sorts by label
+and cycles between ascending and descending, and `r` restores the initial
+order.  Enter accepts the order.
+
+Without a terminal the current order is printed with numbers and a permutation
+such as `3,1,2` is read from standard input.  A blank line accepts the shown
+order and an incomplete or repeated permutation is rejected.
 
 #### `prompt.progress(options)`
 

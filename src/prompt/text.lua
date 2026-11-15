@@ -3,8 +3,10 @@
 local config = require "prompt.config"
 local fallback = require "prompt.fallback"
 local field_mod = require "prompt.field"
+local fuzzy = require "prompt.fuzzy"
 local input = require "prompt.input"
 local render = require "prompt.render"
+local suggest = require "prompt.suggest"
 local theme_mod = require "prompt.theme"
 
 local editor_mod = require "prompt_editor"
@@ -29,6 +31,31 @@ local function validate_options(options)
     end
     if options.validate ~= nil and type(options.validate) ~= "function" then
         error("prompt.text: validate must be a function", 3)
+    end
+    if options.suggestions ~= nil
+        and type(options.suggestions) ~= "table"
+        and type(options.suggestions) ~= "function"
+    then
+        error("prompt.text: suggestions must be a table or a function", 3)
+    end
+    if options.complete ~= nil
+        and options.complete ~= "tab"
+        and options.complete ~= "auto"
+        and options.complete ~= false
+    then
+        error("prompt.text: complete must be 'tab', 'auto' or false", 3)
+    end
+    if options.max_suggestions ~= nil
+        and (type(options.max_suggestions) ~= "number" or options.max_suggestions < 1)
+    then
+        error("prompt.text: max_suggestions must be a positive number", 3)
+    end
+    if options.suggestion_filter ~= nil
+        and options.suggestion_filter ~= "prefix"
+        and options.suggestion_filter ~= "substring"
+        and options.suggestion_filter ~= "fuzzy"
+    then
+        error("prompt.text: suggestion_filter must be 'prefix', 'substring' or 'fuzzy'", 3)
     end
 end
 
@@ -93,6 +120,88 @@ function M.new_field(options, field_options)
     })
     local state = { error = nil, width = 0, accepted = nil }
 
+    local suggestions = options.suggestions
+    local complete = options.complete
+    if complete == nil then complete = suggestions and "tab" or false end
+    local max_suggestions = math.floor(options.max_suggestions or 6)
+    local filter_mode = options.suggestion_filter or "prefix"
+    local menu = {
+        open = false,
+        matches = {},
+        selected = nil,
+        closed = false,
+        closed_query = nil,
+    }
+
+    local function suggestion_items(query)
+        if type(suggestions) == "function" then
+            local items = suggestions(query)
+            if type(items) ~= "table" then
+                error("prompt.text: suggestions function must return a table", 0)
+            end
+            return items
+        end
+        return suggestions or {}
+    end
+
+    local function refresh_menu()
+        if suggestions == nil or complete == false then
+            menu.open = false
+            menu.matches = {}
+            menu.selected = nil
+            return
+        end
+        local query = editor:value()
+        if menu.closed and menu.closed_query == query then
+            menu.open = false
+            return
+        end
+        menu.closed = false
+        local items = suggest.normalize(suggestion_items(query))
+        local matches = suggest.filter(items, query, filter_mode)
+        while #matches > max_suggestions do table.remove(matches) end
+        menu.matches = matches
+        menu.open = #matches > 0
+        menu.selected = nil
+        if menu.open and complete == "auto" then menu.selected = 1 end
+    end
+
+    local function close_menu()
+        menu.open = false
+        menu.selected = nil
+        menu.closed = true
+        menu.closed_query = editor:value()
+    end
+
+    local function match_value(match)
+        local value = match.item.value
+        if value == nil then value = match.item.label end
+        return tostring(value)
+    end
+
+    local function accept_match(position)
+        local match = menu.matches[position or menu.selected]
+        if match == nil then return false end
+        editor:set_text(match_value(match))
+        close_menu()
+        return true
+    end
+
+    local function move_menu(delta)
+        local count = #menu.matches
+        if count == 0 then return end
+        local position = menu.selected
+        if position == nil then
+            position = delta > 0 and 0 or count + 1
+        end
+        position = position + delta
+        if position > count then position = 1 end
+        if position < 1 then position = count end
+        menu.selected = position
+    end
+
+    refresh_menu()
+
     local field
     field = field_mod.new {
         type = field_options.type or "text",
@@ -120,6 +229,35 @@ function M.new_field(options, field_options)
                 lines[#lines + 1] = spans
                 cursor = { row = 2, column = (position and position.column or 0) + 2 }
             end
+            if menu.open and #menu.matches > 0 then
+                for position, match in ipairs(menu.matches) do
+                    local current = position == menu.selected
+                    local spans = {
+                        render.span("  ", nil),
+                        render.span(current and theme.symbol("pointer") or " ", current and "accent" or nil),
+                        render.span(" ", nil),
+                    }
+                    local highlighted = fuzzy.highlight(
+                        match.item.label,
+                        match.ranges,
+                        current and "selected_match" or "match"
+                    )
+                    for _, span in ipairs(highlighted) do
+                        if span.style == nil and current then
+                            spans[#spans + 1] = render.span(span.text, "selected")
+                        else
+                            spans[#spans + 1] = { text = span.text, style = span.style }
+                        end
+                    end
+                    if match.item.description then
+                        spans[#spans + 1] = render.span(
+                            "  " .. match.item.description,
+                            current and "selected_muted" or "muted"
+                        )
+                    end
+                    lines[#lines + 1] = spans
+                end
+            end
             return render.frame(lines, cursor)
         end,
         draw_compact = function(self, theme)
@@ -128,7 +266,38 @@ function M.new_field(options, field_options)
             return render.summary(theme, self.message, M.summary_value(theme, value, mask))
         end,
         handle = function(self, event)
-            if input.key(event, "esc") or input.ctrl(event, "c") then return "cancel" end
+            if input.key(event, "esc") or input.ctrl(event, "c") then
+                if input.key(event, "esc") and menu.open then
+                    close_menu()
+                    return "continue"
+                end
+                return "cancel"
+            end
+            if input.key(event, "tab") and suggestions ~= nil then
+                if complete ~= false and menu.open then
+                    if menu.selected then
+                        accept_match(menu.selected)
+                    else
+                        local completion = suggest.complete(menu.matches, editor:value())
+                        if completion ~= nil then
+                            editor:set_text(tostring(completion))
+                            close_menu()
+                        end
+                    end
+                end
+                return "continue"
+            end
+            if event.type == "key" and menu.open then
+                if input.key(event, "up") then
+                    move_menu(-1)
+                    return "continue"
+                elseif input.key(event, "down") then
+                    move_menu(1)
+                    return "continue"
+                elseif input.enter(event) and menu.selected then
+                    accept_match(menu.selected)
+                end
+            end
             if event.type == "key" or event.type == "paste" then
                 self.error = nil
                 state.accepted = nil
@@ -147,6 +316,7 @@ function M.new_field(options, field_options)
                 elseif action == "eof" then
                     return "eof"
                 end
+                refresh_menu()
             end
             return "continue"
         end,
@@ -169,6 +339,8 @@ function M.new_field(options, field_options)
             state.accepted = nil
             state.error = nil
             editor:set_text(tostring(value or ""))
+            menu.closed = false
+            refresh_menu()
         end,
         summary = function(self, theme)
             local value = state.accepted

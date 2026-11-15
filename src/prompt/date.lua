@@ -119,7 +119,7 @@ function M.new_field(options, field_options)
         return offset, dates.days_in_month(selected.year, selected.month)
     end
 
-    local function frame(width)
+    local function frame(width, max_height)
         local columns = width and math.max(1, math.floor(width)) or term_size().columns
         local entry_width = math.max(1, columns - 8)
         if entry_width ~= state.width then
@@ -143,9 +143,21 @@ function M.new_field(options, field_options)
         lines[#lines + 1] = header
 
         local offset, count = month_grid()
+        local week_count = math.ceil((offset + count) / 7)
+        local first_week, last_week = 0, week_count - 1
+        if max_height then
+            local chrome = 4 + (show_help and 1 or 0)
+            local budget = math.max(1, max_height - chrome)
+            if week_count > budget then
+                local selected_week = math.floor((offset + selected.day - 1) / 7)
+                first_week = math.max(0, selected_week - math.floor((budget - 1) / 2))
+                last_week = math.min(week_count - 1, first_week + budget - 1)
+                first_week = math.max(0, last_week - budget + 1)
+            end
+        end
         local today = dates.today()
         local today_day = dates.days_from_civil(today.year, today.month, today.day)
-        for week = 0, 5 do
+        for week = first_week, last_week do
             local spans = {}
             for column = 1, 7 do
                 local cell = week * 7 + column
@@ -293,8 +305,8 @@ function M.new_field(options, field_options)
         type = field_options.type or "date",
         options = options,
         message = message,
-        draw_active = function(_, width)
-            return frame(width)
+        draw_active = function(self, width)
+            return frame(width, self.max_height)
         end,
         draw_compact = function(self, theme)
             return render.summary(theme, self.message, dates.format_date(selected))

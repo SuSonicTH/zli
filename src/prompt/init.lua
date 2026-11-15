@@ -83,6 +83,21 @@ M.wizard = component("wizard")
 M.steps = component("steps")
 M.pause = component("pause")
 M.toast = component("toast")
+M.search = component("search")
+M.tree = component("tree")
+M.grid = component("grid")
+M.reorder = component("reorder")
+
+--- Sugar for a text field with automatic suggestions.
+function M.autocomplete(options)
+    if type(options) ~= "table" then
+        error("prompt.autocomplete: expecting an options table", 2)
+    end
+    local copy = {}
+    for key, value in pairs(options) do copy[key] = value end
+    copy.complete = "auto"
+    return require("prompt.text")(copy)
+end
 
 M.width = term.width
 M.truncate = term.truncate

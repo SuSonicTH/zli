@@ -47,7 +47,11 @@ function M.new(spec)
     return field
 end
 
-function Field:draw(width, active, theme)
+function Field:draw(width, active, theme, height)
+    self.max_height = height
+    if height and self.error then
+        self.max_height = math.max(1, height - 1)
+    end
     if active then
         if not self.active then
             self.active = true

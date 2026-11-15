@@ -77,7 +77,7 @@ function M.new_field(options, field_options)
     local height = options.rows or 5
     local show_help = field_options.show_help ~= false
     local message = field_options.message or options.message
-    local state = { error = nil, width = 0, accepted = nil }
+    local state = { error = nil, width = 0, rows = 0, accepted = nil }
 
     local editor = editor_mod.new(40, height, {
         initial = options.default or "",
@@ -94,14 +94,20 @@ function M.new_field(options, field_options)
         message = message,
         draw_active = function(self, width, theme)
             local columns = field_mod.active_width(width)
-            if columns ~= state.width then
+            local rows_to_show = height
+            if self.max_height then
+                local chrome = 1 + (show_help and 1 or 0)
+                rows_to_show = math.max(1, math.min(height, self.max_height - chrome))
+            end
+            if columns ~= state.width or rows_to_show ~= state.rows then
                 state.width = columns
-                editor:resize(columns, height)
+                state.rows = rows_to_show
+                editor:resize(columns, rows_to_show)
             end
             local lines = { field_mod.label(self.message) }
             local rows, position = editor:render()
             local placeholder = editor:len() == 0 and options.placeholder
-            for index = 1, height do
+            for index = 1, rows_to_show do
                 local spans = { render.span("  ", nil) }
                 if placeholder and index == 1 then
                     spans[#spans + 1] = render.span(options.placeholder, "muted")

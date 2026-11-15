@@ -22,6 +22,10 @@ local field_modules = {
     date = "date",
     time = "time",
     datetime = "datetime",
+    search = "search",
+    tree = "tree",
+    grid = "grid",
+    reorder = "reorder",
 }
 
 local helpers = {
@@ -34,6 +38,10 @@ local helpers = {
     date = function(options) return require("prompt.date")(options) end,
     time = function(options) return require("prompt.time")(options) end,
     datetime = function(options) return require("prompt.datetime")(options) end,
+    search = function(options) return require("prompt.search")(options) end,
+    tree = function(options) return require("prompt.tree")(options) end,
+    grid = function(options) return require("prompt.grid")(options) end,
+    reorder = function(options) return require("prompt.reorder")(options) end,
 }
 
 local function type_name(spec, index)
@@ -80,7 +88,9 @@ end
 --- Check one field spec against its current value.
 -- Returns a message when the value is invalid and nil otherwise.
 local function check_field(spec, value)
-    if spec.type == "multiselect" then
+    if spec.type == "multiselect" or spec.type == "grid"
+        or (spec.type == "tree" and spec.multi)
+    then
         local count = type(value) == "table" and #value or 0
         local minimum = spec.required and math.max(1, spec.min or 0) or (spec.min or 0)
         if count < minimum then
@@ -158,6 +168,10 @@ end
 --- True when the focused field consumes ordinary letter keys.
 function Page:accepts_text()
     local name = self:focus_type()
+    if name == "search" or name == "tree" then
+        local entry = self.entries[self.focus]
+        return entry ~= nil and entry.spec.filter ~= false
+    end
     return name == "text" or name == "multiline" or name == "password"
         or name == "select" or name == "multiselect"
 end
@@ -335,13 +349,21 @@ function Page:draw(width, theme, view)
     local size = require("term").size() or { columns = 80, rows = 24 }
     local columns = width and math.max(1, math.floor(width)) or size.columns
 
+    local header = view.header and 1 or 0
+    local title = self.title and 1 or 0
+    local footer = (view.footer or self.footer) and 1 or 0
+    local help = 1
+    local available = math.max(1, size.rows - header - title - footer - help - 1)
+    local reserve = (#self.entries > 1 and available >= 4) and 2 or 0
+    local field_height = math.max(3, available - reserve)
+
     local body = {}
     local focus_start, focus_end, focus_cursor
     for index, entry in ipairs(self.entries) do
         local start = #body + 1
         local lines, cursor
         if index == self.focus then
-            lines, cursor = entry.field:draw(columns, true, theme)
+            lines, cursor = entry.field:draw(columns, true, theme, field_height)
         else
             lines = entry.field:draw(columns, false, theme)
         end
@@ -352,12 +374,6 @@ function Page:draw(width, theme, view)
             focus_cursor = cursor
         end
     end
-
-    local header = view.header and 1 or 0
-    local title = self.title and 1 or 0
-    local footer = (view.footer or self.footer) and 1 or 0
-    local help = 1
-    local available = math.max(1, size.rows - header - title - footer - help - 1)
 
     local lines = {}
     if view.header then
