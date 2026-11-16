@@ -87,6 +87,10 @@ M.search = component("search")
 M.tree = component("tree")
 M.grid = component("grid")
 M.reorder = component("reorder")
+M.table = component("table")
+M.keyvalue = component("keyvalue")
+M.diff = component("diff")
+M.file = component("file")
 
 --- Sugar for a text field with automatic suggestions.
 function M.autocomplete(options)

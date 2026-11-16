@@ -1670,6 +1670,8 @@ the component named by `type`:
 | `tree` | `prompt.tree` | Hierarchical picker; `multi` and `as` apply. |
 | `grid` | `prompt.grid` | Two-dimensional multi-select. |
 | `reorder` | `prompt.reorder` | Reorder a list of values. |
+| `table` | `prompt.table` | Pick a row from a table with sortable columns. |
+| `file` | `prompt.file` | Pick a file or directory. |
 
 Form keys:
 
@@ -1770,6 +1772,43 @@ Reorder keys for `prompt.reorder`:
 | r | Restore the initial order. |
 | Enter | Accept the new order. |
 | Esc | Cancel. |
+
+Table keys for `prompt.table`:
+
+| key | action |
+| --- | --- |
+| Up/Down, Home/End, Page Up/Page Down | Move the selected row. |
+| Left/Right | Focus the previous or next column; the view scrolls horizontally to keep it visible. |
+| s | Sort by the focused column: ascending, descending, then the original row order. |
+| Enter | Return the selected row, or close a viewer. |
+| q or Esc | Close a viewer; in picker mode they cancel. |
+
+Viewer keys for `prompt.keyvalue` and `prompt.diff`:
+
+| key | action |
+| --- | --- |
+| Up/Down, Page Up/Page Down, Home/End | Scroll the body. |
+| Enter, q, Esc or Ctrl+C | Close the viewer and return `true`. |
+
+File keys for `prompt.file`:
+
+| key | action |
+| --- | --- |
+| Up/Down, Home/End, Page Up/Page Down | Move the selection. |
+| Enter | Enter a directory, or select a file or directory allowed by `mode`. |
+| Right | Enter the selected directory. |
+| Left or Backspace | Go to the parent directory. |
+| Space | Check or uncheck the current entry in multi mode. |
+| `/` | Open the path entry line; Tab completes the typed path and Enter opens it. |
+| h | Toggle hidden entries. |
+| Esc | Leave the path entry line first; otherwise cancel the picker. |
+| Ctrl+C | Cancel the picker, including from the path entry line. |
+
+Read-only components (`prompt.table` with `select = false`, `prompt.keyvalue`
+and `prompt.diff`) return `true` when closed; pickers return the selected value.
+The file picker lists directories before files, always shows directories even
+when a glob filter is set, and previews entries on terminals at least 72
+columns wide unless `preview = false`.
 
 Date and time keys:
 
@@ -2174,6 +2213,102 @@ order.  Enter accepts the order.
 Without a terminal the current order is printed with numbers and a permutation
 such as `3,1,2` is read from standard input.  A blank line accepts the shown
 order and an incomplete or repeated permutation is rejected.
+
+#### `prompt.table(options)`
+
+Show a data table, optionally choosing a row.
+
+`columns` is an array of column specifications with a `name` that indexes
+each row, an optional `title`, `width`, `align` (`"left"`, `"right"` or
+`"center"`) and `format(value, row, column)` callback.  `rows` is an array of
+row tables.  A column without `width` is sized from its title and cells and
+capped at 32 columns.
+
+The header stays at the top while the rows scroll.  Left and Right focus a
+column and scroll the view horizontally so the focused column stays visible;
+`s` sorts by the focused column and cycles ascending, descending and the
+original order.  `sort = false` disables sorting, a column name or index sets
+the initial sort column, and `return_index = true` returns the 1-based original
+row index instead of the row table.  `default` selects an initial row by table
+identity (or by index when `return_index` is set).  `page_size` caps the number
+of visible data rows; overflow markers may add up to two lines around them.
+
+With `select = true` (the default) Enter returns the original row table.  Set
+`select = false` for a viewer: Enter, `q`, Esc and Ctrl+C close it and return
+`true`.  Without a terminal the table is printed with aligned columns; a
+picker reads a row number and a viewer returns `true` immediately.
+
+#### `prompt.keyvalue(options)`
+
+Show a scrollable list of key/value details.
+
+`data` is a table of values and `order` is an optional array of keys that
+selects and orders the rows.  Without `order` the keys are sorted, with numbers
+first and then strings.  A `format(value, key)` callback replaces the default
+text for one value.
+
+Values wrap to the remaining width by default; set `wrap = false` to keep each
+value on its own line and clip long lines.  The body scrolls with the arrow
+keys, Page Up/Page Down and Home/End.  Enter, `q`, Esc and Ctrl+C close the
+viewer and return `true`.  A table value is rendered as a sorted `{ key=value }`
+summary unless `format` provides its own text.
+
+Without a terminal each entry is printed as `key: value` and the function
+returns `true`.
+
+#### `prompt.diff(options)`
+
+Show a line diff between two texts.
+
+`old` and `new` are strings or arrays of lines.  `mode` is `"unified"` (the
+default) or `"split"`; `context` is the number of unchanged context lines
+around each hunk and defaults to three.  `labels` is an optional array of two
+labels used for the old and new sides.
+
+The unified view shows hunk headers, old and new line numbers and one marker
+per line.  Added lines use the `added` theme token and removed lines use
+`removed`.  The split view pairs contiguous removed and inserted lines in two
+aligned panes; long lines are clipped.  Text is diffed with the pure Lua engine
+in `prompt.diffengine`, so no external program is needed.
+
+Up/Down, Page Up/Page Down and Home/End scroll the body.  Enter, `q`, Esc and
+Ctrl+C close the viewer and return `true`.  Without a terminal the unified diff
+is printed with the given labels and the function returns `true`.
+
+#### `prompt.file(options)`
+
+Pick a file or directory from the filesystem.
+
+Start in `start` (default `"."`) and list directories before files.  `mode`
+is `"file"` (the default), `"directory"` or `"any"` and controls what Enter may
+select.  `filter` is a glob string or an array such as `{ "*.lua", "*.md" }`;
+directories are still listed.  `show_hidden = true` includes dot entries.
+`absolute = true` returns absolute paths; otherwise results are relative to the
+starting directory when the entry is inside it.  `default` is an optional path
+used to preselect an entry in forms and as the default answer in the plain
+fallback.  In the plain fallback a blank line also accepts the starting file or
+directory when it satisfies `mode`.
+
+Enter enters a directory in file mode and selects a directory in directory and
+any mode, where Right enters it.  Left or Backspace moves to the parent.  `/`
+opens a path entry line relative to the current directory; Tab completes the
+typed path and Enter opens it.  Inside `prompt.form` and `prompt.wizard` Tab
+moves between fields, so type the full path and press Enter there.  `h` toggles
+hidden entries.  `multi = true` adds Space to check entries and returns the
+checked values in check order; with nothing checked Enter selects the current
+entry when `mode` allows it.
+
+With `preview = true` (the default) a bounded preview is drawn beside the
+list on terminals at least 72 columns wide.  Binary, empty and unreadable files
+show a short label, directories list their visible children, and previews never
+block navigation.  Paths use the `filesystem` module, so Windows separators,
+drive letters and home-directory expansion are handled.
+
+Without a terminal a path is read from standard input and validated against
+`mode` and `filter`; invalid paths print a message and the prompt repeats.  In
+multi mode a comma or whitespace separated list is accepted.  End of input
+returns the default when one exists and `nil, "eof"` otherwise; an invalid
+default returns `nil, message`.
 
 #### `prompt.progress(options)`
 

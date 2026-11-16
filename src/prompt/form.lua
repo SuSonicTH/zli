@@ -26,6 +26,8 @@ local field_modules = {
     tree = "tree",
     grid = "grid",
     reorder = "reorder",
+    table = "table",
+    file = "file",
 }
 
 local helpers = {
@@ -42,6 +44,8 @@ local helpers = {
     tree = function(options) return require("prompt.tree")(options) end,
     grid = function(options) return require("prompt.grid")(options) end,
     reorder = function(options) return require("prompt.reorder")(options) end,
+    table = function(options) return require("prompt.table")(options) end,
+    file = function(options) return require("prompt.file")(options) end,
 }
 
 local function type_name(spec, index)
@@ -167,9 +171,13 @@ end
 
 --- True when the focused field consumes ordinary letter keys.
 function Page:accepts_text()
+    local entry = self.entries[self.focus]
+    if entry then
+        local dynamic = entry.field:accepts_text()
+        if dynamic ~= nil then return dynamic end
+    end
     local name = self:focus_type()
     if name == "search" or name == "tree" then
-        local entry = self.entries[self.focus]
         return entry ~= nil and entry.spec.filter ~= false
     end
     return name == "text" or name == "multiline" or name == "password"

@@ -12,6 +12,7 @@
 --   value()                    -> current result value
 --   set_value(value)           -> replace the current value
 --   summary(theme)             -> spans for one compact row
+--   accepts_text()             -> true/false for transient text modes, or nil
 --   close()                    -> release editors
 --   error                      -> current validation message or nil
 
@@ -43,8 +44,17 @@ function M.new(spec)
         _close = spec.close,
         _activate = spec.activate,
         _deactivate = spec.deactivate,
+        _accepts_text = spec.accepts_text,
     }, Field)
     return field
+end
+
+--- Report whether the field currently consumes printable characters.
+-- Components with a transient text entry mode return true or false; fields
+-- without an opinion return nil so the owner can use its static heuristics.
+function Field:accepts_text()
+    if self._accepts_text then return self._accepts_text(self) end
+    return nil
 end
 
 function Field:draw(width, active, theme, height)

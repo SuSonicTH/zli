@@ -27,4 +27,5 @@ can be shortened when you are already inside this directory (`cd examples`).
 | [`graphcalc.lua`](graphcalc.lua) | Graphical calculator with a browser UI built on `webui`. Plots several `f(x)` curves, supports zooming and exports SVG. [Details](graphcalc.md) |
 | [`prompt_demo.lua`](prompt_demo.lua) | Terminal prompts, pickers, progress and spinners built with `prompt`. [Details](prompt_demo.md) |
 | [`prompt_wizard.lua`](prompt_wizard.lua) | Multi-step form with validation, a review page, multi-item progress and a toast, built with `prompt.wizard`. [Details](prompt_wizard.md) |
+| [`prompt_explorer.lua`](prompt_explorer.lua) | Inspect a directory with the file picker, a sortable table, a key/value viewer and a diff viewer. [Details](prompt_explorer.md) |
 | [`prompt_alternative.lua`](prompt_alternative.lua) | Alternate-screen UI for a fictional mission launch: select, multiselect, text, password, date/time pickers, progress and spinners. [Details](prompt_alternative.md) |
